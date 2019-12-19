@@ -3,54 +3,51 @@ package com.danielfrak.code.keycloak.providers.test;
 import com.danielfrak.code.keycloak.providers.test.fakes.FakeRemoteUserService;
 import com.danielfrak.code.keycloak.providers.test.fakes.FakeUser;
 import org.jboss.logging.Logger;
-import org.keycloak.models.*;
+import org.keycloak.component.ComponentModel;
+import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputValidator;
+import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
+import org.keycloak.models.RoleModel;
+import org.keycloak.models.UserModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.storage.UserStorageProvider;
+import org.keycloak.storage.user.UserLookupProvider;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-public class TestProvider implements UserFederationProvider {
+public class TestProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
 
     private static final Logger log = Logger.getLogger(TestProvider.class);
 
-    private static final Set<String> supportedCredentialTypes = Collections.singleton(UserCredentialModel.PASSWORD);
+    private static final Set<String> supportedCredentialTypes = Collections.singleton(PasswordCredentialModel.TYPE);
 
     private final KeycloakSession session;
-    private final UserFederationProviderModel model;
+    private final ComponentModel model;
 
     private final FakeRemoteUserService remoteUserService;
 
-    public TestProvider(KeycloakSession session, UserFederationProviderModel model,
+    public TestProvider(KeycloakSession session, ComponentModel model,
                         FakeRemoteUserService remoteUserService) {
         this.session = session;
         this.model = model;
         this.remoteUserService = remoteUserService;
     }
 
-    public UserModel validateAndProxy(RealmModel realmModel, UserModel userModel) {
-        // Gives the provider an option to validate if user still exists in federation backend and then proxy UserModel
-        // loaded from local storage. This method is called whenever a UserModel is pulled from Keycloak local storage.
-        // For example, the LDAP provider proxies the UserModel and does on-demand synchronization with LDAP whenever
-        // UserModel update methods are invoked. It also overrides UserModel.updateCredential for the credential
-        // types it supports
-        return userModel;
+    public void close() {
     }
 
-    public boolean synchronizeRegistrations() {
-        // Should user registrations be synchronized with this provider?
-        // FYI, only one provider will be chosen (by priority) to have this synchronization
-        return false;
+    @Override
+    public UserModel getUserById(String id, RealmModel realm) {
+        throw new RuntimeException("User lookup by id not implemented");
     }
 
-    public UserModel register(RealmModel realmModel, UserModel userModel) {
-        return null;
-    }
-
-    public boolean removeUser(RealmModel realmModel, UserModel userModel) {
-        return false;
-    }
-
-    public UserModel getUserByUsername(RealmModel realm, String username) {
+    @Override
+    public UserModel getUserByUsername(String username, RealmModel realm) {
         return getUserModel(realm, username, () -> remoteUserService.findByUsername(username));
     }
 
@@ -66,7 +63,7 @@ public class TestProvider implements UserFederationProvider {
     private UserModel toUserModel(FakeUser remoteUser, RealmModel realm) {
         log.infof("Creating user model for: %s", remoteUser.getUsername());
 
-        var userModel = session.userStorage().addUser(realm, remoteUser.getUsername());
+        var userModel = session.userLocalStorage().addUser(realm, remoteUser.getUsername());
         validateUsernamesEqual(remoteUser, userModel);
 
         userModel.setFederationLink(model.getId());
@@ -113,76 +110,33 @@ public class TestProvider implements UserFederationProvider {
         return Optional.ofNullable(roleModel);
     }
 
-    public UserModel getUserByEmail(RealmModel realm, String email) {
+    @Override
+    public UserModel getUserByEmail(String email, RealmModel realm) {
         return getUserModel(realm, email, () -> remoteUserService.findByEmail(email));
     }
 
-    public List<UserModel> searchByAttributes(Map<String, String> map, RealmModel realmModel, int i) {
-        // Keycloak does not search in local storage first before calling this method.
-        // The implementation must check to see if user is already in local storage (KeycloakSession.userStorage())
-        // before doing an import. Currently only attributes USERNAME, EMAIL, FIRST_NAME and LAST_NAME will be used.
-        return Collections.emptyList();
+    @Override
+    public boolean supportsCredentialType(String s) {
+        return supportedCredentialTypes.contains(s);
     }
 
-    public List<UserModel> getGroupMembers(RealmModel realmModel, GroupModel groupModel, int i, int i1) {
-        // Return group members from federation storage. Useful if info about group memberships is stored
-        // in the federation storage.
-        // Return empty list if your federation provider doesn't support storing user-group memberships
-        return Collections.emptyList();
+    @Override
+    public boolean isConfiguredFor(RealmModel realmModel, UserModel userModel, String s) {
+        return false;
     }
 
-    public void preRemove(RealmModel realmModel) {
-
-    }
-
-    public void preRemove(RealmModel realmModel, RoleModel roleModel) {
-
-    }
-
-    public void preRemove(RealmModel realmModel, GroupModel groupModel) {
-
-    }
-
-    public boolean isValid(RealmModel realmModel, UserModel userModel) {
-        return remoteUserService.userExistsByUsername(userModel.getUsername());
-    }
-
-    public Set<String> getSupportedCredentialTypes(UserModel userModel) {
-        return supportedCredentialTypes;
-    }
-
-    public Set<String> getSupportedCredentialTypes() {
-        return supportedCredentialTypes;
-    }
-
-    public boolean validCredentials(RealmModel realm, UserModel userModel, UserCredentialModel... credential) {
-        return validCredentials(realm, userModel, Arrays.asList(credential));
-    }
-
-    public boolean validCredentials(RealmModel realmModel, UserModel userModel, List<UserCredentialModel> input) {
-        // Validate credentials for this user. This method will only be called with credential parameters supported
-        // by this provider
-
-        if (input == null || input.isEmpty()) {
-            throw new IllegalArgumentException("UserCredentialModel list is empty or null!");
+    @Override
+    public boolean isValid(RealmModel realmModel, UserModel userModel, CredentialInput input) {
+        if (!supportsCredentialType(input.getType())) {
+            return false;
         }
 
-        UserCredentialModel credentials = input.get(0);
-
-        if (remoteUserService.validatePassword(userModel.getUsername(), credentials.getValue())) {
-            userModel.updateCredential(credentials);
+        if (remoteUserService.validatePassword(userModel.getUsername(), input.getChallengeResponse())) {
+            session.userCredentialManager().updateCredential(realmModel, userModel, input);
             userModel.setFederationLink(null);
             return true;
         }
 
         return false;
-    }
-
-    public CredentialValidationOutput validCredentials(RealmModel realm, UserCredentialModel credential) {
-        return CredentialValidationOutput.failed();
-    }
-
-    public void close() {
-
     }
 }

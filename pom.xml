@@ -10,7 +10,6 @@
     <properties>
         <java.version>11</java.version>
         <keycloak.version>8.0.1</keycloak.version>
-        <keycloak.model.version>1.8.1.Final</keycloak.model.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -26,19 +25,11 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-model-api -->
-        <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-model-api</artifactId>
-            <version>${keycloak.model.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-server-spi -->
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-server-spi</artifactId>
-            <version>8.0.1</version>
+            <version>${keycloak.version}</version>
             <scope>provided</scope>
         </dependency>
 
