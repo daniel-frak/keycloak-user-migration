@@ -1,7 +1,7 @@
-package com.danielfrak.code.keycloak.providers.test;
+package com.danielfrak.code.keycloak.providers.rest;
 
-import com.danielfrak.code.keycloak.providers.test.fakes.FakeRemoteUserService;
-import com.danielfrak.code.keycloak.providers.test.fakes.FakeUser;
+import com.danielfrak.code.keycloak.providers.rest.fakes.FakeRemoteUserService;
+import com.danielfrak.code.keycloak.providers.rest.fakes.FakeUser;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
@@ -20,9 +20,9 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-public class TestProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
+public class RestProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
 
-    private static final Logger log = Logger.getLogger(TestProvider.class);
+    private static final Logger log = Logger.getLogger(RestProvider.class);
 
     private static final Set<String> supportedCredentialTypes = Collections.singleton(PasswordCredentialModel.TYPE);
 
@@ -31,7 +31,7 @@ public class TestProvider implements UserStorageProvider, UserLookupProvider, Cr
 
     private final FakeRemoteUserService remoteUserService;
 
-    public TestProvider(KeycloakSession session, ComponentModel model,
+    public RestProvider(KeycloakSession session, ComponentModel model,
                         FakeRemoteUserService remoteUserService) {
         this.session = session;
         this.model = model;

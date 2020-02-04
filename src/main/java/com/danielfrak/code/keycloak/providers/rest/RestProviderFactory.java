@@ -1,7 +1,7 @@
-package com.danielfrak.code.keycloak.providers.test;
+package com.danielfrak.code.keycloak.providers.rest;
 
-import com.danielfrak.code.keycloak.providers.test.fakes.FakeRemoteUserService;
-import com.danielfrak.code.keycloak.providers.test.fakes.FakeUserRepository;
+import com.danielfrak.code.keycloak.providers.rest.fakes.FakeRemoteUserService;
+import com.danielfrak.code.keycloak.providers.rest.fakes.FakeUserRepository;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -12,10 +12,10 @@ import java.util.List;
 
 import static org.keycloak.provider.ProviderConfigProperty.STRING_TYPE;
 
-public class TestProviderFactory implements UserStorageProviderFactory<TestProvider> {
+public class RestProviderFactory implements UserStorageProviderFactory<RestProvider> {
 
     public static final String PROVIDER_NAME = "Test User Federation Provider";
-    private static final Logger log = Logger.getLogger(TestProviderFactory.class);
+    private static final Logger log = Logger.getLogger(RestProviderFactory.class);
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
@@ -30,8 +30,8 @@ public class TestProviderFactory implements UserStorageProviderFactory<TestProvi
     }
 
     @Override
-    public TestProvider create(KeycloakSession session, ComponentModel model) {
-        return new TestProvider(session, model, new FakeRemoteUserService(new FakeUserRepository(), model));
+    public RestProvider create(KeycloakSession session, ComponentModel model) {
+        return new RestProvider(session, model, new FakeRemoteUserService(new FakeUserRepository(), model));
     }
 
     @Override

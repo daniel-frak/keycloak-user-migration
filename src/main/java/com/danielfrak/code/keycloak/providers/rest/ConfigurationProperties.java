@@ -1,4 +1,4 @@
-package com.danielfrak.code.keycloak.providers.test;
+package com.danielfrak.code.keycloak.providers.rest;
 
 public class ConfigurationProperties {
 

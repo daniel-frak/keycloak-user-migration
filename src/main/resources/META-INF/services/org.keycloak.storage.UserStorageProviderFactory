@@ -1,1 +1,1 @@
-com.danielfrak.code.keycloak.providers.test.TestProviderFactory
+com.danielfrak.code.keycloak.providers.rest.RestProviderFactory

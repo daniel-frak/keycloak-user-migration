@@ -1,4 +1,4 @@
-package com.danielfrak.code.keycloak.providers.test.fakes;
+package com.danielfrak.code.keycloak.providers.rest.fakes;
 
 import java.util.ArrayList;
 import java.util.HashMap;

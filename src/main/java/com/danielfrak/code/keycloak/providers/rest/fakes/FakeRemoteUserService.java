@@ -1,6 +1,6 @@
-package com.danielfrak.code.keycloak.providers.test.fakes;
+package com.danielfrak.code.keycloak.providers.rest.fakes;
 
-import com.danielfrak.code.keycloak.providers.test.ConfigurationProperties;
+import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
 import org.keycloak.component.ComponentModel;
 
 import java.util.Optional;

@@ -1,0 +1,12 @@
+version: '3.2'
+
+services:
+  keycloak:
+    build:
+      context: ../
+      dockerfile: docker/keycloak/Dockerfile
+    environment:
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+    ports:
+      - "8024:8080"

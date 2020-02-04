@@ -1,7 +1,4 @@
-package com.danielfrak.code.keycloak.providers.test.fakes;
-
-import com.danielfrak.code.keycloak.providers.test.ConfigurationProperties;
-import org.keycloak.component.ComponentModel;
+package com.danielfrak.code.keycloak.providers.rest.fakes;
 
 import java.util.Arrays;
 import java.util.List;
