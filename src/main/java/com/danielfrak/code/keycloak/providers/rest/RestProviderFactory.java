@@ -1,7 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
-import com.danielfrak.code.keycloak.providers.rest.fakes.FakeRemoteUserService;
-import com.danielfrak.code.keycloak.providers.rest.fakes.FakeUserRepository;
+import com.danielfrak.code.keycloak.providers.rest.rest.RestUserService;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -10,28 +9,18 @@ import org.keycloak.storage.UserStorageProviderFactory;
 
 import java.util.List;
 
-import static org.keycloak.provider.ProviderConfigProperty.STRING_TYPE;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.PROVIDER_NAME;
 
 public class RestProviderFactory implements UserStorageProviderFactory<RestProvider> {
 
-    public static final String PROVIDER_NAME = "Test User Federation Provider";
-    private static final Logger log = Logger.getLogger(RestProviderFactory.class);
-
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
-        return List.of(
-                new ProviderConfigProperty(ConfigurationProperties.CUSTOM_USER_NAME,
-                        "Custom user name", "A custom user name to add to provider",
-                        STRING_TYPE, null),
-                new ProviderConfigProperty(ConfigurationProperties.CUSTOM_USER_PASSWORD,
-                        "Custom user password", "Password of the custom user to add to provider",
-                        STRING_TYPE, null)
-        );
+        return ConfigurationProperties.getConfigProperties();
     }
 
     @Override
     public RestProvider create(KeycloakSession session, ComponentModel model) {
-        return new RestProvider(session, model, new FakeRemoteUserService(new FakeUserRepository(), model));
+        return new RestProvider(session, model, new RestUserService(model));
     }
 
     @Override

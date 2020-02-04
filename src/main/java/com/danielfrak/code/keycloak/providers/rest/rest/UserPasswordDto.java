@@ -6,6 +6,13 @@ public class UserPasswordDto {
 
     private String password;
 
+    public UserPasswordDto() {
+    }
+
+    public UserPasswordDto(String password) {
+        this.password = password;
+    }
+
     public String getPassword() {
         return password;
     }
