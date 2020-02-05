@@ -4,6 +4,7 @@ import org.keycloak.provider.ProviderConfigProperty;
 
 import java.util.List;
 
+import static org.keycloak.provider.ProviderConfigProperty.MULTIVALUED_STRING_TYPE;
 import static org.keycloak.provider.ProviderConfigProperty.STRING_TYPE;
 
 public class ConfigurationProperties {
@@ -17,9 +18,9 @@ public class ConfigurationProperties {
                 new ProviderConfigProperty(URI_PROPERTY,
                         "Rest client URI", "URI of the legacy system endpoints",
                         STRING_TYPE, null),
-                new ProviderConfigProperty(URI_PROPERTY,
-                        "Role map", "Role conversion in the format 'oldRole1:newRole1,oldRole2:newRole2'",
-                        STRING_TYPE, null)
+                new ProviderConfigProperty(ROLE_MAP_PROPERTY,
+                        "Legacy role conversion", "Role conversion in the format 'legacyRole:newRole'",
+                        MULTIVALUED_STRING_TYPE, null)
         );
     }
 }

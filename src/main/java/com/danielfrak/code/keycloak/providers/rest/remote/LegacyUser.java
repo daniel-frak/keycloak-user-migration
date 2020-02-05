@@ -1,10 +1,13 @@
-package com.danielfrak.code.keycloak.providers.rest.rest;
+package com.danielfrak.code.keycloak.providers.rest.remote;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class RestUser {
+/**
+ * A user in the old authentication system
+ */
+public class LegacyUser {
 
     private String username;
     private String email;
@@ -92,16 +95,16 @@ public class RestUser {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RestUser restUser = (RestUser) o;
-        return isEnabled == restUser.isEnabled &&
-                isEmailVerified == restUser.isEmailVerified &&
-                Objects.equals(username, restUser.username) &&
-                Objects.equals(email, restUser.email) &&
-                Objects.equals(password, restUser.password) &&
-                Objects.equals(firstName, restUser.firstName) &&
-                Objects.equals(lastName, restUser.lastName) &&
-                Objects.equals(attributes, restUser.attributes) &&
-                Objects.equals(roles, restUser.roles);
+        LegacyUser legacyUser = (LegacyUser) o;
+        return isEnabled == legacyUser.isEnabled &&
+                isEmailVerified == legacyUser.isEmailVerified &&
+                Objects.equals(username, legacyUser.username) &&
+                Objects.equals(email, legacyUser.email) &&
+                Objects.equals(password, legacyUser.password) &&
+                Objects.equals(firstName, legacyUser.firstName) &&
+                Objects.equals(lastName, legacyUser.lastName) &&
+                Objects.equals(attributes, legacyUser.attributes) &&
+                Objects.equals(roles, legacyUser.roles);
     }
 
     @Override

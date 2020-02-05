@@ -1,7 +1,7 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
 import com.danielfrak.code.keycloak.providers.rest.rest.RestUserService;
-import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.provider.ProviderConfigProperty;
@@ -11,7 +11,7 @@ import java.util.List;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.PROVIDER_NAME;
 
-public class RestProviderFactory implements UserStorageProviderFactory<RestProvider> {
+public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyProvider> {
 
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
@@ -19,8 +19,9 @@ public class RestProviderFactory implements UserStorageProviderFactory<RestProvi
     }
 
     @Override
-    public RestProvider create(KeycloakSession session, ComponentModel model) {
-        return new RestProvider(session, model, new RestUserService(model));
+    public LegacyProvider create(KeycloakSession session, ComponentModel model) {
+        var userModelFactory = new UserModelFactory(session, model);
+        return new LegacyProvider(session, new RestUserService(model), userModelFactory);
     }
 
     @Override
