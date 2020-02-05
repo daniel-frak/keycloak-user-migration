@@ -1,6 +1,5 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
-import com.danielfrak.code.keycloak.providers.rest.LegacyProvider;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.KeycloakSession;
@@ -14,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.MIGRATE_UNMAPPED_ROLES_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.ROLE_MAP_PROPERTY;
 
 public class UserModelFactory {
@@ -93,11 +93,17 @@ public class UserModelFactory {
     private Optional<RoleModel> getRoleModel(RealmModel realm, String role) {
         if (roleMap.containsKey(role)) {
             role = roleMap.get(role);
+        } else if (!shouldParseUnmappedRoles()) {
+            return Optional.empty();
         }
         if (role == null || role.equals("")) {
             return Optional.empty();
         }
         RoleModel roleModel = realm.getRole(role);
         return Optional.ofNullable(roleModel);
+    }
+
+    private boolean shouldParseUnmappedRoles() {
+        return Boolean.parseBoolean(model.getConfig().getFirst(MIGRATE_UNMAPPED_ROLES_PROPERTY));
     }
 }
