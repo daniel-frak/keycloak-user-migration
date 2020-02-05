@@ -61,7 +61,7 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
             return false;
         }
 
-        if (legacyUserService.validatePassword(userModel.getUsername(), input.getChallengeResponse())) {
+        if (legacyUserService.isPasswordValid(userModel.getUsername(), input.getChallengeResponse())) {
             session.userCredentialManager().updateCredential(realmModel, userModel, input);
             userModel.setFederationLink(null);
             return true;

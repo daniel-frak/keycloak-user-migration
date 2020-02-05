@@ -8,5 +8,5 @@ public interface LegacyUserService {
 
     Optional<LegacyUser> findByUsername(String username);
 
-    boolean validatePassword(String username, String password);
+    boolean isPasswordValid(String username, String password);
 }
