@@ -13,14 +13,16 @@ public class ConfigurationProperties {
     public static final String URI_PROPERTY = "URI";
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
 
+    private static List<ProviderConfigProperty> properties = List.of(
+            new ProviderConfigProperty(URI_PROPERTY,
+                    "Rest client URI", "URI of the legacy system endpoints",
+                    STRING_TYPE, null),
+            new ProviderConfigProperty(ROLE_MAP_PROPERTY,
+                    "Legacy role conversion", "Role conversion in the format 'legacyRole:newRole'",
+                    MULTIVALUED_STRING_TYPE, null)
+    );
+
     public static List<ProviderConfigProperty> getConfigProperties() {
-        return List.of(
-                new ProviderConfigProperty(URI_PROPERTY,
-                        "Rest client URI", "URI of the legacy system endpoints",
-                        STRING_TYPE, null),
-                new ProviderConfigProperty(ROLE_MAP_PROPERTY,
-                        "Legacy role conversion", "Role conversion in the format 'legacyRole:newRole'",
-                        MULTIVALUED_STRING_TYPE, null)
-        );
+        return properties;
     }
 }
