@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialManager;
@@ -76,7 +77,13 @@ class LegacyProviderTest {
 
     @Test
     void isValidReturnsFalseOnWrongCredentialType() {
-        // ...
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(CredentialModel.KERBEROS);
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertFalse(result);
     }
 
     @Test
