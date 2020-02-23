@@ -11,7 +11,6 @@ public class LegacyUser {
 
     private String username;
     private String email;
-    private String password;
     private String firstName;
     private String lastName;
     private boolean isEnabled;
@@ -33,14 +32,6 @@ public class LegacyUser {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public String getFirstName() {
@@ -100,7 +91,6 @@ public class LegacyUser {
                 isEmailVerified == legacyUser.isEmailVerified &&
                 Objects.equals(username, legacyUser.username) &&
                 Objects.equals(email, legacyUser.email) &&
-                Objects.equals(password, legacyUser.password) &&
                 Objects.equals(firstName, legacyUser.firstName) &&
                 Objects.equals(lastName, legacyUser.lastName) &&
                 Objects.equals(attributes, legacyUser.attributes) &&
@@ -109,7 +99,7 @@ public class LegacyUser {
 
     @Override
     public int hashCode() {
-        return Objects.hash(username, email, password, firstName, lastName, isEnabled, isEmailVerified, attributes,
+        return Objects.hash(username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
                 roles);
     }
 }
