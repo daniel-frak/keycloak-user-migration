@@ -66,7 +66,7 @@ The response might look like this:
 }
 ```
 
-As the user has been found, a PUT request will not be performed to `http://www.old-legacy-system.com/auth/bob`, with
+As the user has been found, a PUT request will be performed to `http://www.old-legacy-system.com/auth/bob`, with
 the body:
 ```json
 {
