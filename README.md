@@ -4,7 +4,9 @@
 
 ## Introduction
 
-This is an example of a user migration plugin for Keycloak
+This is a user migration plugin for Keycloak. Read more at:
+
+https://codesoapbox.dev/keycloak-user-migration
 
 ## Prerequisites - REST endpoints in the legacy system  
 
