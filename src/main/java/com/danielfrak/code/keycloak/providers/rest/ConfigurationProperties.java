@@ -8,7 +8,7 @@ import static org.keycloak.provider.ProviderConfigProperty.*;
 
 public class ConfigurationProperties {
 
-    public static final String PROVIDER_NAME = "User Migration using a REST client";
+    public static final String PROVIDER_NAME = "User migration using a REST client";
     public static final String URI_PROPERTY = "URI";
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
