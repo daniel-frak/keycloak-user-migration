@@ -10,7 +10,7 @@ https://codesoapbox.dev/keycloak-user-migration
 
 ## Prerequisites - REST endpoints in the legacy system  
 
-You must provide two REST endpoints (GET and PUT) in your legacy authentication system under the URI `${restClientUri
+You must provide two REST endpoints (GET and POST) in your legacy authentication system under the URI `${restClientUri
 }/{$username}`, where `${restClientUri}` is a configurable base URL for the endpoints and `{$username}` is the
 username of the user that is attempting to sign in.
 
@@ -22,8 +22,8 @@ The GET request will have to return user data as a JSON response in the form:
     "email": "string",
     "firstName": "string",
     "lastName": "string",
-    "isEnabled": "boolean",
-    "isEmailVerified": "boolean",
+    "enabled": "boolean",
+    "emailVerified": "boolean",
     "attributes": {
       "key": ["value"]
     },
@@ -33,8 +33,8 @@ The GET request will have to return user data as a JSON response in the form:
 
 Any HTTP status other than `200` will be interpreted as the user not having been found. 
 
-### PUT
-The PUT request is for password validation. It will have to accept the following body:
+### POST
+The POST request is for password validation. It will have to accept the following body:
 ```json
 {
     "password": "string"
@@ -56,8 +56,8 @@ The response might look like this:
     "email": "bob@company.com",
     "firstName": "Bob",
     "lastName": "Smith",
-    "isEnabled": "true",
-    "isEmailVerified": "true",
+    "enabled": "true",
+    "emailVerified": "true",
     "attributes": {
       "position": ["rockstar-developer"],
       "likes": ["cats", "dogs", "cookies"]
@@ -66,7 +66,7 @@ The response might look like this:
 }
 ```
 
-As the user has been found, a PUT request will be performed to `http://www.old-legacy-system.com/auth/bob`, with
+As the user has been found, a POST request will be performed to `http://www.old-legacy-system.com/auth/bob`, with
 the body:
 ```json
 {
