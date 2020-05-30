@@ -1,4 +1,4 @@
-FROM jboss/keycloak
+FROM jboss/keycloak:10.0.1
 
 ARG JAR_FILE=target/*.jar
 
