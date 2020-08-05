@@ -71,15 +71,16 @@ class UserModelFactoryTest {
         final UserProvider userProvider = mock(UserProvider.class);
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
+        final LegacyUser legacyUser = createLegacyUser(username);
 
         when(session.userLocalStorage())
                 .thenReturn(userProvider);
-        when(userProvider.addUser(realm, username))
+        when(userProvider.addUser(realm, legacyUser.getId(), username, true, false))
                 .thenReturn(new TestUserModel(username));
 
-        LegacyUser legacyUser = createLegacyUser(username);
         var result = userModelFactory.create(legacyUser, realm);
 
+        assertEquals(legacyUser.getId(), result.getId());
         assertEquals(legacyUser.getUsername(), result.getUsername());
         assertEquals(legacyUser.getEmail(), result.getEmail());
         assertEquals(legacyUser.isEmailVerified(), result.isEmailVerified());
@@ -89,7 +90,12 @@ class UserModelFactoryTest {
     }
 
     private LegacyUser createLegacyUser(String username) {
+        return createLegacyUser("legacy-id", username);
+    }
+
+    private LegacyUser createLegacyUser(String id, String username) {
         var legacyUser = new LegacyUser();
+        legacyUser.setId(id);
         legacyUser.setUsername(username);
         legacyUser.setEmail("user@email.com");
         legacyUser.setEmailVerified(true);

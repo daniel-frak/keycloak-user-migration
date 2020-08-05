@@ -51,7 +51,12 @@ public class UserModelFactory {
     public UserModel create(LegacyUser legacyUser, RealmModel realm) {
         log.infof("Creating user model for: %s", legacyUser.getUsername());
 
-        var userModel = session.userLocalStorage().addUser(realm, legacyUser.getUsername());
+        var userModel = session.userLocalStorage().addUser(
+                realm, legacyUser.getId(),
+                legacyUser.getUsername(),
+                true,
+                false
+        );
         validateUsernamesEqual(legacyUser, userModel);
 
         userModel.setFederationLink(model.getId());

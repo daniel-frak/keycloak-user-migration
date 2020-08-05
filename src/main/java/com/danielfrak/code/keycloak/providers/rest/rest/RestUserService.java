@@ -9,6 +9,7 @@ import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.core.Response;
 import java.util.Optional;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.API_TOKEN_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.URI_PROPERTY;
 
 public class RestUserService implements LegacyUserService {
@@ -16,11 +17,17 @@ public class RestUserService implements LegacyUserService {
     private final RestUserClient client;
 
     public RestUserService(ComponentModel model) {
-        this.client = buildClient(model.getConfig().getFirst(URI_PROPERTY));
+        String uri = model.getConfig().getFirst(URI_PROPERTY);
+        String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
+        this.client = buildClient(uri, token);
     }
 
-    private RestUserClient buildClient(String uri) {
+    private RestUserClient buildClient(String uri, String token) {
         var restEasyClient = ClientBuilder.newClient();
+        if (token != null && !token.isEmpty()) {
+            restEasyClient.register(new BearerTokenRequestFilter(token));
+        }
+
         ResteasyWebTarget target = (ResteasyWebTarget) restEasyClient.target(uri);
 
         return target.proxy(RestUserClient.class);

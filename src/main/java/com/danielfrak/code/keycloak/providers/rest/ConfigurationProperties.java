@@ -10,6 +10,7 @@ public class ConfigurationProperties {
 
     public static final String PROVIDER_NAME = "User migration using a REST client";
     public static final String URI_PROPERTY = "URI";
+    public static final String API_TOKEN_PROPERTY = "API_TOKEN";
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
 
@@ -17,6 +18,9 @@ public class ConfigurationProperties {
             new ProviderConfigProperty(URI_PROPERTY,
                     "Rest client URI", "URI of the legacy system endpoints",
                     STRING_TYPE, null),
+            new ProviderConfigProperty(API_TOKEN_PROPERTY,
+                    "Rest client API token", "Bearer token",
+                    PASSWORD, null),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion", "Role conversion in the format 'legacyRole:newRole'",
                     MULTIVALUED_STRING_TYPE, null),
