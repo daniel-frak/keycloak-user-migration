@@ -16,6 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        # Disabling shallow clone is recommended for improving relevancy of reporting
+        fetch-depth: 0
     - name: Set up JDK 11
       uses: actions/setup-java@v1
       with:
@@ -23,5 +26,5 @@ jobs:
     - name: Build and analyze
       run: mvn -B verify sonar:sonar -P code-coverage -P sonar-cloud --file pom.xml
       env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_TOKEN: "42bdec5fbe3139228ca013013dac45ff78a5a004"
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
