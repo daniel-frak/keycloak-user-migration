@@ -6,7 +6,6 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.RoleModel;
 import org.keycloak.models.UserModel;
-import org.keycloak.representations.idm.UserRepresentation;
 
 import java.util.HashMap;
 import java.util.List;
@@ -64,9 +63,6 @@ public class UserModelFactory {
                 false
             );
         }
-
-        UserRepresentation rep = new UserRepresentation();
-        rep.setId(legacyUser.getId());
 
         validateUsernamesEqual(legacyUser, userModel);
 
