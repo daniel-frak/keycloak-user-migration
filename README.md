@@ -2,6 +2,14 @@
 
 ![Code Soapbox logo](readme-images/logo.png)
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=alert_status)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=sqale_rating)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=security_rating)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=bugs)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=coverage)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
+
 ## Introduction
 
 This is a user migration plugin for Keycloak. Read more at:
