@@ -16,6 +16,13 @@ This is a user migration plugin for Keycloak. Read more at:
 
 https://codesoapbox.dev/keycloak-user-migration
 
+## Compatibility
+
+| Keycloak Version | Commit                                                                                                                                           |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| 11.X             | Current                                                                                                                                          |
+| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b) |
+
 ## Prerequisites - REST endpoints in the legacy system  
 
 You must provide two REST endpoints (GET and POST) in your legacy authentication system under the URI `${restClientUri
