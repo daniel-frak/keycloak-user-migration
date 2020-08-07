@@ -131,7 +131,7 @@ Additional configuration options are available for fine-tuning the migration.
 
 The migration endpoint can be secured with an API token. The configured value will be sent as a bearer token in the authorization header.
 
-If the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authroization header:
+If the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
 ```
 Authorization: Bearer SECRET_API_TOKEN
 ```
