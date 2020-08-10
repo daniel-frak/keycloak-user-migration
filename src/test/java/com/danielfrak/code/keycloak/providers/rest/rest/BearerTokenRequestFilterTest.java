@@ -13,12 +13,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class BearerTokenRequestFilterTest {
+class BearerTokenRequestFilterTest {
     @Mock
     private ClientRequestContext context;
 
     @Test
-    public void filter() {
+    void filter() {
         String token = "secret-api-token";
         String expectedAuthorizationHeader = "Bearer " + token;
 
@@ -30,6 +30,6 @@ public class BearerTokenRequestFilterTest {
 
         Object result = headers.getFirst("Authorization");
         assertNotNull(result);
-        assertEquals(result.toString(), expectedAuthorizationHeader);
+        assertEquals(expectedAuthorizationHeader, result.toString());
     }
 }

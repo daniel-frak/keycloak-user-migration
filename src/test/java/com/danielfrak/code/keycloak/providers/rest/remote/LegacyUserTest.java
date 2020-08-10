@@ -76,7 +76,7 @@ class LegacyUserTest {
 
     @Test
     void testEquals() {
-        EqualsVerifier.simple().forClass(UserPasswordDto.class)
+        EqualsVerifier.simple().forClass(LegacyUser.class)
                 .verify();
     }
 }
