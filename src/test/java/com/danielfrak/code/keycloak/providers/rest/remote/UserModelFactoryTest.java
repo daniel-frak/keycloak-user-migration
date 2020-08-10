@@ -88,8 +88,32 @@ class UserModelFactoryTest {
         assertEquals(legacyUser.getLastName(), result.getLastName());
     }
 
+    @Test
+    void migratesLegacyUserId() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+        final String id = "legacy-user-id";
+        final LegacyUser legacyUser = createLegacyUser(username, id);
+        final TestUserModel testUserModel = new TestUserModel(username, id);
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, legacyUser.getId(), username, true, false))
+                .thenReturn(testUserModel);
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(legacyUser.getId(), result.getId());
+    }
+
     private LegacyUser createLegacyUser(String username) {
+        return createLegacyUser(username, null);
+    }
+
+    private LegacyUser createLegacyUser(String username, String id) {
         var legacyUser = new LegacyUser();
+        legacyUser.setId(id);
         legacyUser.setUsername(username);
         legacyUser.setEmail("user@email.com");
         legacyUser.setEmailVerified(true);

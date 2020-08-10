@@ -16,6 +16,13 @@ This is a user migration plugin for Keycloak. Read more at:
 
 https://codesoapbox.dev/keycloak-user-migration
 
+## Compatibility
+
+| Keycloak Version | Commit                                                                                                                                           |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| 11.X             | Current                                                                                                                                          |
+| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b) |
+
 ## Prerequisites - REST endpoints in the legacy system  
 
 You must provide two REST endpoints (GET and POST) in your legacy authentication system under the URI `${restClientUri
@@ -26,6 +33,7 @@ username of the user that is attempting to sign in.
 The GET request will have to return user data as a JSON response in the form:
 ```json
 {
+    "id": "string",
     "username": "string",
     "email": "string",
     "firstName": "string",
@@ -40,6 +48,8 @@ The GET request will have to return user data as a JSON response in the form:
 ```
 
 Any HTTP status other than `200` will be interpreted as the user not having been found. 
+
+The `id` attribute in the above response is optional. If it's not set Keycloak will generate a new user id automatically.
 
 ### POST
 The POST request is for password validation. It will have to accept the following body:
@@ -116,6 +126,15 @@ them automatically.
 Additional configuration options are available for fine-tuning the migration. 
 
 ![Additional configuration](readme-images/config.png)
+
+### API Token
+
+The migration endpoint can be secured with an API token. The configured value will be sent as a bearer token in the authorization header.
+
+If the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
+```
+Authorization: Bearer SECRET_API_TOKEN
+```
 
 ### Legacy role conversion
 
