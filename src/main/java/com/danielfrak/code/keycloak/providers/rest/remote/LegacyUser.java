@@ -9,6 +9,7 @@ import java.util.Objects;
  */
 public class LegacyUser {
 
+    private String id;
     private String username;
     private String email;
     private String firstName;
@@ -17,6 +18,14 @@ public class LegacyUser {
     private boolean isEmailVerified;
     private Map<String, List<String>> attributes;
     private List<String> roles;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getUsername() {
         return username;
@@ -89,6 +98,7 @@ public class LegacyUser {
         LegacyUser legacyUser = (LegacyUser) o;
         return isEnabled == legacyUser.isEnabled &&
                 isEmailVerified == legacyUser.isEmailVerified &&
+                Objects.equals(id, legacyUser.id) &&
                 Objects.equals(username, legacyUser.username) &&
                 Objects.equals(email, legacyUser.email) &&
                 Objects.equals(firstName, legacyUser.firstName) &&
@@ -99,7 +109,7 @@ public class LegacyUser {
 
     @Override
     public int hashCode() {
-        return Objects.hash(username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
+        return Objects.hash(id, username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
                 roles);
     }
 }

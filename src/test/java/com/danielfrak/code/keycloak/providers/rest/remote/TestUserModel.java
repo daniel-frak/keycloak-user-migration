@@ -24,6 +24,11 @@ public class TestUserModel implements UserModel {
         this.username = username;
     }
 
+    public TestUserModel(String username, String id) {
+        this.username = username;
+        this.id = id;
+    }
+
     @Override
     public String getId() {
         return id;
