@@ -23,7 +23,7 @@ import java.util.function.Supplier;
  */
 public class LegacyProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
 
-    private static final Logger log = Logger.getLogger(LegacyProvider.class);
+    private static final Logger LOG = Logger.getLogger(LegacyProvider.class);
     private static final Set<String> supportedCredentialTypes = Collections.singleton(PasswordCredentialModel.TYPE);
     private final KeycloakSession session;
     private final LegacyUserService legacyUserService;
@@ -45,7 +45,7 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
         return user.get()
                 .map(u -> userModelFactory.create(u, realm))
                 .orElseGet(() -> {
-                    log.warnf("User not found in external repository: %s", username);
+                    LOG.warnf("User not found in external repository: %s", username);
                     return null;
                 });
     }
@@ -77,7 +77,7 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
 
     @Override
     public UserModel getUserById(String id, RealmModel realm) {
-        throw new RuntimeException("User lookup by id not implemented");
+        throw new UnsupportedOperationException("User lookup by id not implemented");
     }
 
     @Override
@@ -87,5 +87,6 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
 
     @Override
     public void close() {
+        // Not needed
     }
 }

@@ -18,7 +18,7 @@ import static com.danielfrak.code.keycloak.providers.rest.ConfigurationPropertie
 
 public class UserModelFactory {
 
-    private static final Logger log = Logger.getLogger(UserModelFactory.class);
+    private static final Logger LOG = Logger.getLogger(UserModelFactory.class);
 
     private final KeycloakSession session;
     private final ComponentModel model;
@@ -39,17 +39,17 @@ public class UserModelFactory {
      * Returns a map of legacy roles to new roles
      */
     private Map<String, String> getRoleMap(ComponentModel model) {
-        Map<String, String> roleMap = new HashMap<>();
+        Map<String, String> newRoleMap = new HashMap<>();
         List<String> pairs = model.getConfig().getList(ROLE_MAP_PROPERTY);
         for (String pair : pairs) {
             String[] keyValue = pair.split(":");
-            roleMap.put(keyValue[0], keyValue[1]);
+            newRoleMap.put(keyValue[0], keyValue[1]);
         }
-        return roleMap;
+        return newRoleMap;
     }
 
     public UserModel create(LegacyUser legacyUser, RealmModel realm) {
-        log.infof("Creating user model for: %s", legacyUser.getUsername());
+        LOG.infof("Creating user model for: %s", legacyUser.getUsername());
 
         UserModel userModel;
         if (legacyUser.getId() == null) {

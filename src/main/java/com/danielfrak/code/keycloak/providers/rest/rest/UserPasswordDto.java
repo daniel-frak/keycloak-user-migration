@@ -2,7 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import java.util.Objects;
 
-public class UserPasswordDto {
+public final class UserPasswordDto {
 
     private String password;
 
@@ -23,9 +23,14 @@ public class UserPasswordDto {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         UserPasswordDto that = (UserPasswordDto) o;
+
         return Objects.equals(password, that.password);
     }
 

@@ -135,4 +135,16 @@ class LegacyProviderTest {
     void supportsPasswordCredentialType() {
         assertTrue(legacyProvider.supportsCredentialType(PasswordCredentialModel.TYPE));
     }
+
+    @Test
+    void isConfiguredForShouldAlwaysReturnFalse() {
+        assertFalse(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
+                "someString"));
+    }
+
+    @Test
+    void getUserByIdShouldThrowException() {
+        var realm = mock(RealmModel.class);
+        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById("someId", realm));
+    }
 }

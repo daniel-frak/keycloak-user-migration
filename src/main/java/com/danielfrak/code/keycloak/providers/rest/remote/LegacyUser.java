@@ -93,9 +93,14 @@ public class LegacyUser {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         LegacyUser legacyUser = (LegacyUser) o;
+
         return isEnabled == legacyUser.isEnabled &&
                 isEmailVerified == legacyUser.isEmailVerified &&
                 Objects.equals(id, legacyUser.id) &&

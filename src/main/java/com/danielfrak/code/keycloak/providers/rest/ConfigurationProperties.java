@@ -6,7 +6,7 @@ import java.util.List;
 
 import static org.keycloak.provider.ProviderConfigProperty.*;
 
-public class ConfigurationProperties {
+public final class ConfigurationProperties {
 
     public static final String PROVIDER_NAME = "User migration using a REST client";
     public static final String URI_PROPERTY = "URI";
@@ -14,7 +14,7 @@ public class ConfigurationProperties {
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
 
-    private static List<ProviderConfigProperty> properties = List.of(
+    private static final List<ProviderConfigProperty> PROPERTIES = List.of(
             new ProviderConfigProperty(URI_PROPERTY,
                     "Rest client URI (required)", "URI of the legacy system endpoints",
                     STRING_TYPE, null),
@@ -30,7 +30,10 @@ public class ConfigurationProperties {
                     BOOLEAN_TYPE, true)
     );
 
+    private ConfigurationProperties() {
+    }
+
     public static List<ProviderConfigProperty> getConfigProperties() {
-        return properties;
+        return PROPERTIES;
     }
 }

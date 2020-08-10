@@ -1,11 +1,11 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
-import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
+import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
 import org.keycloak.component.ComponentModel;
 
-import javax.ws.rs.client.ClientBuilder;
+import javax.ws.rs.client.Client;
 import javax.ws.rs.core.Response;
 import java.util.Optional;
 
@@ -16,14 +16,13 @@ public class RestUserService implements LegacyUserService {
 
     private final RestUserClient client;
 
-    public RestUserService(ComponentModel model) {
+    public RestUserService(ComponentModel model, Client restEasyClient) {
         String uri = model.getConfig().getFirst(URI_PROPERTY);
         String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
-        this.client = buildClient(uri, token);
+        this.client = buildClient(restEasyClient, uri, token);
     }
 
-    private RestUserClient buildClient(String uri, String token) {
-        var restEasyClient = ClientBuilder.newClient();
+    private RestUserClient buildClient(Client restEasyClient, String uri, String token) {
         if (token != null && !token.isEmpty()) {
             restEasyClient.register(new BearerTokenRequestFilter(token));
         }
@@ -40,7 +39,6 @@ public class RestUserService implements LegacyUserService {
 
     @Override
     public Optional<LegacyUser> findByUsername(String username) {
-
         final Response response = client.findByUsername(username);
         if (response.getStatus() != 200) {
             return Optional.empty();
