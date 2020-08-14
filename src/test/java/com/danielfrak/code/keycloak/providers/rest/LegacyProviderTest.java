@@ -20,6 +20,8 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -146,5 +148,41 @@ class LegacyProviderTest {
     void getUserByIdShouldThrowException() {
         var realm = mock(RealmModel.class);
         assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById("someId", realm));
+    }
+
+    @Test
+    void removeFederationLinkWhenCredentialUpdates() {
+        var input = mock(CredentialInput.class);
+        when(userModel.getFederationLink())
+                .thenReturn("someId");
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel)
+                .setFederationLink(null);
+    }
+
+    @Test
+    void doNotRemoveFederationLinkWhenBlankAndCredentialUpdates() {
+        var input = mock(CredentialInput.class);
+        when(userModel.getFederationLink())
+                .thenReturn(" ");
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel, never())
+                .setFederationLink(null);
+    }
+
+    @Test
+    void doNotRemoveFederationLinkWhenNullAndCredentialUpdates() {
+        var input = mock(CredentialInput.class);
+        when(userModel.getFederationLink())
+                .thenReturn(null);
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel, never())
+                .setFederationLink(null);
     }
 }

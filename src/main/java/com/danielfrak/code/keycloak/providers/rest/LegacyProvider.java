@@ -5,6 +5,7 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
 import org.jboss.logging.Logger;
 import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
@@ -21,7 +22,10 @@ import java.util.function.Supplier;
 /**
  * Provides legacy user migration functionality
  */
-public class LegacyProvider implements UserStorageProvider, UserLookupProvider, CredentialInputValidator {
+public class LegacyProvider implements UserStorageProvider,
+        UserLookupProvider,
+        CredentialInputUpdater,
+        CredentialInputValidator {
 
     private static final Logger LOG = Logger.getLogger(LegacyProvider.class);
     private static final Set<String> supportedCredentialTypes = Collections.singleton(PasswordCredentialModel.TYPE);
@@ -63,7 +67,6 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
 
         if (legacyUserService.isPasswordValid(userModel.getUsername(), input.getChallengeResponse())) {
             session.userCredentialManager().updateCredential(realmModel, userModel, input);
-            userModel.setFederationLink(null);
             return true;
         }
 
@@ -89,4 +92,24 @@ public class LegacyProvider implements UserStorageProvider, UserLookupProvider, 
     public void close() {
         // Not needed
     }
+
+    @Override
+    public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
+        String link = user.getFederationLink();
+        if (link != null && !link.isBlank()) {
+            user.setFederationLink(null);
+        }
+        return false;
+    }
+
+    @Override
+    public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
+        // Not needed
+    }
+
+    @Override
+    public Set<String> getDisableableCredentialTypes(RealmModel realm, UserModel user) {
+        return Collections.emptySet();
+    }
+
 }
