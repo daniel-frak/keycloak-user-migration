@@ -9,13 +9,13 @@ import org.keycloak.models.*;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -217,6 +217,48 @@ class UserModelFactoryTest {
         var result = userModelFactory.create(legacyUser, realm);
 
         assertEquals(Set.of(newGroupModel, anotherGroupModel), result.getGroups());
+    }
+
+    @Test
+    void migrateUserWithNullGroups() {
+        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+
+        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        List<String> groups = new ArrayList<>();
+        groups.add(null);
+        groups.add("");
+        legacyUser.setGroups(groups);
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertTrue(result.getGroups().isEmpty());
+    }
+
+    @Test
+    void migrateUserWithNullRoles() {
+        config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+
+        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        List<String> roles = new ArrayList<>();
+        roles.add(null);
+        roles.add("");
+        legacyUser.setRoles(roles);
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertTrue(result.getRoleMappings().isEmpty());
     }
 
     @Test
