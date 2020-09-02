@@ -5,10 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserProvider;
+import org.keycloak.models.*;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,6 +16,7 @@ import java.util.Set;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -40,6 +38,7 @@ class UserModelFactoryTest {
     void setUp() {
         config = new MultivaluedHashMap<>();
         config.put(ROLE_MAP_PROPERTY, List.of("oldRole:newRole"));
+        config.put(GROUP_MAP_PROPERTY, List.of("oldGroup:newGroup"));
 
         when(model.getConfig())
                 .thenReturn(config);
@@ -147,6 +146,29 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void migratesGroupsWithoutUnmapped() {
+        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "false");
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+        final GroupModel newGroupModel = mock(GroupModel.class);
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+        when(realm.getGroupById("newGroup"))
+                .thenReturn(newGroupModel);
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setGroups(List.of("oldGroup", "anotherGroup"));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(Set.of(newGroupModel), result.getGroups());
+    }
+
+    @Test
     void migratesUnmappedRoles() {
         config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
         final UserProvider userProvider = mock(UserProvider.class);
@@ -170,6 +192,31 @@ class UserModelFactoryTest {
         var result = userModelFactory.create(legacyUser, realm);
 
         assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappings());
+    }
+
+    @Test
+    void migratesUnmappedGroups() {
+        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+        final GroupModel newGroupModel = mock(GroupModel.class);
+        final GroupModel anotherGroupModel = mock(GroupModel.class);
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+        when(realm.getGroupById(anyString())).thenReturn(null);
+        when(realm.createGroup("newGroup")).thenReturn(newGroupModel);
+        when(realm.createGroup("anotherGroup")).thenReturn(anotherGroupModel);
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setGroups(List.of("newGroup", "anotherGroup"));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(Set.of(newGroupModel, anotherGroupModel), result.getGroups());
     }
 
     @Test

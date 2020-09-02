@@ -1,6 +1,5 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
-import com.danielfrak.code.keycloak.providers.rest.rest.UserPasswordDto;
 import nl.jqno.equalsverifier.EqualsVerifier;
 import org.junit.jupiter.api.Test;
 
@@ -72,6 +71,14 @@ class LegacyUserTest {
         var expectedValue = singletonList("value1");
         user.setRoles(expectedValue);
         assertEquals(expectedValue, user.getRoles());
+    }
+
+    @Test
+    void shouldGetAndSetGroups() {
+        var user = new LegacyUser();
+        var expectedValue = singletonList("value1");
+        user.setGroups(expectedValue);
+        assertEquals(expectedValue, user.getGroups());
     }
 
     @Test
