@@ -18,6 +18,7 @@ public class LegacyUser {
     private boolean isEmailVerified;
     private Map<String, List<String>> attributes;
     private List<String> roles;
+    private List<String> groups;
 
     public String getId() {
         return id;
@@ -91,6 +92,14 @@ public class LegacyUser {
         this.roles = roles;
     }
 
+    public List<String> getGroups() {
+        return groups;
+    }
+
+    public void setGroups(List<String> groups) {
+        this.groups = groups;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -109,12 +118,13 @@ public class LegacyUser {
                 Objects.equals(firstName, legacyUser.firstName) &&
                 Objects.equals(lastName, legacyUser.lastName) &&
                 Objects.equals(attributes, legacyUser.attributes) &&
-                Objects.equals(roles, legacyUser.roles);
+                Objects.equals(roles, legacyUser.roles) &&
+                Objects.equals(groups, legacyUser.groups);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
-                roles);
+                roles, groups);
     }
 }

@@ -18,6 +18,7 @@ public class TestUserModel implements UserModel {
     private boolean isEmailVerified;
     private Map<String, List<String>> attributes = new HashMap<>();
     private Set<RoleModel> roles = new HashSet<>();
+    private Set<GroupModel> groups = new HashSet<>();
     private String federationLink;
 
     public TestUserModel(String username) {
@@ -135,12 +136,12 @@ public class TestUserModel implements UserModel {
 
     @Override
     public Set<GroupModel> getGroups() {
-        throw new RuntimeException("Not implemented");
+        return groups;
     }
 
     @Override
     public void joinGroup(GroupModel group) {
-        throw new RuntimeException("Not implemented");
+        groups.add(group);
     }
 
     @Override

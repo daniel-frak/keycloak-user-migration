@@ -43,7 +43,8 @@ The GET request will have to return user data as a JSON response in the form:
     "attributes": {
       "key": ["value"]
     },
-    "roles": ["string"]
+    "roles": ["string"],
+    "groups": ["string"]
 }
 ```
 
@@ -80,7 +81,8 @@ The response might look like this:
       "position": ["rockstar-developer"],
       "likes": ["cats", "dogs", "cookies"]
     },
-    "roles": ["admin"]
+    "roles": ["admin"],
+    "groups": ["migrated_users"]
 }
 ```
 
@@ -145,3 +147,13 @@ automatically map legacy roles to Keycloak roles, by specifying the mapping in t
 
 This switch can be toggled to decide whether roles which are not defined in the legacy role conversion map should be
  migrated anyway or simply ignored.  
+
+### Group role conversion
+
+If group names in Keycloak do not perfectly match those in the legacy system, you can configure the provider to
+automatically map legacy groups to Keycloak groups, by specifying the mapping in the format `legacyGroup:keycloakGroup`.
+
+### Migrate unmapped groups
+
+This switch can be toggled to decide whether groups which are not defined in the legacy group conversion map should be
+ migrated anyway or simply ignored.
