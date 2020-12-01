@@ -131,21 +131,30 @@ public class UserModelFactory {
                 .map(Optional::get);
     }
 
-    private Optional<GroupModel> getGroupModel(RealmModel realm, String group) {
-        if (groupMap.containsKey(group)) {
-            group = groupMap.get(group);
+    private Optional<GroupModel> getGroupModel(RealmModel realm, String groupName) {
+        if (groupMap.containsKey(groupName)) {
+            groupName = groupMap.get(groupName);
         } else if (!isParseEnabledFor(MIGRATE_UNMAPPED_GROUPS_PROPERTY)) {
             return Optional.empty();
         }
-        if (group == null || group.equals("")) {
+        if (groupName == null || groupName.equals("")) {
             return Optional.empty();
         }
 
-        GroupModel realmGroup = realm.getGroupById(group);
+        final String effectiveGroupName = groupName;
+        Optional<GroupModel> group = realm.getGroups().stream()
+                .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
 
-        if (realmGroup == null) {
-            realmGroup = realm.createGroup(group);
-        }
+        GroupModel realmGroup = group
+                .map(g -> {
+                    LOG.infof("Found existing group %s with id %s", g.getName(), g.getId());
+                    return g;
+                })
+                .orElseGet(() -> {
+                    GroupModel newGroup = realm.createGroup(effectiveGroupName);
+                    LOG.infof("Created group %s with id %s", newGroup.getName(), newGroup.getId());
+                    return newGroup;
+                });
 
         return Optional.of(realmGroup);
     }

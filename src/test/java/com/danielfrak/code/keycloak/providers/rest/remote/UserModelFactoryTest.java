@@ -10,13 +10,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -157,8 +157,8 @@ class UserModelFactoryTest {
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
-        when(realm.getGroupById("newGroup"))
-                .thenReturn(newGroupModel);
+        when(newGroupModel.getName()).thenReturn("newGroup");
+        when(realm.getGroups()).thenReturn(Collections.singletonList(newGroupModel));
 
         LegacyUser legacyUser = createLegacyUser(username);
         legacyUser.setGroups(List.of("oldGroup", "anotherGroup"));
@@ -207,7 +207,7 @@ class UserModelFactoryTest {
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
-        when(realm.getGroupById(anyString())).thenReturn(null);
+        when(realm.getGroups()).thenReturn(Collections.emptyList());
         when(realm.createGroup("newGroup")).thenReturn(newGroupModel);
         when(realm.createGroup("anotherGroup")).thenReturn(anotherGroupModel);
 
