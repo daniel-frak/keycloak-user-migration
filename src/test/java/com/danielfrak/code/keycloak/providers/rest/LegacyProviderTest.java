@@ -6,6 +6,8 @@ import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.KeycloakSession;
@@ -17,9 +19,11 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static java.util.Collections.emptySet;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -46,9 +50,12 @@ class LegacyProviderTest {
     @Mock
     private UserModel userModel;
 
+    @Mock
+    private ComponentModel model;
+
     @BeforeEach
     void setUp() {
-        legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory);
+        legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory, model);
     }
 
     @Test
@@ -118,6 +125,10 @@ class LegacyProviderTest {
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
 
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        when(model.getConfig()).thenReturn(config);
+
         final String username = "user";
         final String password = "password";
 
@@ -139,6 +150,10 @@ class LegacyProviderTest {
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
 
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        when(model.getConfig()).thenReturn(config);
+
         final String username = "user";
         final String password = "password";
 
@@ -147,6 +162,34 @@ class LegacyProviderTest {
         when(input.getChallengeResponse())
                 .thenReturn(password);
         when(legacyUserService.isPasswordValid(username, password))
+                .thenReturn(true);
+
+        when(session.userCredentialManager())
+                .thenReturn(mock(UserCredentialManager.class));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+    }
+
+    @Test
+    void isValidReturnsTrueWhenUserValidatedWithUserId() {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+
+        final String userId = "1234567890";
+        final String password = "password";
+
+        when(userModel.getId())
+                .thenReturn(userId);
+        when(input.getChallengeResponse())
+                .thenReturn(password);
+        when(legacyUserService.isPasswordValid(userId, password))
                 .thenReturn(true);
 
         when(session.userCredentialManager())

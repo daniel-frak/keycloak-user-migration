@@ -15,6 +15,7 @@ public final class ConfigurationProperties {
     public static final String API_HTTP_BASIC_ENABLED_PROPERTY = "API_HTTP_BASIC_ENABLED";
     public static final String API_HTTP_BASIC_USERNAME_PROPERTY = "API_HTTP_BASIC_USERNAME";
     public static final String API_HTTP_BASIC_PASSWORD_PROPERTY = "API_HTTP_BASIC_PASSWORD";
+    public static final String USE_USER_ID_FOR_CREDENTIAL_VERIFICATION = "USE_USER_ID_FOR_CREDENTIAL_VERIFICATION";
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
     public static final String GROUP_MAP_PROPERTY = "GROUP_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
@@ -45,6 +46,10 @@ public final class ConfigurationProperties {
                     "Rest client basic auth password",
                     "HTTP basic auth password for legacy user service",
                     PASSWORD, null),
+            new ProviderConfigProperty(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION,
+                    "Use user id for credential verification",
+                    "Use the id of the user instead of the username as the path parameter when making a credential verification request",
+                    BOOLEAN_TYPE, false),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion",
                     "Role conversion in the format 'legacyRole:newRole'",
