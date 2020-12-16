@@ -27,7 +27,9 @@ https://codesoapbox.dev/keycloak-user-migration
 
 You must provide two REST endpoints (GET and POST) in your legacy authentication system under the URI `${restClientUri
 }/{$username}`, where `${restClientUri}` is a configurable base URL for the endpoints and `{$username}` is the
-username of the user that is attempting to sign in.
+username of the user that is attempting to sign in. It is possible to configure the plugin to use the legacy `userId`
+instead of the username when making the credential verification request. This option should only be enabled when the 
+legacy user ids are migrated to Keycloak.
 
 ### GET
 The GET request will have to return user data as a JSON response in the form:
@@ -71,6 +73,7 @@ If a user with the username `bob` and the password `password123` tries to log in
 The response might look like this:
 ```json
 {
+    "id": "12345678",
     "username": "bob",
     "email": "bob@company.com",
     "firstName": "Bob",
@@ -96,6 +99,9 @@ the body:
 
 As this is the correct password, the user will be logged in. In the background, his information will be migrated to
 Keycloak.
+
+If the plugin is configured to use the user id as the path parameter for the credential verification request, a `POST`
+request will be performed to `http://www.old-legacy-system.com/auth/12345678`.
 
 ## Launching and configuring the example
 1. Navigate to `./docker`
