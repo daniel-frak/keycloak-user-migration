@@ -54,15 +54,15 @@ public class UserModelFactory {
         LOG.infof("Creating user model for: %s", legacyUser.getUsername());
 
         UserModel userModel;
-        if (legacyUser.getId() == null) {
+        if (isEmpty(legacyUser.getId())) {
             userModel = session.userLocalStorage().addUser(realm, legacyUser.getUsername());
         } else {
             userModel = session.userLocalStorage().addUser(
-                realm,
-                legacyUser.getId(),
-                legacyUser.getUsername(),
-                true,
-                false
+                    realm,
+                    legacyUser.getId(),
+                    legacyUser.getUsername(),
+                    true,
+                    false
             );
         }
 
@@ -110,14 +110,22 @@ public class UserModelFactory {
     private Optional<RoleModel> getRoleModel(RealmModel realm, String role) {
         if (roleMap.containsKey(role)) {
             role = roleMap.get(role);
-        } else if (!isParseEnabledFor(MIGRATE_UNMAPPED_ROLES_PROPERTY)) {
+        } else if (isConfigDisabled(MIGRATE_UNMAPPED_ROLES_PROPERTY)) {
             return Optional.empty();
         }
-        if (role == null || role.equals("")) {
+        if (isEmpty(role)) {
             return Optional.empty();
         }
         RoleModel roleModel = realm.getRole(role);
         return Optional.ofNullable(roleModel);
+    }
+
+    private boolean isConfigDisabled(String config) {
+        return !Boolean.parseBoolean(model.getConfig().getFirst(config));
+    }
+
+    private boolean isEmpty(String value) {
+        return value == null || value.isBlank();
     }
 
     private Stream<GroupModel> getGroupModels(LegacyUser legacyUser, RealmModel realm) {
@@ -134,10 +142,10 @@ public class UserModelFactory {
     private Optional<GroupModel> getGroupModel(RealmModel realm, String group) {
         if (groupMap.containsKey(group)) {
             group = groupMap.get(group);
-        } else if (!isParseEnabledFor(MIGRATE_UNMAPPED_GROUPS_PROPERTY)) {
+        } else if (isConfigDisabled(MIGRATE_UNMAPPED_GROUPS_PROPERTY)) {
             return Optional.empty();
         }
-        if (group == null || group.equals("")) {
+        if (isEmpty(group)) {
             return Optional.empty();
         }
 
@@ -148,9 +156,5 @@ public class UserModelFactory {
         }
 
         return Optional.of(realmGroup);
-    }
-
-    private boolean isParseEnabledFor(String config) {
-        return Boolean.parseBoolean(model.getConfig().getFirst(config));
     }
 }

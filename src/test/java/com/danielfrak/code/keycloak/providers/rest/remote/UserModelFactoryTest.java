@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class UserModelFactoryTest {
 
-    private static String MODEL_ID = "modelId";
+    private static final String MODEL_ID = "modelId";
 
     private UserModelFactory userModelFactory;
 
