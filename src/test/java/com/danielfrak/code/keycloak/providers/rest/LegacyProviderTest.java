@@ -217,6 +217,12 @@ class LegacyProviderTest {
     }
 
     @Test
+    void closeDoesNothing() {
+        legacyProvider.close();
+        Mockito.verifyNoInteractions(session, legacyUserService, userModel, realmModel, userModel);
+    }
+
+    @Test
     void getDisableableCredentialTypesAlwaysReturnsEmptySet() {
         assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypes(realmModel, userModel));
     }
