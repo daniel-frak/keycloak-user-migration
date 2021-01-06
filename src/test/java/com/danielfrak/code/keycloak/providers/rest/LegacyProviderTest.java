@@ -213,13 +213,13 @@ class LegacyProviderTest {
     @Test
     void disableCredentialTypeDoesNothing() {
         legacyProvider.disableCredentialType(realmModel, userModel, "someType");
-        Mockito.verifyNoInteractions(session, legacyUserService, userModel, realmModel, userModel);
+        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
     }
 
     @Test
     void closeDoesNothing() {
         legacyProvider.close();
-        Mockito.verifyNoInteractions(session, legacyUserService, userModel, realmModel, userModel);
+        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
     }
 
     @Test

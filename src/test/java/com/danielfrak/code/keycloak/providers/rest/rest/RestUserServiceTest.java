@@ -61,6 +61,22 @@ class RestUserServiceTest {
     }
 
     @Test
+    void shouldNotRegisterBearerTokenRequestFilterIfTokenNull() {
+        model.getConfig().add(API_TOKEN_PROPERTY, null);
+        restUserService = new RestUserService(model, restEasyClient);
+
+        verify(restEasyClient, never()).register(any());
+    }
+
+    @Test
+    void shouldNotRegisterBearerTokenRequestFilterIfTokenEmpty() {
+        model.getConfig().add(API_TOKEN_PROPERTY, "");
+        restUserService = new RestUserService(model, restEasyClient);
+
+        verify(restEasyClient, never()).register(any());
+    }
+
+    @Test
     void shouldFindByEmail() {
         var email = "someEmail";
         var expectedResult = new LegacyUser();
