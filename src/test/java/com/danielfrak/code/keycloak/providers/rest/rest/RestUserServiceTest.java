@@ -7,16 +7,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.core.Response;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.API_TOKEN_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.URI_PROPERTY;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RestUserServiceTest {
@@ -29,12 +30,14 @@ class RestUserServiceTest {
     @Mock
     private RestUserClient client;
 
+    @Mock
+    private Client restEasyClient;
+
     @BeforeEach
     void setUp() {
         var uri = "someUri";
         var config = new MultivaluedHashMap<String, String>();
         config.putSingle(URI_PROPERTY, uri);
-        var restEasyClient = mock(Client.class);
         var resteasyWebTarget = mock(ResteasyWebTarget.class);
 
         when(model.getConfig()).thenReturn(config);
@@ -44,6 +47,17 @@ class RestUserServiceTest {
                 .thenReturn(client);
 
         restUserService = new RestUserService(model, restEasyClient);
+    }
+
+    @Test
+    void shouldRegisterBearerTokenRequestFilterIfTokenNotEmpty() {
+        model.getConfig().add(API_TOKEN_PROPERTY, "someToken");
+        restUserService = new RestUserService(model, restEasyClient);
+        ArgumentCaptor<Object> filterCaptor = ArgumentCaptor.forClass(Object.class);
+
+        verify(restEasyClient).register(filterCaptor.capture());
+
+        assertTrue(filterCaptor.getValue() instanceof BearerTokenRequestFilter);
     }
 
     @Test
