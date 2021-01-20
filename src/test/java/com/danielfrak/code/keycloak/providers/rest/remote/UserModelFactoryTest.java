@@ -220,6 +220,32 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void addUserToExistingGroup() {
+        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
+
+        final String username = "user";
+        final String groupName = "group";
+        final String groupId = "12345";
+
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final GroupModel newGroupModel = mock(GroupModel.class);
+
+        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
+        when(realm.getGroups()).thenReturn(List.of(newGroupModel));
+        when(newGroupModel.getName()).thenReturn(groupName);
+        when(newGroupModel.getId()).thenReturn(groupId);
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setGroups(List.of(groupName));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(Set.of(newGroupModel), result.getGroups());
+    }
+
+    @Test
     void migrateUserWithNullGroups() {
         config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
         final UserProvider userProvider = mock(UserProvider.class);
