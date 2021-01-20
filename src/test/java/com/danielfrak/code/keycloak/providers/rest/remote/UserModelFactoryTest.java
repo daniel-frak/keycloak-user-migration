@@ -17,13 +17,12 @@ import java.util.Set;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserModelFactoryTest {
 
-    private static String MODEL_ID = "modelId";
+    private static final String MODEL_ID = "modelId";
 
     private UserModelFactory userModelFactory;
 
@@ -44,7 +43,7 @@ class UserModelFactoryTest {
                 .thenReturn(config);
         userModelFactory = new UserModelFactory(session, model);
 
-        when(model.getId())
+        lenient().when(model.getId())
                 .thenReturn(MODEL_ID);
     }
 
@@ -63,6 +62,37 @@ class UserModelFactoryTest {
         var result = userModelFactory.create(legacyUser, realm);
 
         assertNotNull(result);
+    }
+
+    private LegacyUser createLegacyUser(String username) {
+        return createLegacyUser(username, null);
+    }
+
+    private LegacyUser createLegacyUser(String username, String id) {
+        var legacyUser = new LegacyUser();
+        legacyUser.setId(id);
+        legacyUser.setUsername(username);
+        legacyUser.setEmail("user@email.com");
+        legacyUser.setEmailVerified(true);
+        legacyUser.setEnabled(true);
+        legacyUser.setFirstName("John");
+        legacyUser.setLastName("Smith");
+        return legacyUser;
+    }
+
+    @Test
+    void throwsExceptionIfLegacyAndKeycloakUsernamesNotEqual() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel("wrong_username"));
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        assertThrows(IllegalStateException.class, () -> userModelFactory.create(legacyUser, realm));
     }
 
     @Test
@@ -104,22 +134,6 @@ class UserModelFactoryTest {
         var result = userModelFactory.create(legacyUser, realm);
 
         assertEquals(legacyUser.getId(), result.getId());
-    }
-
-    private LegacyUser createLegacyUser(String username) {
-        return createLegacyUser(username, null);
-    }
-
-    private LegacyUser createLegacyUser(String username, String id) {
-        var legacyUser = new LegacyUser();
-        legacyUser.setId(id);
-        legacyUser.setUsername(username);
-        legacyUser.setEmail("user@email.com");
-        legacyUser.setEmailVerified(true);
-        legacyUser.setEnabled(true);
-        legacyUser.setFirstName("John");
-        legacyUser.setLastName("Smith");
-        return legacyUser;
     }
 
     @Test
@@ -267,7 +281,7 @@ class UserModelFactoryTest {
     }
 
     @Test
-    void migrateUserWithNullRoles() {
+    void migratesUserWithNullRoles() {
         config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
         final UserProvider userProvider = mock(UserProvider.class);
         final RealmModel realm = mock(RealmModel.class);
