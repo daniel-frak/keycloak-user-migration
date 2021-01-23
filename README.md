@@ -1,4 +1,4 @@
-# Keycloak user migration example
+# Keycloak user migration plugin
 
 ![Code Soapbox logo](readme-images/logo.png)
 
