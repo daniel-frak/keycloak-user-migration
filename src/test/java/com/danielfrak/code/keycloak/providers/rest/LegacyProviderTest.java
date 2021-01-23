@@ -14,10 +14,12 @@ import org.keycloak.models.UserCredentialManager;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
+import static java.util.Collections.emptySet;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -64,6 +66,17 @@ class LegacyProviderTest {
     }
 
     @Test
+    void returnsNullIfUserNotFoundByUsername() {
+        final String username = "user";
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.empty());
+
+        var result = legacyProvider.getUserByUsername(username, realmModel);
+
+        assertNull(result);
+    }
+
+    @Test
     void getsUserByEmail() {
         final String email = "email";
         final LegacyUser user = new LegacyUser();
@@ -75,6 +88,17 @@ class LegacyProviderTest {
         var result = legacyProvider.getUserByEmail(email, realmModel);
 
         assertEquals(userModel, result);
+    }
+
+    @Test
+    void returnsNullIfUserNotFoundByEmail() {
+        final String username = "user";
+        when(legacyUserService.findByEmail(username))
+                .thenReturn(Optional.empty());
+
+        var result = legacyProvider.getUserByEmail(username, realmModel);
+
+        assertNull(result);
     }
 
     @Test
@@ -184,5 +208,22 @@ class LegacyProviderTest {
 
         verify(userModel, never())
                 .setFederationLink(null);
+    }
+
+    @Test
+    void disableCredentialTypeDoesNothing() {
+        legacyProvider.disableCredentialType(realmModel, userModel, "someType");
+        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
+    }
+
+    @Test
+    void closeDoesNothing() {
+        legacyProvider.close();
+        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
+    }
+
+    @Test
+    void getDisableableCredentialTypesAlwaysReturnsEmptySet() {
+        assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypes(realmModel, userModel));
     }
 }
