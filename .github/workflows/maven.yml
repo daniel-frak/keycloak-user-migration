@@ -1,6 +1,7 @@
 name: Build and analyze
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "*", "**" ]
   pull_request:
