@@ -20,7 +20,7 @@ https://codesoapbox.dev/keycloak-user-migration
 
 | Keycloak Version | Commit                                                                                                                                           |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| 11.X             | Current                                                                                                                                          |
+| 12.X             | Current                                                                                                                                          |
 | 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b) |
 
 ## Prerequisites - REST endpoints in the legacy system  
