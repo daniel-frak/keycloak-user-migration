@@ -246,23 +246,23 @@ class UserModelFactoryTest {
                 .thenReturn(Arrays.asList(clientModel1, clientModel2));
 
 
-        given(clientModel1.getRole(eq("anotherRole"))).willReturn(anotherRoleModel);
-        given(clientModel1.getRole(eq("newRole"))).willReturn(null);
-        given(clientModel2.getRole(eq("newRole"))).willReturn(newRoleModel);
+        given(clientModel1.getRole("anotherRole")).willReturn(anotherRoleModel);
+        given(clientModel1.getRole("newRole")).willReturn(null);
+        given(clientModel2.getRole("newRole")).willReturn(newRoleModel);
 
         LegacyUser legacyUser = createLegacyUser(username);
         legacyUser.setRoles(List.of("oldRole", "anotherRole"));
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        verify(realm, times(1)).getRole(eq("anotherRole"));
+        verify(realm, times(1)).getRole("anotherRole");
         verify(realm, times(1)).getRole("newRole");
         verify(realm, times(0)).getRole("oldRole");
-        verify(clientModel1, times(1)).getRole(eq("anotherRole"));
+        verify(clientModel1, times(1)).getRole("anotherRole");
         verify(clientModel1, times(0)).getRole("oldRole");
         verify(clientModel1, times(1)).getRole("newRole");
         //Notice if two clients have the same role, only the first found will be used
-        verify(clientModel2, times(0)).getRole(eq("anotherRole"));
+        verify(clientModel2, times(0)).getRole("anotherRole");
         verify(clientModel2, times(0)).getRole("oldRole");
         verify(clientModel2, times(1)).getRole("newRole");
         assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappings());
