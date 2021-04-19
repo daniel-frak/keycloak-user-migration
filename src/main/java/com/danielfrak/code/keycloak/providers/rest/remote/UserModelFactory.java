@@ -116,7 +116,7 @@ public class UserModelFactory {
         if (isEmpty(role)) {
             return Optional.empty();
         }
-        RoleModel roleModel = realm.getRole(role);
+        var roleModel = realm.getRole(role);
         if(roleModel == null) {
             List<ClientModel> clients = realm.getClients();
             for(ClientModel client : clients) {
