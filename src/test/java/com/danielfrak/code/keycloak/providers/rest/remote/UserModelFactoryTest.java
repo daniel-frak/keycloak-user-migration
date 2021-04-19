@@ -270,6 +270,45 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void doesNotMigrateClientRoleIfNotFound() {
+        config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+        final RoleModel newRoleModel = mock(RoleModel.class);
+        final ClientModel clientModel1 = mock(ClientModel.class);
+        final ClientModel clientModel2 = mock(ClientModel.class);
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+
+        when(realm.getClients())
+                .thenReturn(Arrays.asList(clientModel1, clientModel2));
+
+        given(clientModel1.getRole("anotherRole")).willReturn(null);
+        given(clientModel1.getRole("newRole")).willReturn(null);
+        given(clientModel2.getRole("newRole")).willReturn(newRoleModel);
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setRoles(List.of("oldRole", "anotherRole"));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        verify(realm, times(1)).getRole("anotherRole");
+        verify(realm, times(1)).getRole("newRole");
+        verify(realm, times(0)).getRole("oldRole");
+        verify(clientModel1, times(1)).getRole("anotherRole");
+        verify(clientModel1, times(0)).getRole("oldRole");
+        verify(clientModel1, times(1)).getRole("newRole");
+        verify(clientModel2, times(1)).getRole("anotherRole");
+        verify(clientModel2, times(0)).getRole("oldRole");
+        verify(clientModel2, times(1)).getRole("newRole");
+        assertEquals(Set.of(newRoleModel), result.getRoleMappings());
+    }
+
+    @Test
     void migratesUnmappedGroups() {
         config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
         final UserProvider userProvider = mock(UserProvider.class);
