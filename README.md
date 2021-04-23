@@ -133,9 +133,21 @@ Additional configuration options are available for fine-tuning the migration.
 
 The migration endpoint can be secured with an API token. The configured value will be sent as a bearer token in the authorization header.
 
-If the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
+If bearer auth is enabled, the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
 ```
 Authorization: Bearer SECRET_API_TOKEN
+```
+
+### Basic Auth for migration endpoint
+
+The migration endpoint can be secured with HTTP basic auth. 
+The configured value will be sent as a Basic auth string in the authorization header.
+Keep in mind that this approach is only secure over an encrypted connection (i.e. HTTPS)
+
+If basic auth is enabled, the username and password will be sent in the authorization header:
+
+```
+Authorization: Basic base64encode(username:password)
 ```
 
 ### Legacy role conversion

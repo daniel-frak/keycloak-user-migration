@@ -2,6 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
+import org.jboss.resteasy.client.jaxrs.internal.BasicAuthentication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,8 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.core.Response;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.API_TOKEN_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.URI_PROPERTY;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -50,8 +50,32 @@ class RestUserServiceTest {
     }
 
     @Test
-    void shouldRegisterBearerTokenRequestFilterIfTokenNotEmpty() {
+    void shouldRegisterBasicAuthRequestFilterIfBasicAuthEnabledAndCredentialsNotEmpty() {
+        model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, "someUser");
+        model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, "somePassword");
+        model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, "true");
+        restUserService = new RestUserService(model, restEasyClient);
+        ArgumentCaptor<Object> filterCaptor = ArgumentCaptor.forClass(Object.class);
+
+        verify(restEasyClient).register(filterCaptor.capture());
+
+        assertTrue(filterCaptor.getValue() instanceof BasicAuthentication);
+    }
+
+    @Test
+    void shouldNotRegisterBasicAuthRequestFilterIfBasicAuthDisabledAndCredentialsNotEmpty() {
+        model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, "someUser");
+        model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, "somePassword");
+        model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, "false");
+        restUserService = new RestUserService(model, restEasyClient);
+
+        verify(restEasyClient, never()).register(any());
+    }
+
+    @Test
+    void shouldRegisterBearerTokenRequestFilterIfTokenAuthEnabledAndTokenNotEmpty() {
         model.getConfig().add(API_TOKEN_PROPERTY, "someToken");
+        model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "true");
         restUserService = new RestUserService(model, restEasyClient);
         ArgumentCaptor<Object> filterCaptor = ArgumentCaptor.forClass(Object.class);
 
@@ -61,8 +85,18 @@ class RestUserServiceTest {
     }
 
     @Test
+    void shouldNotRegisterBearerTokenRequestFilterIfTokenAuthDisabledAndTokenNotEmpty() {
+        model.getConfig().add(API_TOKEN_PROPERTY, "someToken");
+        model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "false");
+        restUserService = new RestUserService(model, restEasyClient);
+
+        verify(restEasyClient, never()).register(any());
+    }
+
+    @Test
     void shouldNotRegisterBearerTokenRequestFilterIfTokenNull() {
         model.getConfig().add(API_TOKEN_PROPERTY, null);
+        model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "true");
         restUserService = new RestUserService(model, restEasyClient);
 
         verify(restEasyClient, never()).register(any());
@@ -71,6 +105,7 @@ class RestUserServiceTest {
     @Test
     void shouldNotRegisterBearerTokenRequestFilterIfTokenEmpty() {
         model.getConfig().add(API_TOKEN_PROPERTY, "");
+        model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "true");
         restUserService = new RestUserService(model, restEasyClient);
 
         verify(restEasyClient, never()).register(any());
