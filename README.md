@@ -143,6 +143,8 @@ Authorization: Bearer SECRET_API_TOKEN
 If role names in Keycloak do not perfectly match those in the legacy system, you can configure the provider to
 automatically map legacy roles to Keycloak roles, by specifying the mapping in the format `legacyRole:keycloakRole`.
 
+Note that roles cannot be created during import, they need to exist in Keycloak first.
+
 ### Migrate unmapped roles
 
 This switch can be toggled to decide whether roles which are not defined in the legacy role conversion map should be
