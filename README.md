@@ -127,18 +127,34 @@ them automatically.
 
 Additional configuration options are available for fine-tuning the migration. 
 
-![Additional configuration](readme-images/config.png)
+### Bearer Token Auth
 
-### API Token
+![Bearer Token Auth](readme-images/config_bearer_token.png)
 
 The migration endpoint can be secured with an API token. The configured value will be sent as a bearer token in the authorization header.
 
-If the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
+If bearer auth is enabled, the configured token value is set to `SECRET_API_TOKEN` when making the request to the migration endpoints, the rest client will send the following authorization header:
 ```
 Authorization: Bearer SECRET_API_TOKEN
 ```
 
+### Basic Auth for migration endpoint
+
+![HTTP Basic Token Auth](readme-images/config_http_basic_auth.png)
+
+The migration endpoint can be secured with HTTP basic auth. 
+The configured value will be sent as a Basic auth string in the authorization header.
+Keep in mind that this approach is only secure over an encrypted connection (i.e. HTTPS)
+
+If basic auth is enabled, the username and password will be sent in the authorization header:
+
+```
+Authorization: Basic base64encode(username:password)
+```
+
 ### Legacy role conversion
+
+![Conversion](readme-images/config_conversion.png)
 
 If role names in Keycloak do not perfectly match those in the legacy system, you can configure the provider to
 automatically map legacy roles to Keycloak roles, by specifying the mapping in the format `legacyRole:keycloakRole`.
