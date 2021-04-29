@@ -18,16 +18,16 @@ public class RestUserService implements LegacyUserService {
 
     public RestUserService(ComponentModel model, Client restEasyClient) {
         String uri = model.getConfig().getFirst(URI_PROPERTY);
-        boolean tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
+        var tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
         if (tokenAuthEnabled) {
             String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
-            restEasyClient = registerBearerTokenRequestFilter(restEasyClient, token);
+            registerBearerTokenRequestFilter(restEasyClient, token);
         }
-        boolean basicAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY));
+        var basicAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY));
         if (basicAuthEnabled) {
             String basicAuthUser = model.getConfig().getFirst(API_HTTP_BASIC_USERNAME_PROPERTY);
             String basicAuthPassword = model.getConfig().getFirst(API_HTTP_BASIC_PASSWORD_PROPERTY);
-            restEasyClient =  registerBasicAuthFilter(restEasyClient, basicAuthUser, basicAuthPassword);
+            registerBasicAuthFilter(restEasyClient, basicAuthUser, basicAuthPassword);
         }
         this.client = buildClient(restEasyClient, uri);
     }
