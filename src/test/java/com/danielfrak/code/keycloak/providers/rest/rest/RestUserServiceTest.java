@@ -65,14 +65,33 @@ class RestUserServiceTest {
         assertTrue(filterCaptor.getValue() instanceof BasicAuthentication);
     }
 
-    @Test
-    void shouldNotRegisterBasicAuthRequestFilterIfBasicAuthDisabledAndCredentialsNotEmpty() {
-        model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, "someUser");
-        model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, "somePassword");
-        model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, "false");
-        restUserService = new RestUserService(model, restEasyClient);
 
-        verify(restEasyClient, never()).register(any());
+
+    @Nested
+    class ShouldNotRegisterBasicAuthRequestFilter {
+
+        @ParameterizedTest
+        @CsvSource(
+                value = {
+                        "someUser,somePassword,false'", // deactivated
+                        "someUser,'',true", // activated, password empty
+                        "someUser,null,true", // activated, password null
+                        "'',somePassword,true", // activated, user empty
+                        "null,somePassword,true", // activated, user null
+                        "'','',true", // activated, both empty
+                        "null,null,true", // activated, both null
+                },
+                nullValues = {"null"}
+        )
+        void ifBasicAuthDisabledOrCredentialsEmptyOrNull(String userName, String password, String basicAuthEnabled ) {
+            model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, userName);
+            model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, password);
+            model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, basicAuthEnabled);
+            restUserService = new RestUserService(model, restEasyClient);
+
+            verify(restEasyClient, never()).register(any());
+        }
+
     }
 
     @Test
