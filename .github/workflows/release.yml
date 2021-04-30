@@ -17,11 +17,14 @@ jobs:
       with:
         distribution: adopt
         java-version: 11
+    - name: Get Tag
+      id: refs
+      run: echo ::set-output name=tag::${GITHUB_REF##*/}
     - name: Build Jar
-      run: mvn -Drevision=$GITHUB_REF clean package
+      run: mvn -Drevision=${GITHUB_REF##*/} clean package
     - name: Create Release
       uses: jasonetco/upload-to-release@v0.1.1
       with:
-        args: target/$GITHUB_REF.jar application/java-archive
+        args: target/${{ steps.refs.outputs.tag }}.jar application/java-archive
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
