@@ -6,8 +6,10 @@
 
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
-    <version>1.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <properties>
+        <revision>1.0-SNAPSHOT</revision>
+
         <java.version>11</java.version>
         <keycloak.version>11.0.0</keycloak.version>
         <resteasy.version>4.4.1.Final</resteasy.version>

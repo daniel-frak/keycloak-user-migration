@@ -1,0 +1,27 @@
+
+name: release
+
+on:
+  release:
+    types:
+    - created
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v2
+    - name: Set Up Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: adopt
+        java-version: 11
+    - name: Build Jar
+      run: mvn -Drevision=$GITHUB_REF clean package
+    - name: Create Release
+      uses: jasonetco/upload-to-release@v0.1.1
+      with:
+        args: target/$GITHUB_REF.jar application/java-archive
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
