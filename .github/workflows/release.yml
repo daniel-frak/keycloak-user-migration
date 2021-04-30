@@ -25,6 +25,6 @@ jobs:
     - name: Create Release
       uses: jasonetco/upload-to-release@v0.1.1
       with:
-        args: target/${{ steps.refs.outputs.tag }}.jar application/java-archive
+        args: target/keycloak-rest-provider-${{ steps.refs.outputs.tag }}.jar application/java-archive
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
