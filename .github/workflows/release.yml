@@ -1,5 +1,5 @@
 
-name: release
+name: Create release assets
 
 on:
   release:
