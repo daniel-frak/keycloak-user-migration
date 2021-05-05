@@ -167,6 +167,8 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
         when(realm.getRole("newRole"))
+                .thenReturn(null);
+        when(realm.addRole("newRole"))
                 .thenReturn(newRoleModel);
 
         LegacyUser legacyUser = createLegacyUser(username);
@@ -214,8 +216,12 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
         when(realm.getRole("newRole"))
+                .thenReturn(null);
+        when(realm.addRole("newRole"))
                 .thenReturn(newRoleModel);
         when(realm.getRole("anotherRole"))
+                .thenReturn(null);
+        when(realm.addRole("anotherRole"))
                 .thenReturn(anotherRoleModel);
 
         LegacyUser legacyUser = createLegacyUser(username);
@@ -306,6 +312,30 @@ class UserModelFactoryTest {
         verify(clientModel2, times(0)).getRole("oldRole");
         verify(clientModel2, times(1)).getRole("newRole");
         assertEquals(Set.of(newRoleModel), result.getRoleMappings());
+    }
+
+    @Test
+    void migrateNotFoundRolesIfEnabled(){
+        config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
+        var userProvider = mock(UserProvider.class);
+        var realm = mock(RealmModel.class);
+        var username = "user";
+        var nonPresentRoleName = "thisRoleDoesntYetExistInRealm";
+        var roleModel = mock(RoleModel.class);
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+        when(realm.addRole(nonPresentRoleName))
+                .thenReturn(roleModel);
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setRoles(List.of(nonPresentRoleName));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(result.getRealmRoleMappings(), Set.of(roleModel));
     }
 
     @Test
