@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
+import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
@@ -7,6 +8,7 @@ import org.keycloak.models.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -107,6 +109,12 @@ public class UserModelFactory {
                 .map(Optional::get);
     }
 
+    /**
+     * @return A {@link RoleModel} for this role in the realm.
+     * Created if not found in the realm or in any of the realm's clients.
+     * Migrated only if present in the map or config enables this.
+     * @see ConfigurationProperties#MIGRATE_UNMAPPED_ROLES_PROPERTY
+     */
     private Optional<RoleModel> getRoleModel(RealmModel realm, String role) {
         if (roleMap.containsKey(role)) {
             role = roleMap.get(role);
@@ -116,17 +124,16 @@ public class UserModelFactory {
         if (isEmpty(role)) {
             return Optional.empty();
         }
-        var roleModel = realm.getRole(role);
-        if(roleModel == null) {
-            List<ClientModel> clients = realm.getClients();
-            for(ClientModel client : clients) {
-                roleModel = client.getRole(role);
-                if(roleModel != null) {
-                    break;
-                }
-            }
-        }
-        return Optional.ofNullable(roleModel);
+        String finalRoleName = role;
+        return Optional.ofNullable(realm.getRole(role))
+                .or(() -> realm.getClients().stream()
+                        .map(clientModel -> clientModel.getRole(finalRoleName))
+                        .filter(Objects::nonNull)
+                        .findFirst())
+                .or(() -> {
+                    LOG.debug(String.format("Added role %s to realm %s", finalRoleName, realm.getName()));
+                    return Optional.ofNullable(realm.addRole(finalRoleName));
+                });
     }
 
     private boolean isConfigDisabled(String config) {
