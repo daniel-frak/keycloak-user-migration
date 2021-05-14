@@ -478,7 +478,7 @@ class UserModelFactoryTest {
                 .thenReturn(new TestUserModel(username));
 
         LegacyUser legacyUser = createLegacyUser(username);
-        legacyUser.setRequiredActions(List.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"));
+        legacyUser.setRequiredActions(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"));
 
         var result = userModelFactory.create(legacyUser, realm);
 
