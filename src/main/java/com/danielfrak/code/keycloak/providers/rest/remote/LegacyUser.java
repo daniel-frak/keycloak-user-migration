@@ -129,7 +129,7 @@ public class LegacyUser {
                 Objects.equals(attributes, legacyUser.attributes) &&
                 Objects.equals(roles, legacyUser.roles) &&
                 Objects.equals(groups, legacyUser.groups) &&
-                Object.equals(requiredActions, legacyUser.requiredActions);
+                Objects.equals(requiredActions, legacyUser.requiredActions);
     }
 
     @Override
