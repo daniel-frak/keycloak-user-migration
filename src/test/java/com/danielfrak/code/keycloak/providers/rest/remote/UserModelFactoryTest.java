@@ -482,7 +482,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(new HashSet<>(legacyUser.getRequiredActions()), result.getRequiredActions());
+        assertEquals(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"), result.getRequiredActions());
     }
 
 }
