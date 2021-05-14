@@ -89,7 +89,7 @@ public class UserModelFactory {
                 .forEach(userModel::joinGroup);
 
         if (legacyUser.getRequiredActions() != null) {
-            leg.getRequiredActions()
+            legacyUser.getRequiredActions()
                 .forEach(userModel::addRequiredAction);
         }
 
