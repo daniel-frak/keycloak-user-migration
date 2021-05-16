@@ -82,6 +82,14 @@ class LegacyUserTest {
     }
 
     @Test
+    void shouldGetAndSetRequiredActions() {
+        var user = new LegacyUser();
+        var expectedValue = singletonList("value1");
+        user.setRequiredActions(expectedValue);
+        assertEquals(expectedValue, user.getRequiredActions());
+    }
+
+    @Test
     void testEquals() {
         EqualsVerifier.simple().forClass(LegacyUser.class)
                 .verify();

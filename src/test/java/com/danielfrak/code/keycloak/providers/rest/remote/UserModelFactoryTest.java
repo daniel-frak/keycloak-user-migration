@@ -465,4 +465,24 @@ class UserModelFactoryTest {
 
         assertEquals(MODEL_ID, result.getFederationLink());
     }
+
+    @Test
+    void migratesRequiredActions() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        legacyUser.setRequiredActions(List.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        assertEquals(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"), result.getRequiredActions());
+    }
+
 }

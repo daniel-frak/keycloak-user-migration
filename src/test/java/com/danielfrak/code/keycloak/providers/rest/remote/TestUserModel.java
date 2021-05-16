@@ -19,6 +19,7 @@ public class TestUserModel implements UserModel {
     private Map<String, List<String>> attributes = new HashMap<>();
     private Set<RoleModel> roles = new HashSet<>();
     private Set<GroupModel> groups = new HashSet<>();
+    private Set<String> requiredActions = new HashSet<>();
     private String federationLink;
 
     public TestUserModel(String username) {
@@ -181,17 +182,17 @@ public class TestUserModel implements UserModel {
 
     @Override
     public Set<String> getRequiredActions() {
-        throw new RuntimeException("Not implemented");
+        return this.requiredActions;
     }
 
     @Override
     public void addRequiredAction(String action) {
-        throw new RuntimeException("Not implemented");
+        this.requiredActions.add(action);
     }
 
     @Override
     public void removeRequiredAction(String action) {
-        throw new RuntimeException("Not implemented");
+        this.requiredActions.remove(action);
     }
 
     @Override

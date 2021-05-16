@@ -19,6 +19,7 @@ public class LegacyUser {
     private Map<String, List<String>> attributes;
     private List<String> roles;
     private List<String> groups;
+    private List<String> requiredActions;
 
     public String getId() {
         return id;
@@ -100,6 +101,14 @@ public class LegacyUser {
         this.groups = groups;
     }
 
+    public List<String> getRequiredActions() {
+        return requiredActions;
+    }
+
+    public void setRequiredActions(List<String> requiredActions) {
+        this.requiredActions = requiredActions;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -119,12 +128,13 @@ public class LegacyUser {
                 Objects.equals(lastName, legacyUser.lastName) &&
                 Objects.equals(attributes, legacyUser.attributes) &&
                 Objects.equals(roles, legacyUser.roles) &&
-                Objects.equals(groups, legacyUser.groups);
+                Objects.equals(groups, legacyUser.groups) &&
+                Objects.equals(requiredActions, legacyUser.requiredActions);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
-                roles, groups);
+                roles, groups, requiredActions);
     }
 }

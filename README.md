@@ -45,7 +45,8 @@ The GET request will have to return user data as a JSON response in the form:
       "key": ["value"]
     },
     "roles": ["string"],
-    "groups": ["string"]
+    "groups": ["string"],
+    "requiredActions": ["requiredActions"]
 }
 ```
 
@@ -83,7 +84,8 @@ The response might look like this:
       "likes": ["cats", "dogs", "cookies"]
     },
     "roles": ["admin"],
-    "groups": ["migrated_users"]
+    "groups": ["migrated_users"],
+    "requiredActions": ["CONFIGURE_TOTP", "UPDATE_PASSWORD", "UPDATE_PROFILE", "update_user_locale"]
 }
 ```
 

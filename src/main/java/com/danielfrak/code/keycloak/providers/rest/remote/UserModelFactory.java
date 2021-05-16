@@ -88,6 +88,11 @@ public class UserModelFactory {
         getGroupModels(legacyUser, realm)
                 .forEach(userModel::joinGroup);
 
+        if (legacyUser.getRequiredActions() != null) {
+            legacyUser.getRequiredActions()
+                .forEach(userModel::addRequiredAction);
+        }
+
         return userModel;
     }
 
