@@ -1,0 +1,33 @@
+name: Release package to GitHub
+on:
+  release:
+    types: [created]
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Git user
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action"
+      - name: Set POM version to release version
+        run: mvn versions:set -DnewVersion=${GITHUB_REF##*/}
+      - name: Commit changes
+        run: |
+          git add pom.xml
+          git commit -m "Set version to $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+      - name: Publish JAR
+        run: ./mvnw -B release:prepare release:perform
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Increment version
+        run: mvn versions:set -DnextSnapshot
+      - name: Pull and commit changes
+        run: |
+          git add pom.xml
+          git commit -m "Increment version to $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          ref: refs/heads/${{ github.head_ref }}
