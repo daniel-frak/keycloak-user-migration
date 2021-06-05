@@ -4,7 +4,7 @@
 
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
-    <version>1.2-SNAPSHOT</version>
+    <version>1.2</version>
     <properties>
         <java.version>11</java.version>
         <keycloak.version>13.0.1</keycloak.version>
@@ -103,7 +103,7 @@
 
     <scm>
         <developerConnection>scm:git:https://github.com/${git.repository}.git</developerConnection>
-      <tag>HEAD</tag>
+      <tag>keycloak-rest-provider-1.2</tag>
   </scm>
     <distributionManagement>
         <repository>
