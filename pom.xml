@@ -4,7 +4,7 @@
 
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
-    <version>1.3-SNAPSHOT</version>
+    <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>11</java.version>
         <keycloak.version>13.0.1</keycloak.version>
@@ -17,7 +17,7 @@
 
         <jacoco.version>0.8.5</jacoco.version>
         <project.scm.id>github</project.scm.id>
-        <git.repository>lazloz92/keycloak-user-migration</git.repository>
+        <git.repository>daniel-frak/keycloak-user-migration</git.repository>
     </properties>
 
     <dependencies>
