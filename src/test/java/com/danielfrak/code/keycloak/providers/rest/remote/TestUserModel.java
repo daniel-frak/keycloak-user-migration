@@ -16,10 +16,10 @@ public class TestUserModel implements UserModel {
     private String lastName;
     private boolean isEnabled;
     private boolean isEmailVerified;
-    private Map<String, List<String>> attributes = new HashMap<>();
-    private Set<RoleModel> roles = new HashSet<>();
-    private Set<GroupModel> groups = new HashSet<>();
-    private Set<String> requiredActions = new HashSet<>();
+    private final Map<String, List<String>> attributes = new HashMap<>();
+    private final Set<RoleModel> roles = new HashSet<>();
+    private final Set<GroupModel> groups = new HashSet<>();
+    private final Set<String> requiredActions = new HashSet<>();
     private String federationLink;
 
     public TestUserModel(String username) {
@@ -34,10 +34,6 @@ public class TestUserModel implements UserModel {
     @Override
     public String getId() {
         return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
     @Override

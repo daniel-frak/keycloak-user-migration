@@ -5,11 +5,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -131,7 +127,7 @@ public class UserModelFactory {
         }
         String finalRoleName = role;
         return Optional.ofNullable(realm.getRole(role))
-                .or(() -> realm.getClients().stream()
+                .or(() -> realm.getClientsStream()
                         .map(clientModel -> clientModel.getRole(finalRoleName))
                         .filter(Objects::nonNull)
                         .findFirst())
@@ -171,7 +167,7 @@ public class UserModelFactory {
         }
 
         final String effectiveGroupName = groupName;
-        Optional<GroupModel> group = realm.getGroups().stream()
+        Optional<GroupModel> group = realm.getGroupsStream()
                 .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
 
         GroupModel realmGroup = group

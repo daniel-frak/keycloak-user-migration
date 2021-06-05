@@ -5,37 +5,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.GroupModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.RoleModel;
-import org.keycloak.models.UserProvider;
+import org.keycloak.models.*;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.GROUP_MAP_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.MIGRATE_UNMAPPED_GROUPS_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.MIGRATE_UNMAPPED_ROLES_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.ROLE_MAP_PROPERTY;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserModelFactoryTest {
@@ -176,7 +160,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of(newRoleModel), result.getRoleMappings());
+        assertEquals(Set.of(newRoleModel), result.getRoleMappingsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -192,14 +176,14 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
         when(newGroupModel.getName()).thenReturn("newGroup");
-        when(realm.getGroups()).thenReturn(Collections.singletonList(newGroupModel));
+        when(realm.getGroupsStream()).thenReturn(Stream.of(newGroupModel));
 
         LegacyUser legacyUser = createLegacyUser(username);
         legacyUser.setGroups(List.of("oldGroup", "anotherGroup"));
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of(newGroupModel), result.getGroups());
+        assertEquals(Set.of(newGroupModel), result.getGroupsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -229,7 +213,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappings());
+        assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappingsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -248,8 +232,8 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
 
-        when(realm.getClients())
-                .thenReturn(Arrays.asList(clientModel1, clientModel2));
+        when(realm.getClientsStream())
+                .then(i -> Stream.of(clientModel1, clientModel2));
 
 
         given(clientModel1.getRole("anotherRole")).willReturn(anotherRoleModel);
@@ -271,7 +255,7 @@ class UserModelFactoryTest {
         verify(clientModel2, times(0)).getRole("anotherRole");
         verify(clientModel2, times(0)).getRole("oldRole");
         verify(clientModel2, times(1)).getRole("newRole");
-        assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappings());
+        assertEquals(Set.of(newRoleModel, anotherRoleModel), result.getRoleMappingsStream().collect(Collectors.toSet()));
 
     }
 
@@ -290,8 +274,8 @@ class UserModelFactoryTest {
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
 
-        when(realm.getClients())
-                .thenReturn(Arrays.asList(clientModel1, clientModel2));
+        when(realm.getClientsStream())
+                .then(i -> Stream.of(clientModel1, clientModel2));
 
         given(clientModel1.getRole("anotherRole")).willReturn(null);
         given(clientModel1.getRole("newRole")).willReturn(null);
@@ -311,11 +295,11 @@ class UserModelFactoryTest {
         verify(clientModel2, times(1)).getRole("anotherRole");
         verify(clientModel2, times(0)).getRole("oldRole");
         verify(clientModel2, times(1)).getRole("newRole");
-        assertEquals(Set.of(newRoleModel), result.getRoleMappings());
+        assertEquals(Set.of(newRoleModel), result.getRoleMappingsStream().collect(Collectors.toSet()));
     }
 
     @Test
-    void migrateNotFoundRolesIfEnabled(){
+    void migrateNotFoundRolesIfEnabled() {
         config.putSingle(MIGRATE_UNMAPPED_ROLES_PROPERTY, "true");
         var userProvider = mock(UserProvider.class);
         var realm = mock(RealmModel.class);
@@ -335,7 +319,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(result.getRealmRoleMappings(), Set.of(roleModel));
+        assertEquals(Set.of(roleModel), result.getRealmRoleMappingsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -351,7 +335,7 @@ class UserModelFactoryTest {
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
-        when(realm.getGroups()).thenReturn(Collections.emptyList());
+        when(realm.getGroupsStream()).then(i -> Stream.empty());
         when(realm.createGroup("newGroup")).thenReturn(newGroupModel);
         when(realm.createGroup("anotherGroup")).thenReturn(anotherGroupModel);
 
@@ -360,7 +344,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of(newGroupModel, anotherGroupModel), result.getGroups());
+        assertEquals(Set.of(newGroupModel, anotherGroupModel), result.getGroupsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -377,7 +361,7 @@ class UserModelFactoryTest {
 
         when(session.userLocalStorage()).thenReturn(userProvider);
         when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
-        when(realm.getGroups()).thenReturn(List.of(newGroupModel));
+        when(realm.getGroupsStream()).then(i -> Stream.of(newGroupModel));
         when(newGroupModel.getName()).thenReturn(groupName);
         when(newGroupModel.getId()).thenReturn(groupId);
 
@@ -386,7 +370,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of(newGroupModel), result.getGroups());
+        assertEquals(Set.of(newGroupModel), result.getGroupsStream().collect(Collectors.toSet()));
     }
 
     @Test
@@ -407,7 +391,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertTrue(result.getGroups().isEmpty());
+        assertTrue(result.getGroupsStream().collect(Collectors.toSet()).isEmpty());
     }
 
     @Test
@@ -428,7 +412,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertTrue(result.getRoleMappings().isEmpty());
+        assertTrue(result.getRoleMappingsStream().collect(Collectors.toSet()).isEmpty());
     }
 
     @Test
@@ -482,7 +466,7 @@ class UserModelFactoryTest {
 
         var result = userModelFactory.create(legacyUser, realm);
 
-        assertEquals(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"), result.getRequiredActions());
+        assertEquals(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"), result.getRequiredActionsStream().collect(Collectors.toSet()));
     }
 
 }
