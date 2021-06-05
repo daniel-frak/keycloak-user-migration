@@ -117,6 +117,7 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
+    @Deprecated
     public List<String> getAttribute(String name) {
         throw new RuntimeException("Not implemented");
     }
@@ -132,6 +133,7 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
+    @Deprecated
     public Set<GroupModel> getGroups() {
         return groups;
     }
@@ -177,6 +179,7 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
+    @Deprecated
     public Set<String> getRequiredActions() {
         return this.requiredActions;
     }
@@ -202,11 +205,13 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
+    @Deprecated
     public Set<RoleModel> getRealmRoleMappings() {
         return roles;
     }
 
     @Override
+    @Deprecated
     public Set<RoleModel> getClientRoleMappings(ClientModel app) {
         throw new RuntimeException("Not implemented");
     }
@@ -222,6 +227,7 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
+    @Deprecated
     public Set<RoleModel> getRoleMappings() {
         return roles;
     }
