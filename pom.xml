@@ -5,6 +5,20 @@
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
     <version>1.0-SNAPSHOT</version>
+
+    <scm>
+        <developerConnection>scm:git:https://github.com/${git.repository}.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub</name>
+            <url>https://maven.pkg.github.com/${git.repository}</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <java.version>11</java.version>
         <keycloak.version>13.0.1</keycloak.version>
@@ -100,18 +114,6 @@
             </plugin>
         </plugins>
     </build>
-
-    <scm>
-        <developerConnection>scm:git:https://github.com/${git.repository}.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <name>GitHub</name>
-            <url>https://maven.pkg.github.com/${git.repository}</url>
-        </repository>
-    </distributionManagement>
 
     <profiles>
         <profile>
