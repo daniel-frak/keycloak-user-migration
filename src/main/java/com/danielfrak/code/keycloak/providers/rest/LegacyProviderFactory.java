@@ -22,7 +22,8 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
     @Override
     public LegacyProvider create(KeycloakSession session, ComponentModel model) {
         var userModelFactory = new UserModelFactory(session, model);
-        return new LegacyProvider(session, new RestUserService(model, ClientBuilder.newClient()), userModelFactory);
+        var restService = new RestUserService(model, ClientBuilder.newClient());
+        return new LegacyProvider(session, restService, userModelFactory, model);
     }
 
     @Override

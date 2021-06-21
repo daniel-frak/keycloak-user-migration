@@ -4,6 +4,7 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
 import org.jboss.logging.Logger;
+import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
@@ -32,12 +33,14 @@ public class LegacyProvider implements UserStorageProvider,
     private final KeycloakSession session;
     private final LegacyUserService legacyUserService;
     private final UserModelFactory userModelFactory;
+    private final ComponentModel model;
 
     public LegacyProvider(KeycloakSession session, LegacyUserService legacyUserService,
-                          UserModelFactory userModelFactory) {
+                          UserModelFactory userModelFactory, ComponentModel model) {
         this.session = session;
         this.legacyUserService = legacyUserService;
         this.userModelFactory = userModelFactory;
+        this.model = model;
     }
 
     @Override
@@ -65,12 +68,19 @@ public class LegacyProvider implements UserStorageProvider,
             return false;
         }
 
-        if (legacyUserService.isPasswordValid(userModel.getUsername(), input.getChallengeResponse())) {
+        var userIdentifier = getUserIdentifier(userModel);
+        if (legacyUserService.isPasswordValid(userIdentifier, input.getChallengeResponse())) {
             session.userCredentialManager().updateCredential(realmModel, userModel, input);
             return true;
         }
 
         return false;
+    }
+
+    private String getUserIdentifier(UserModel userModel) {
+        var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION);
+        var useUserId = Boolean.parseBoolean(userIdConfig);
+        return useUserId ? userModel.getId() : userModel.getUsername();
     }
 
     @Override
