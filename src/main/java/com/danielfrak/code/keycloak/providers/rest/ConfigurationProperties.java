@@ -48,7 +48,8 @@ public final class ConfigurationProperties {
                     PASSWORD, null),
             new ProviderConfigProperty(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION,
                     "Use user id for credential verification",
-                    "Use the id of the user instead of the username as the path parameter when making a credential verification request",
+                    "Use the id of the user instead of the username as the path" +
+                    "parameter when making a credential verification request",
                     BOOLEAN_TYPE, false),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion",
