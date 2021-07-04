@@ -131,7 +131,7 @@ public class UserModelFactory {
         }
         String finalRoleName = role;
         return Optional.ofNullable(realm.getRole(role))
-                .or(() -> realm.getClients().stream()
+                .or(() -> realm.getClientsStream()
                         .map(clientModel -> clientModel.getRole(finalRoleName))
                         .filter(Objects::nonNull)
                         .findFirst())
@@ -171,7 +171,7 @@ public class UserModelFactory {
         }
 
         final String effectiveGroupName = groupName;
-        Optional<GroupModel> group = realm.getGroups().stream()
+        Optional<GroupModel> group = realm.getGroupsStream()
                 .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
 
         GroupModel realmGroup = group
