@@ -164,8 +164,9 @@ class LegacyProviderTest {
         when(legacyUserService.isPasswordValid(username, password))
                 .thenReturn(true);
 
-        when(session.userCredentialManager())
-                .thenReturn(mock(UserCredentialManager.class));
+        // JUnit was complaining about this "unnecessary" stub
+        //        when(session.userCredentialManager())
+        //                .thenReturn(mock(UserCredentialManager.class));
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
@@ -191,9 +192,10 @@ class LegacyProviderTest {
                 .thenReturn(password);
         when(legacyUserService.isPasswordValid(userId, password))
                 .thenReturn(true);
-
-        when(session.userCredentialManager())
-                .thenReturn(mock(UserCredentialManager.class));
+        
+        // JUnit was complaining about this "unnecessary" stub
+        //        when(session.userCredentialManager())
+        //                .thenReturn(mock(UserCredentialManager.class));
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
@@ -208,7 +210,7 @@ class LegacyProviderTest {
     @Test
     void isConfiguredForShouldAlwaysReturnFalse() {
         assertFalse(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
-                "someString"));
+                                                   "someString"));
     }
 
     @Test

@@ -15,6 +15,7 @@ import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
 
+import javax.validation.constraints.NotNull;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
@@ -69,12 +70,19 @@ public class LegacyProvider implements UserStorageProvider,
         }
 
         var userIdentifier = getUserIdentifier(userModel);
-        if (legacyUserService.isPasswordValid(userIdentifier, input.getChallengeResponse())) {
+        var validPassword = legacyUserService.isPasswordValid(userIdentifier, input.getChallengeResponse());
+        if (validPassword && shouldMigrateUserPassword()) {
+            // don't want to add passwords for users at first, can enable this after
             session.userCredentialManager().updateCredential(realmModel, userModel, input);
-            return true;
         }
 
-        return false;
+        return validPassword;
+    }
+
+    private boolean shouldMigrateUserPassword() {
+        return Boolean.parseBoolean(
+                model.getConfig().getFirst(ConfigurationProperties.MIGRATE_PASSWORD_PROPERTY)
+        );
     }
 
     private String getUserIdentifier(UserModel userModel) {

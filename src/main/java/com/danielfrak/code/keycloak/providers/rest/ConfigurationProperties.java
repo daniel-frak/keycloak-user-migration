@@ -20,6 +20,7 @@ public final class ConfigurationProperties {
     public static final String GROUP_MAP_PROPERTY = "GROUP_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
     public static final String MIGRATE_UNMAPPED_GROUPS_PROPERTY = "MIGRATE_UNMAPPED_GROUPS";
+    public static final String MIGRATE_PASSWORD_PROPERTY = "MIGRATE_PASSWORD";
 
     private static final List<ProviderConfigProperty> PROPERTIES = List.of(
             new ProviderConfigProperty(URI_PROPERTY,
@@ -55,6 +56,10 @@ public final class ConfigurationProperties {
                     "Legacy role conversion",
                     "Role conversion in the format 'legacyRole:newRole'",
                     MULTIVALUED_STRING_TYPE, null),
+            new ProviderConfigProperty(MIGRATE_PASSWORD_PROPERTY,
+                    "Migrate user passwords",
+                    "Whether or not to migrate a user's password on successful authentication",
+                    BOOLEAN_TYPE, false),
             new ProviderConfigProperty(MIGRATE_UNMAPPED_ROLES_PROPERTY,
                     "Migrate unmapped roles",
                     "Whether or not to migrate roles not found in the field above",

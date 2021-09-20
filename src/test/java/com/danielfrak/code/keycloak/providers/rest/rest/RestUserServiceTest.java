@@ -2,7 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
-import org.jboss.resteasy.client.jaxrs.internal.BasicAuthentication;
+import org.jboss.resteasy.client.jaxrs.BasicAuthentication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
