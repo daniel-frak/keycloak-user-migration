@@ -1,12 +1,12 @@
 package dev.codesoapbox.legacysystemexample.authentication.domain.model;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
 import java.util.List;
 import java.util.Map;
 
-@Data
+@Value
 @Builder
 public class UserMigrationDetails {
 
@@ -22,7 +22,7 @@ public class UserMigrationDetails {
     private List<String> groups;
     private List<String> requiredActions;
 
-    public static UserMigrationDetails from(UserData user) {
+    public static UserMigrationDetails from(User user) {
         return UserMigrationDetails.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())

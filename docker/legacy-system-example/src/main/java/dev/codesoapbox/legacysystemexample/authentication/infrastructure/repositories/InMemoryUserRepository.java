@@ -1,6 +1,6 @@
 package dev.codesoapbox.legacysystemexample.authentication.infrastructure.repositories;
 
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.Optional;
 
 public class InMemoryUserRepository implements UserRepository {
 
-    private final List<UserData> users;
+    private final List<User> users;
 
     public InMemoryUserRepository() {
         this.users = List.of(
@@ -20,10 +20,10 @@ public class InMemoryUserRepository implements UserRepository {
         );
     }
 
-    private UserData generateUser(String name, String lastName) {
+    private User generateUser(String name, String lastName) {
         String username = name.toLowerCase(Locale.ROOT);
 
-        return UserData.builder()
+        return User.builder()
                 .username(username)
                 .email(username + "@localhost.com")
                 .firstName(name)
@@ -33,14 +33,14 @@ public class InMemoryUserRepository implements UserRepository {
     }
 
     @Override
-    public Optional<UserData> findByUsername(String username) {
+    public Optional<User> findByUsername(String username) {
         return users.stream()
                 .filter(u -> u.getUsername().equals(username))
                 .findFirst();
     }
 
     @Override
-    public List<UserData> findAll() {
+    public List<User> findAll() {
         return this.users;
     }
 }

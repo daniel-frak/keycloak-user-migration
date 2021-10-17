@@ -2,7 +2,7 @@ package dev.codesoapbox.legacysystemexample.authentication.presentation.controll
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.TestUserDataProvider;
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,7 +53,7 @@ public class UserControllerTest {
 
     @Test
     void shouldReturnAllUsers() throws Exception {
-        List<UserData> users = List.of(userDataProvider.full());
+        List<User> users = List.of(userDataProvider.full());
 
         when(userRepository.findAll())
                 .thenReturn(users);

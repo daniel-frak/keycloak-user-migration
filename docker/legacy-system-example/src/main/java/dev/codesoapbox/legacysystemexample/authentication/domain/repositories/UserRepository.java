@@ -1,13 +1,13 @@
 package dev.codesoapbox.legacysystemexample.authentication.domain.repositories;
 
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 
 import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository {
 
-    Optional<UserData> findByUsername(String username);
+    Optional<User> findByUsername(String username);
 
-    List<UserData> findAll();
+    List<User> findAll();
 }

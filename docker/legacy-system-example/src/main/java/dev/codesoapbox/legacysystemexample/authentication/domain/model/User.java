@@ -1,11 +1,11 @@
 package dev.codesoapbox.legacysystemexample.authentication.domain.model;
 
 import lombok.Builder;
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 @Builder
-public class UserData {
+public class User {
 
     private String id;
     private String username;

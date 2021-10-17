@@ -2,7 +2,7 @@ package dev.codesoapbox.legacysystemexample.authentication.infrastructure.servic
 
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.TestUserDataProvider;
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,11 +32,11 @@ class UserMigrationServiceTest {
 
     @Test
     void shouldGetMigrationDetails() {
-        UserData userData = userDataProvider.full();
-        String username = userData.getUsername();
+        User user = userDataProvider.full();
+        String username = user.getUsername();
 
         when(userRepository.findByUsername(username))
-                .thenReturn(Optional.of(userData));
+                .thenReturn(Optional.of(user));
 
         Optional<UserMigrationDetails> details = migrationService.getMigrationDetails(username);
 
@@ -57,24 +57,24 @@ class UserMigrationServiceTest {
 
     @Test
     void shouldVerifyCorrectPassword() {
-        UserData userData = userDataProvider.full();
-        String username = userData.getUsername();
+        User user = userDataProvider.full();
+        String username = user.getUsername();
 
         when(userRepository.findByUsername(username))
-                .thenReturn(Optional.of(userData));
+                .thenReturn(Optional.of(user));
 
-        boolean verified = migrationService.passwordIsCorrect(username, userData.getPassword());
+        boolean verified = migrationService.passwordIsCorrect(username, user.getPassword());
 
         assertTrue(verified);
     }
 
     @Test
     void shouldVerifyIncorrectPassword() {
-        UserData userData = userDataProvider.full();
-        String username = userData.getUsername();
+        User user = userDataProvider.full();
+        String username = user.getUsername();
 
         when(userRepository.findByUsername(username))
-                .thenReturn(Optional.of(userData));
+                .thenReturn(Optional.of(user));
 
         boolean verified = migrationService.passwordIsCorrect(username, "wrong_password");
 

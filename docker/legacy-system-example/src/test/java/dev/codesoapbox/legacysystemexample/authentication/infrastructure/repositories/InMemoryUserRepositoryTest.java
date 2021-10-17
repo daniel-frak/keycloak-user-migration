@@ -1,6 +1,6 @@
 package dev.codesoapbox.legacysystemexample.authentication.infrastructure.repositories;
 
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,14 +21,14 @@ class InMemoryUserRepositoryTest {
 
     @Test
     void shouldFindByUsername() {
-        Optional<UserData> user = repository.findByUsername("lucy");
+        Optional<User> user = repository.findByUsername("lucy");
 
         assertTrue(user.isPresent());
     }
 
     @Test
     void shouldFindAll() {
-        List<UserData> users = repository.findAll();
+        List<User> users = repository.findAll();
 
         assertFalse(users.isEmpty());
     }

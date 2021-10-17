@@ -2,8 +2,8 @@ package dev.codesoapbox.legacysystemexample.authentication.domain.model;
 
 public class TestUserDataProvider {
 
-    public UserData full() {
-        return UserData.builder()
+    public User full() {
+        return User.builder()
                 .username("username")
                 .email("username@email.com")
                 .firstName("Name")

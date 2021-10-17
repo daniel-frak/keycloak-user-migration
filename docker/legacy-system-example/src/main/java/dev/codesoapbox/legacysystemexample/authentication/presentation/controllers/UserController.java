@@ -1,6 +1,6 @@
 package dev.codesoapbox.legacysystemexample.authentication.presentation.controllers;
 
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserData;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -29,7 +29,7 @@ public class UserController {
     @Operation(summary = "Helper endpoint that returns all available test users")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Complete user list")})
-    public ResponseEntity<List<UserData>> getTestUsers() {
+    public ResponseEntity<List<User>> getTestUsers() {
         var testUsers = userRepository.findAll();
 
         return ResponseEntity.ok(testUsers);

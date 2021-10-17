@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 public class BeanConfig {
 
     @Bean
-    public UserMigrationService userMigrationService(UserRepository userRepository) {
+    UserMigrationService userMigrationService(UserRepository userRepository) {
         return new UserMigrationService(userRepository);
     }
 

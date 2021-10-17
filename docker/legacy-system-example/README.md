@@ -1,6 +1,6 @@
 # legacy-system-example
 
-This project is an example of how you can adjust your legacy identity provider to work with
+This project is an example of how you can retrofit your legacy identity provider to work with
 [Keycloak user migration plugin](https://github.com/daniel-frak/keycloak-user-migration).
 
 ## Getting started
