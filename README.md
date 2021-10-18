@@ -109,9 +109,17 @@ As this is the correct password, the user will be logged in. In the background, 
 Keycloak.
 
 ## Launching and configuring the example
+
+You can launch the demo Keycloak service and an example legacy service using Docker Compose. 
+You can learn more about the example legacy app in its [README.md](docker/legacy-system-example/README.md) file.
+
+The following example uses the default `master` realm but the demo will also work with custom realms.
+
+### Configuration
+
 1. Navigate to `./docker`
 2. Execute `docker-compose up`
-3. Open `http://localhost:8024/auth/admin/` in a browser
+3. Open [http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/) in a browser
 4. Log in with the credentials:
 * User: `admin`
 * Password: `admin`
@@ -123,9 +131,10 @@ Keycloak.
 
 ![User federation dropdown](readme-images/user-federation.png)
 
-7. Provide the legacy system endpoint URI in the "Rest client URI" field:
+7. Provide the legacy system endpoint URI in the "Rest client URI" field.
+For the provided example legacy app the correct value is: `http://legacy-system-example:8080/user-migration-support`:
 
-![Rest client URI input](readme-images/field_rest_client_uri.png)
+![Rest client URI input for the provided example](readme-images/field-rest-client-uri-for-example-app.png)
 
 8. Click "save":
 
@@ -133,6 +142,39 @@ Keycloak.
 
 User migration should now work - Keycloak will recognize all users from your legacy authentication system and migrate
 them automatically.
+
+### Verification
+
+1. Sign out from the admin account:
+
+![Sign out from admin account](readme-images/sign-out-from-admin.png)
+
+2. Go to the [http://localhost:8024/auth/realms/master/account](http://localhost:8024/auth/realms/master/account) URI. 
+Click the `Sign in` button to login as an example user:
+
+![Welcome to Keycloak account](readme-images/welcome-to-keycloak-account.png)
+
+3. Enter user credentials [*] into the login form:
+* Username: `lucy`
+* Password: `password`
+
+![Login form](readme-images/login-form.png)
+
+The example migrates the user with `Update Profile` as a required action. 
+Therefore, we need to submit the profile data to activate the user in Keycloak:
+
+![Migration with required action](readme-images/user-migrated-with-required-action.png)
+
+Setting `requiredActions`, `groups`, `attributes` or `roles` is completely optional and is included in the example 
+legacy system for illustration purposes only.
+
+4. The example user is successfully migrated. Log in again as admin 
+([http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/)) and navigate to `Users` to verify the results:
+
+![Realm user list](readme-images/realm-user-list.png)
+
+[*] You can find the list of available test users in the Swagger docs for the example legacy system: 
+[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) by calling the `/users` endpoint.
  
 ## Optional - additional configuration
 
