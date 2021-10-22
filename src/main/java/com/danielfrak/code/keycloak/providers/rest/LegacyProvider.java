@@ -45,11 +45,21 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public UserModel getUserByUsername(String username, RealmModel realm) {
-        return getUserModel(realm, username, () -> legacyUserService.findByUsername(username));
+        return getUserModel(realm, username,
+                () -> session.userLocalStorage().getUserByUsername(realm, username),
+                () -> legacyUserService.findByUsername(username));
     }
 
-    private UserModel getUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
-        return user.get()
+    private UserModel getUserModel(RealmModel realm, String username,
+                                   Supplier<UserModel> keycloakUserSupplier,
+                                   Supplier<Optional<LegacyUser>> legacyUserSupplier) {
+        UserModel userModel = keycloakUserSupplier.get();
+        if (userModel != null) {
+            LOG.debugf("Authenticated user [%s] found in Keycloak storage", username);
+            return userModel;
+        }
+
+        return legacyUserSupplier.get()
                 .map(u -> userModelFactory.create(u, realm))
                 .orElseGet(() -> {
                     LOG.warnf("User not found in external repository: %s", username);
@@ -59,7 +69,9 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public UserModel getUserByEmail(String email, RealmModel realm) {
-        return getUserModel(realm, email, () -> legacyUserService.findByEmail(email));
+        return getUserModel(realm, email,
+                () -> session.userLocalStorage().getUserByEmail(realm, email),
+                () -> legacyUserService.findByEmail(email));
     }
 
     @Override

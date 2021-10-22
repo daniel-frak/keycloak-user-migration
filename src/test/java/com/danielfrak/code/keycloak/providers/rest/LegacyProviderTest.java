@@ -10,10 +10,7 @@ import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.UserCredentialManager;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.mockito.Mock;
 import org.mockito.Mockito;
@@ -22,13 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
 import static java.util.Collections.emptySet;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class LegacyProviderTest {
@@ -53,15 +47,20 @@ class LegacyProviderTest {
     @Mock
     private ComponentModel model;
 
+    @Mock
+    private UserProvider userProvider;
+
     @BeforeEach
     void setUp() {
         legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory, model);
     }
 
     @Test
-    void getsUserByUsername() {
+    void getsUserByUsernameFromLegacyService() {
         final String username = "user";
         final LegacyUser user = new LegacyUser();
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -73,8 +72,25 @@ class LegacyProviderTest {
     }
 
     @Test
+    void getsUserByUsernameFromKeycloakStorage() {
+        final String username = "user";
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.getUserByUsername(realmModel, username))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(username, realmModel);
+
+        assertEquals(userModel, result);
+    }
+
+    @Test
     void returnsNullIfUserNotFoundByUsername() {
         final String username = "user";
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.getUserByUsername(realmModel, username))
+                .thenReturn(null);
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.empty());
 
@@ -84,9 +100,11 @@ class LegacyProviderTest {
     }
 
     @Test
-    void getsUserByEmail() {
+    void getsUserByEmailFromLegacyService() {
         final String email = "email";
         final LegacyUser user = new LegacyUser();
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -98,12 +116,29 @@ class LegacyProviderTest {
     }
 
     @Test
+    void getsUserByEmailFromKeycloakStorage() {
+        final String email = "email";
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.getUserByEmail(realmModel, email))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByEmail(email, realmModel);
+
+        assertEquals(userModel, result);
+    }
+
+    @Test
     void returnsNullIfUserNotFoundByEmail() {
-        final String username = "user";
-        when(legacyUserService.findByEmail(username))
+        final String email = "email";
+        when(session.userLocalStorage())
+                .thenReturn(userProvider);
+        when(userProvider.getUserByEmail(realmModel, email))
+                .thenReturn(null);
+        when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.empty());
 
-        var result = legacyProvider.getUserByEmail(username, realmModel);
+        var result = legacyProvider.getUserByEmail(email, realmModel);
 
         assertNull(result);
     }
