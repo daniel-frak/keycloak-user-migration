@@ -9,8 +9,8 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>11</java.version>
-        <keycloak.version>15.0.0</keycloak.version>
-        <resteasy.version>4.4.1.Final</resteasy.version>
+        <keycloak.version>15.0.2</keycloak.version>
+        <resteasy.version>3.13.2.Final</resteasy.version>
         <mockito.version>3.9.0</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -20,12 +20,23 @@
         <jacoco.version>0.8.5</jacoco.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.keycloak.bom</groupId>
+                <artifactId>keycloak-spi-bom</artifactId>
+                <version>${keycloak.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-core -->
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-core</artifactId>
-            <version>${keycloak.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -33,7 +44,6 @@
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-server-spi</artifactId>
-            <version>${keycloak.version}</version>
             <scope>provided</scope>
         </dependency>
 
