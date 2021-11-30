@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+          server-id: ossrh
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+      - name: Release
+        uses: qcastel/github-actions-maven-release@master
+        env:
+          JAVA_HOME: /usr/lib/jvm/java-11-openjdk/
+        with:
+          maven-args: "-Dmaven.deploy.skip=true"
+          access-token: ${{ secrets.GITHUB_TOKEN }}
+          maven-repo-server-id: ossrh
+          maven-repo-server-username: ${{ secrets.MVN_REPO_PRIVATE_REPO_USER }}
+          maven-repo-server-password: ${{ secrets.MVN_REPO_PRIVATE_REPO_PASSWORD }}
+          gpg-enabled: true
+          gpg-key-id: ${{ secrets.GPG_KEY_ID }}
+          gpg-key: ${{ secrets.GPG_KEY }}

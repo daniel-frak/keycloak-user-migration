@@ -7,6 +7,12 @@
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
     <version>1.0-SNAPSHOT</version>
+	<scm>
+		<connection>scm:git:${project.scm.url}</connection>
+		<developerConnection>scm:git:${project.scm.url}</developerConnection>
+		<url>https://github.com/daniel-frak/keycloak-user-migration.git</url>
+		<tag>HEAD</tag>
+	</scm>
     <properties>
         <java.version>11</java.version>
         <keycloak.version>15.0.2</keycloak.version>
@@ -19,6 +25,17 @@
 
         <jacoco.version>0.8.5</jacoco.version>
     </properties>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
@@ -108,6 +125,13 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.2</version>
             </plugin>
+		    <plugin>
+		        <artifactId>maven-release-plugin</artifactId>
+		        <version>2.5.3</version>
+		        <configuration>
+		            <scmCommentPrefix>[ci skip]</scmCommentPrefix>
+		        </configuration>
+		    </plugin>
         </plugins>
     </build>
 
