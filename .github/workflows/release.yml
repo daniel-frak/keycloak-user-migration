@@ -15,9 +15,6 @@ jobs:
         uses: actions/setup-java@v1
         with:
           java-version: 11
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
       - name: Release
         uses: qcastel/github-actions-maven-release@master
         env:
