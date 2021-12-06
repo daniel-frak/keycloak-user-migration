@@ -15,4 +15,8 @@ public interface RestUserClient {
     @POST
     @Path("/{username}")
     Response validatePassword(@PathParam("username") String username, UserPasswordDto passwordDto);
+
+    @DELETE
+    @Path("/{username}")
+    Response removeByUsername(@PathParam("username") String username);
 }
