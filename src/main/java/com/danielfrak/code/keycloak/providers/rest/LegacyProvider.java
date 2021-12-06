@@ -108,7 +108,11 @@ public class LegacyProvider implements UserStorageProvider,
         String link = user.getFederationLink();
         if (link != null && !link.isBlank()) {
             user.setFederationLink(null);
-            legacyUserService.removeByUsername(user.getUsername());
+            var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.DELETE_MIGRATION_RECORD);
+            var deleteRecord = Boolean.parseBoolean(userIdConfig);
+            if (deleteRecord) {
+                legacyUserService.removeByIdentifier(getUserIdentifier(user));
+            }
         }
         return false;
     }

@@ -24,20 +24,12 @@ public interface LegacyUserService {
     Optional<LegacyUser> findByUsername(String username);
 
     /**
-     * Remove user by email address.
+     * Remove user by identifier.
      *
-     * @param email email address of user to remove.
-     * @return true if ...
+     * @param identitifer identifier of user to remove.
+     * @return true if user removed.
      */
-    boolean removeByEmail(String email);
-
-    /**
-     * Remove user by username.
-     *
-     * @param username username of user to remove.
-     * @return true if ...
-     */
-    boolean removeByUsername(String username);
+    boolean removeByIdentifier(String $identitifer);
 
     /**
      * Validate given password in legacy user provider.

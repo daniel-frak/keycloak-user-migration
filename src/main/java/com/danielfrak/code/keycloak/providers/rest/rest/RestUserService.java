@@ -70,13 +70,8 @@ public class RestUserService implements LegacyUserService {
     }
 
     @Override
-    public boolean removeByEmail(String email) {
-        return removeByUsername(email);
-    }
-
-    @Override
-    public boolean removeByUsername(String username) {
-        final Response response = client.removeByUsername(username);
+    public boolean removeByIdentifier(String identifier) {
+        final Response response = client.removeByIdentifier(identifier);
         return response.getStatus() == 200;
     }
 
