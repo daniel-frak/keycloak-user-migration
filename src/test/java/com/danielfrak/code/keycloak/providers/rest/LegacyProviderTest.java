@@ -218,7 +218,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void removeFederationLinkWhenCredentialUpdatesAnddeleteMigrationRecord() {
+    void removeFederationLinkWhenCredentialUpdatesAndDeleteMigrationRecord() {
         var input = mock(CredentialInput.class);
         final String username = "user";
 
