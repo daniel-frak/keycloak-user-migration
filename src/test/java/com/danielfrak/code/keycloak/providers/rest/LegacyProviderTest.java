@@ -230,6 +230,38 @@ class LegacyProviderTest {
     }
 
     @Test
+    void deleteMigrationRecord() {
+        var input = mock(CredentialInput.class);
+        final String username = "user";
+
+        when(legacyUserService.removeByIdentifier(username))
+                .thenReturn(true);
+        when(userModel.getUsername())
+                .thenReturn(username);
+        when(userModel.getFederationLink())
+                .thenReturn("someId");
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(DELETE_MIGRATION_RECORD, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+        assertTrue(legacyUserService.removeByIdentifier(username));
+    }
+
+    @Test
+    void skipDeleteMigrationRecord() {
+        var input = mock(CredentialInput.class);
+        final String username = "user";
+
+        when(userModel.getFederationLink())
+                .thenReturn("someId");
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(DELETE_MIGRATION_RECORD, List.of("false"));
+        when(model.getConfig()).thenReturn(config);
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+        verify(legacyUserService, never()).removeByIdentifier(username);
+    }
+
+    @Test
     void doNotRemoveFederationLinkWhenBlankAndCredentialUpdates() {
         var input = mock(CredentialInput.class);
         when(userModel.getFederationLink())
