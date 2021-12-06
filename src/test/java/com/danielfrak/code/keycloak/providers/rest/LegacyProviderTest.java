@@ -218,19 +218,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void removeFederationLinkWhenCredentialUpdates() {
-        var input = mock(CredentialInput.class);
-        when(userModel.getFederationLink())
-                .thenReturn("someId");
-
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel)
-                .setFederationLink(null);
-    }
-
-    @Test
-    void deleteMigrationRecord() {
+    void removeFederationLinkWhenCredentialUpdatesAnddeleteMigrationRecord() {
         var input = mock(CredentialInput.class);
         final String username = "user";
 
