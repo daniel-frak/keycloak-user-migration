@@ -10,7 +10,7 @@
     <properties>
         <java.version>11</java.version>
         <keycloak.version>16.1.0</keycloak.version>
-        <resteasy.version>3.13.2.Final</resteasy.version>
+        <resteasy.version>3.14.0.Final</resteasy.version>
         <mockito.version>3.9.0</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
