@@ -5,6 +5,8 @@ services:
     build:
       context: ../
       dockerfile: docker/keycloak/Dockerfile
+      args:
+        - KEYCLOAK_IMAGE=${KEYCLOAK_IMAGE}
     environment:
       KEYCLOAK_USER: admin
       KEYCLOAK_PASSWORD: admin
