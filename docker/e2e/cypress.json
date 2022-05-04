@@ -1,0 +1,4 @@
+{
+  "baseUrl": "http://localhost:8024/auth",
+  "defaultCommandTimeout": 10000
+}

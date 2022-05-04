@@ -11,28 +11,118 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-      with:
-        # Disabling shallow clone is recommended for improving relevancy of reporting
-        fetch-depth: 0
-    - name: Set up JDK 11
-      uses: actions/setup-java@v1
-      with:
-        java-version: 11
-    - name: Cache SonarCloud packages
-      uses: actions/cache@v1
-      with:
-        path: ~/.sonar/cache
-        key: ${{ runner.os }}-sonar
-        restore-keys: ${{ runner.os }}-sonar
-    - name: Cache Maven packages
-      uses: actions/cache@v1
-      with:
-        path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
-    - name: Build and analyze
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-        SONAR_TOKEN: "dfc3a63c86e79fe71dd4dccbd583f36089fd5371"
-      run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -P code-coverage -P sonar-cloud --file pom.xml
+      - uses: actions/checkout@v2
+        with:
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Cache Maven packages
+        uses: actions/cache@v1
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build and analyze
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
+          SONAR_TOKEN: "dfc3a63c86e79fe71dd4dccbd583f36089fd5371"
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -P code-coverage -P sonar-cloud --file pom.xml
+
+      - name: Archive plugin jar
+        uses: actions/upload-artifact@v3
+        with:
+          name: plugin-jar-file
+          path: target/*.jar
+  e2e:
+    needs: build
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          # Disabling shallow clone is recommended for improving relevancy of reporting
+          fetch-depth: 0
+
+      - name: Download a single artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: plugin-jar-file
+          path: target
+
+      - name: Cache node_modules
+        id: cache-nodemodules
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/Cypress
+            docker/e2e/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Start containers
+        working-directory: docker
+        run: docker-compose up -d --build
+
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+
+      - name: Install dependencies
+        working-directory: docker/e2e
+        if: steps.cache-nodemodules.outputs.cache-hit != 'true'
+        run: npm install
+
+      - name: Run e2e tests
+        working-directory: docker/e2e
+        # Video recording turned off due to free Gitlab CI runners seemingly not being powerful enough for it.
+        # Headed Chrome used to minimize issues with tests failing for no reason.
+        run: npx cypress run --headed --browser chrome --config video=false
+
+      - name: Archive videos
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cypress-videos
+          path: docker/e2e/cypress/videos
+
+      - name: Archive screenshots
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: cypress-screenshots
+          path: docker/e2e/cypress/screenshots
+
+      - name: Display 'docker ps'
+        if: always()
+        run: docker ps
+
+      - name: Display legacy system logs
+        if: always()
+        run: docker logs keycloak_migration_demo_legacy-system-example_1
+
+      - name: Display Keycloak logs
+        if: always()
+        run: docker logs keycloak_migration_demo_keycloak_1
+
+      - name: Stop containers
+        if: always()
+        working-directory: docker
+        run: docker-compose down
