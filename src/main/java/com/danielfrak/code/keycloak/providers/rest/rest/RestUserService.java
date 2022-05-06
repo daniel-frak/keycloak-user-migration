@@ -70,6 +70,12 @@ public class RestUserService implements LegacyUserService {
     }
 
     @Override
+    public boolean removeByIdentifier(String identifier) {
+        final Response response = client.removeByIdentifier(identifier);
+        return response.getStatus() == 200;
+    }
+
+    @Override
     public boolean isPasswordValid(String username, String password) {
         final Response response = client.validatePassword(username, new UserPasswordDto(password));
         return response.getStatus() == 200;

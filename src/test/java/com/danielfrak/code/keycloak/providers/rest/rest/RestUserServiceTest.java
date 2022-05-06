@@ -230,4 +230,29 @@ class RestUserServiceTest {
         var result = restUserService.isPasswordValid(username, somePassword);
         assertFalse(result);
     }
+
+    @Test
+    void removeByIdentifierShouldReturnFalse() {
+        var username = "someUsername";
+        var response = mock(Response.class);
+
+        when(client.removeByIdentifier(username))
+                .thenReturn(response);
+        when(response.getStatus())
+                .thenReturn(404);
+
+        assertFalse(restUserService.removeByIdentifier(username));
+    }
+    
+    void removeByIdentifierShouldReturnTrue() {
+        var username = "someUsername";
+        var response = mock(Response.class);
+
+        when(client.removeByIdentifier(username))
+                .thenReturn(response);
+        when(response.getStatus())
+                .thenReturn(200);
+
+        assertTrue(restUserService.removeByIdentifier(username));
+    }
 }
