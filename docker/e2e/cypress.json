@@ -1,4 +1,8 @@
 {
   "baseUrl": "http://localhost:8024/auth",
-  "defaultCommandTimeout": 10000
+  "defaultCommandTimeout": 10000,
+  "retries": {
+    "runMode": 2,
+    "openMode": 0
+  }
 }
