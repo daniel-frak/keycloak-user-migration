@@ -96,8 +96,7 @@ The response might look like this:
 }
 ```
 
-As the user has been found, a POST request will be performed to `http://www.old-legacy-system.com/auth/bob`, with
-the body:
+As the user has been found, its counterpart will be created in Keycloak and a federation link to the legacy system will be created for it. That way, there will no longer be a need to make the GET request again (but all credential checks will still go through the legacy system). After creating the user, a POST request will be performed to `http://www.old-legacy-system.com/auth/bob`, with the body:
 ```json
 {
     "password": "password123"
@@ -106,8 +105,7 @@ the body:
 
 If the plugin is configured to use the user id as the path parameter for the credential verification request, the `POST` request will be performed to `http://www.old-legacy-system.com/auth/12345678`, instead.
 
-As this is the correct password, the user will be logged in. In the background, his information will be migrated to
-Keycloak.
+As this is the correct password, the user will be logged in. After the first successful login, the federation link to the legacy system is severed and any interactions with the user will be done completely through Keycloak.
 
 ## Launching and configuring the example
 
