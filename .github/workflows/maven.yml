@@ -78,7 +78,7 @@ jobs:
 
       - name: Start containers
         working-directory: docker
-        run: docker-compose up -d --build
+        run: docker-compose up -d --build && ./wait-for-it.sh localhost:8024 -t 600
 
       - name: Install node
         uses: actions/setup-node@v1
