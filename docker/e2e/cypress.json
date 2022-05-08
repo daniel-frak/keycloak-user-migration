@@ -4,5 +4,6 @@
   "retries": {
     "runMode": 2,
     "openMode": 0
-  }
+  },
+  "mailHogUrl": "http://localhost:8025"
 }
