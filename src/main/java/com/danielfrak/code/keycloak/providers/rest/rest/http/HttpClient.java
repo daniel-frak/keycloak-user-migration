@@ -1,6 +1,5 @@
 package com.danielfrak.code.keycloak.providers.rest.rest.http;
 
-import org.apache.commons.codec.Charsets;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
@@ -20,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 
 public class HttpClient {
     private static final String BEARER_FORMAT = "Bearer %s";
@@ -27,8 +27,9 @@ public class HttpClient {
     private static final String USERNAME_PASSWORD_FORMAT = "%s:%s";
 
     private final HttpClientBuilder httpClientBuilder;
+
     public HttpClient() {
-       this.httpClientBuilder = HttpClientBuilder.create();
+        this.httpClientBuilder = HttpClientBuilder.create();
     }
 
     public void enableBasicAuth(String basicAuthUser, String basicAuthPassword) {
@@ -59,7 +60,7 @@ public class HttpClient {
     private HttpResponse execute(HttpUriRequest request) {
         request.addHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
 
-        try(
+        try (
                 CloseableHttpClient closeableHttpClient = httpClientBuilder.build();
                 CloseableHttpResponse response = closeableHttpClient.execute(request)
         ) {
@@ -82,9 +83,9 @@ public class HttpClient {
     }
 
     private Charset getEncoding(HttpEntity entity) {
-        var encodingHeader = entity.getContentEncoding();
-        return encodingHeader == null ?
-                StandardCharsets.UTF_8 : Charsets.toCharset(encodingHeader.getValue());
+        return Optional.ofNullable(ContentType.get(entity))
+                .map(ContentType::getCharset)
+                .orElse(StandardCharsets.UTF_8);
     }
 
     public HttpResponse post(String uri, String bodyAsJson) {

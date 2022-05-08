@@ -17,18 +17,19 @@ public class UserMigrationService {
         this.userRepository = userRepository;
     }
 
-    public Optional<UserMigrationDetails> getMigrationDetails(String username) {
-        log.info("Getting migration data for: " + username);
-        Optional<User> user = userRepository.findByUsername(username);
-
-        return user.map(UserMigrationDetails::from);
+    public Optional<UserMigrationDetails> getMigrationDetails(String usernameOrEmail) {
+        log.info("Getting migration data for: " + usernameOrEmail);
+        return userRepository.findByUsername(usernameOrEmail)
+                .or(() -> userRepository.findByEmail(usernameOrEmail))
+                .map(UserMigrationDetails::from);
     }
 
-    public boolean passwordIsCorrect(String username, String password) {
-        log.info("Verifying password for: " + username);
-        Optional<User> user = userRepository.findByUsername(username);
+    public boolean passwordIsCorrect(String usernameOrEmail, String password) {
+        log.info("Verifying password for: " + usernameOrEmail);
 
-        return user.map(u -> Objects.equals(u.getPassword(), password))
+        return userRepository.findByUsername(usernameOrEmail)
+                .or(() -> userRepository.findByEmail(usernameOrEmail))
+                .map(u -> Objects.equals(u.getPassword(), password))
                 .orElse(false);
     }
 }

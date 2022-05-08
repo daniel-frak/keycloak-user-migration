@@ -31,7 +31,7 @@ class UserMigrationServiceTest {
     }
 
     @Test
-    void shouldGetMigrationDetails() {
+    void shouldGetMigrationDetailsByUsername() {
         User user = userDataProvider.full();
         String username = user.getUsername();
 
@@ -46,8 +46,25 @@ class UserMigrationServiceTest {
     }
 
     @Test
-    void shouldReturnEmptyOptionalWhenNonExistentUsername() {
+    void shouldGetMigrationDetailsByEmail() {
+        User user = userDataProvider.full();
+        String email = user.getEmail();
+
+        when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(user));
+
+        Optional<UserMigrationDetails> details = migrationService.getMigrationDetails(email);
+
+        assertTrue(details.isPresent());
+        assertEquals(email, details.get().getEmail());
+        assertTrue(details.get().isEmailVerified());
+    }
+
+    @Test
+    void shouldReturnEmptyOptionalWhenNonExistentUsernameAndEmail() {
         when(userRepository.findByUsername("non_existent"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("non_existent"))
                 .thenReturn(Optional.empty());
 
         Optional<UserMigrationDetails> details = migrationService.getMigrationDetails("non_existent");
@@ -56,7 +73,7 @@ class UserMigrationServiceTest {
     }
 
     @Test
-    void shouldVerifyCorrectPassword() {
+    void shouldVerifyCorrectPasswordForUsername() {
         User user = userDataProvider.full();
         String username = user.getUsername();
 
@@ -64,6 +81,19 @@ class UserMigrationServiceTest {
                 .thenReturn(Optional.of(user));
 
         boolean verified = migrationService.passwordIsCorrect(username, user.getPassword());
+
+        assertTrue(verified);
+    }
+
+    @Test
+    void shouldVerifyCorrectPasswordForEmail() {
+        User user = userDataProvider.full();
+        String email = user.getEmail();
+
+        when(userRepository.findByEmail(email))
+                .thenReturn(Optional.of(user));
+
+        boolean verified = migrationService.passwordIsCorrect(email, user.getPassword());
 
         assertTrue(verified);
     }
