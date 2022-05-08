@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
-    "cypress": "^9.6.0"
+    "cypress": "^9.6.0",
+    "cypress-mailhog": "^1.4.0",
+    "quoted-printable": "^1.0.1"
   },
   "devDependencies": {},
   "scripts": {

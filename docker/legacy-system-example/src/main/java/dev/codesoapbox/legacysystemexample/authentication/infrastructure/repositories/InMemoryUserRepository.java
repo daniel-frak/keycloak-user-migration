@@ -25,7 +25,7 @@ public class InMemoryUserRepository implements UserRepository {
 
         return User.builder()
                 .username(username)
-                .email(username + "@localhost.com")
+                .email(username + "@example.com")
                 .firstName(name)
                 .lastName(lastName)
                 .password("password")
