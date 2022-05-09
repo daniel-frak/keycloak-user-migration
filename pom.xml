@@ -87,7 +87,7 @@
         </dependency>
 
         <dependency>
-        <groupId>com.squareup.okhttp3</groupId>
+            <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
             <version>4.9.3</version>
             <scope>test</scope>
@@ -104,7 +104,7 @@
         <dependency>
             <groupId>nl.jqno.equalsverifier</groupId>
             <artifactId>equalsverifier</artifactId>
-            <version>3.4.1</version>
+            <version>3.10</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

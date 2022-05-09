@@ -2,6 +2,8 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
+import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderException;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.keycloak.component.ComponentModel;
@@ -15,11 +17,12 @@ public class RestUserService implements LegacyUserService {
 
     private final String uri;
     private final HttpClient httpClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
-    public RestUserService(ComponentModel model, HttpClient httpClient) {
+    public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.uri = model.getConfig().getFirst(URI_PROPERTY);
+        this.objectMapper = objectMapper;
 
         var tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
         if (tokenAuthEnabled) {
@@ -45,10 +48,10 @@ public class RestUserService implements LegacyUserService {
         var getUsernameUri = String.format("%s/%s", this.uri, username);
         try {
             var response = this.httpClient.get(getUsernameUri);
-            if(response.code != HttpStatus.SC_OK) {
+            if (response.getCode() != HttpStatus.SC_OK) {
                 return Optional.empty();
             }
-            var legacyUser = objectMapper.readValue(response.body, LegacyUser.class);
+            var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
         } catch (IOException e) {
             throw new RestUserProviderException(e);
@@ -62,7 +65,7 @@ public class RestUserService implements LegacyUserService {
         try {
             var json = objectMapper.writeValueAsString(dto);
             var response = httpClient.post(passwordValidationUri, json);
-            return response.code == HttpStatus.SC_OK;
+            return response.getCode() == HttpStatus.SC_OK;
         } catch (IOException e) {
             throw new RestUserProviderException(e);
         }

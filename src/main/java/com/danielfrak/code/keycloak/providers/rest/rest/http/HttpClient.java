@@ -1,19 +1,23 @@
-package com.danielfrak.code.keycloak.providers.rest.rest;
+package com.danielfrak.code.keycloak.providers.rest.rest.http;
 
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -47,33 +51,43 @@ public class HttpClient {
         }
     }
 
-    public Response get(String uri) {
+    public HttpResponse get(String uri) {
         var request = new HttpGet(uri);
         return execute(request);
     }
 
-    private Response execute(HttpUriRequest request) {
+    private HttpResponse execute(HttpUriRequest request) {
         request.addHeader(HttpHeaders.ACCEPT, ContentType.APPLICATION_JSON.getMimeType());
+
         try(
-                var build = httpClientBuilder.build();
-                var response = build.execute(request)
+                CloseableHttpClient closeableHttpClient = httpClientBuilder.build();
+                CloseableHttpResponse response = closeableHttpClient.execute(request)
         ) {
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != HttpStatus.SC_OK) {
-                return new Response(statusCode);
+                return new HttpResponse(statusCode);
             }
-            var entity = response.getEntity();
-            var encodingHeader = entity.getContentEncoding();
-            var encoding = encodingHeader == null ?
-                    StandardCharsets.UTF_8 : Charsets.toCharset(encodingHeader.getValue());
-            var entityAsString = EntityUtils.toString(entity, encoding);
-            return new Response(statusCode, entityAsString);
+
+            String entityAsString = getEntityAsString(response);
+            return new HttpResponse(statusCode, entityAsString);
         } catch (IOException e) {
-            throw new RestUserProviderException(e);
+            throw new HttpRequestException(request, e);
         }
     }
 
-    public Response post(String uri, String bodyAsJson) {
+    private String getEntityAsString(CloseableHttpResponse response) throws IOException {
+        HttpEntity entity = response.getEntity();
+        Charset encoding = getEncoding(entity);
+        return EntityUtils.toString(entity, encoding);
+    }
+
+    private Charset getEncoding(HttpEntity entity) {
+        var encodingHeader = entity.getContentEncoding();
+        return encodingHeader == null ?
+                StandardCharsets.UTF_8 : Charsets.toCharset(encodingHeader.getValue());
+    }
+
+    public HttpResponse post(String uri, String bodyAsJson) {
         var request = new HttpPost(uri);
         var requestEntity = new StringEntity(bodyAsJson, ContentType.APPLICATION_JSON);
         request.setEntity(requestEntity);

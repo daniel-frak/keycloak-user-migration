@@ -1,6 +1,8 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.jetbrains.annotations.NotNull;
@@ -25,13 +27,16 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RestUserServiceTest {
+
     private final static String URI_PATH_FORMAT = "%s/%s";
     private final static String URI = "http://localhost:9090";
+
     private ObjectMapper objectMapper;
     private MultivaluedHashMap<String, String> config;
 
     @Mock
     private HttpClient httpClient;
+
     @Mock
     private ComponentModel model;
 
@@ -42,7 +47,7 @@ class RestUserServiceTest {
     }
 
     private void registerBasicConfig() {
-        config = new MultivaluedHashMap<String, String>();
+        config = new MultivaluedHashMap<>();
         config.putSingle(URI_PROPERTY, URI);
         when(model.getConfig()).thenReturn(config);
     }
@@ -52,7 +57,7 @@ class RestUserServiceTest {
         var token = "anyToken";
         enableApiToken(token);
 
-        new RestUserService(model, httpClient);
+        new RestUserService(model, httpClient, new ObjectMapper());
 
         verify(httpClient).enableBearerTokenAuth(token);
     }
@@ -68,7 +73,7 @@ class RestUserServiceTest {
         var password = "anyPassword";
         enableBasicAuth(username, password);
 
-        new RestUserService(model, httpClient);
+        new RestUserService(model, httpClient, new ObjectMapper());
 
         verify(httpClient).enableBasicAuth(username, password);
     }
@@ -82,13 +87,14 @@ class RestUserServiceTest {
     @Test
     void findByEmailShouldReturnAUserWhenUserIsFound() throws IOException {
         var expectedUser = createAnyLegacyUser();
-        var response = new Response(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
+        var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
         var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
         when(httpClient.get(path)).thenReturn(response);
-        var restUserService = new RestUserService(model, httpClient);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         var result = restUserService.findByEmail(expectedUser.getEmail());
 
+        assertTrue(result.isPresent());
         assertEquals(result.get(), expectedUser);
     }
 
@@ -112,8 +118,8 @@ class RestUserServiceTest {
     void findByEmailShouldReturnAnEmptyOptionalWhenUsernameIsNotFound() {
         var expectedUser = createAnyLegacyUser();
         var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
-        var response = new Response(HttpStatus.SC_NOT_FOUND);
-        var restUserService = new RestUserService(model, httpClient);
+        var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         when(httpClient.get(path)).thenReturn(response);
 
         var result = restUserService.findByUsername(expectedUser.getEmail());
@@ -126,12 +132,13 @@ class RestUserServiceTest {
     void findByUsernameShouldReturnAUserWhenUserIsFound() throws IOException {
         var expectedUser = createAnyLegacyUser();
         var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getUsername());
-        var response = new Response(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
-        var restUserService = new RestUserService(model, httpClient);
+        var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         when(httpClient.get(path)).thenReturn(response);
 
         var result = restUserService.findByUsername(expectedUser.getUsername());
 
+        assertTrue(result.isPresent());
         assertEquals(result.get(), expectedUser);
     }
 
@@ -139,9 +146,9 @@ class RestUserServiceTest {
     void findByUsernameShouldReturnAnEmptyOptionalWhenUsernameIsNotFound() {
         var expectedUser = createAnyLegacyUser();
         var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getUsername());
-        var response = new Response(HttpStatus.SC_NOT_FOUND);
+        var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
         when(httpClient.get(path)).thenReturn(response);
-        var restUserService = new RestUserService(model, httpClient);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         var result = restUserService.findByUsername(expectedUser.getUsername());
 
@@ -153,8 +160,8 @@ class RestUserServiceTest {
         var username = "anyUsername";
         var password = "anyPassword";
         var path = String.format(URI_PATH_FORMAT, URI, username);
-        var restUserService = new RestUserService(model, httpClient);
-        var response = new Response(HttpStatus.SC_OK);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var response = new HttpResponse(HttpStatus.SC_OK);
         var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
         when(httpClient.post(path, expectedBody)).thenReturn(response);
 
@@ -168,8 +175,8 @@ class RestUserServiceTest {
         var username = "anyUsername";
         var password = "anyPassword";
         var path = String.format(URI_PATH_FORMAT, URI, username);
-        var restUserService = new RestUserService(model, httpClient);
-        var response = new Response(HttpStatus.SC_NOT_FOUND);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
         when(httpClient.post(eq(path), anyString())).thenReturn(response);
 
         var isPasswordValid = restUserService.isPasswordValid(username, password);
