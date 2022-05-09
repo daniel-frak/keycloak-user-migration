@@ -26,8 +26,7 @@ import java.util.Map;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RestUserServiceTest {
@@ -323,5 +322,20 @@ class RestUserServiceTest {
         var isPasswordValid = restUserService.isPasswordValid(username, password);
 
         assertFalse(isPasswordValid);
+    }
+
+    @Test
+    void isPasswordValidShouldThrowWhenIOExceptionOccurs() throws JsonProcessingException {
+        var objectMapper = mock(ObjectMapper.class);
+        var cause = mock(JsonProcessingException.class);
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+
+        when(objectMapper.writeValueAsString(any()))
+                .thenThrow(cause);
+
+        var exception = assertThrows(RestUserProviderException.class,
+                () -> restUserService.isPasswordValid("someUsername", "somePassword"));
+
+        assertSame(exception.getCause(), cause);
     }
 }

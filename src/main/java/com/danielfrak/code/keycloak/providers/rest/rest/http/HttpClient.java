@@ -28,8 +28,8 @@ public class HttpClient {
 
     private final HttpClientBuilder httpClientBuilder;
 
-    public HttpClient() {
-        this.httpClientBuilder = HttpClientBuilder.create();
+    public HttpClient(HttpClientBuilder httpClientBuilder) {
+        this.httpClientBuilder = httpClientBuilder;
     }
 
     public void enableBasicAuth(String basicAuthUser, String basicAuthPassword) {

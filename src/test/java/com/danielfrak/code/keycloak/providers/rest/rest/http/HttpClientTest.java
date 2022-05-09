@@ -11,6 +11,8 @@ import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +26,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class HttpClientTest {
 
@@ -35,7 +40,7 @@ class HttpClientTest {
     void setUp() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
-        httpClient = new HttpClient();
+        httpClient = new HttpClient(HttpClientBuilder.create());
         uri = String.format("http://" + mockWebServer.getHostName() + ":%s/", mockWebServer.getPort());
     }
 
@@ -45,11 +50,25 @@ class HttpClientTest {
     }
 
     @Test
-    void getShouldThrowIfIOExceptionIsThrown() {
+    void getShouldThrowIfResponseThrows() {
         var mockResponse = new MockResponse()
                 .setBody(new Buffer().write(new byte[4096]))
                 .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY);
         mockWebServer.enqueue(mockResponse);
+
+        assertThrows(RestUserProviderException.class, () -> httpClient.get(uri));
+    }
+
+    @Test
+    void getShouldThrowIfRequestThrows() throws IOException {
+        var httpClientBuilder = mock(HttpClientBuilder.class);
+        var closeableHttpClient = mock(CloseableHttpClient.class);
+        httpClient = new HttpClient(httpClientBuilder);
+
+        when(httpClientBuilder.build())
+                .thenReturn(closeableHttpClient);
+        when(closeableHttpClient.execute(any()))
+                .thenThrow(new IOException());
 
         assertThrows(RestUserProviderException.class, () -> httpClient.get(uri));
     }
@@ -203,13 +222,27 @@ class HttpClientTest {
     }
 
     @Test
-    void postShouldThrowIfIOExceptionIsThrown() {
+    void postShouldThrowIfResponseThrows() {
         var mockResponse = new MockResponse()
                 .setBody(new Buffer().write(new byte[4096]))
                 .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY);
         mockWebServer.enqueue(mockResponse);
 
         assertThrows(HttpRequestException.class, () -> httpClient.post(uri, "{}"));
+    }
+
+    @Test
+    void postShouldThrowIfRequestThrows() throws IOException {
+        var httpClientBuilder = mock(HttpClientBuilder.class);
+        var closeableHttpClient = mock(CloseableHttpClient.class);
+        httpClient = new HttpClient(httpClientBuilder);
+
+        when(httpClientBuilder.build())
+                .thenReturn(closeableHttpClient);
+        when(closeableHttpClient.execute(any()))
+                .thenThrow(new IOException());
+
+        assertThrows(RestUserProviderException.class, () -> httpClient.post(uri, "{}"));
     }
 
     @Test
