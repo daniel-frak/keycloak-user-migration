@@ -15,6 +15,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,7 +44,7 @@ class HttpClientTest {
     void setUp() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
-        httpClient = new HttpClient(HttpClientBuilder.create());
+        httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
         uri = String.format("http://" + mockWebServer.getHostName() + ":%s/", mockWebServer.getPort());
     }
 
@@ -95,9 +97,10 @@ class HttpClientTest {
     void getShouldReturnResponseWhenHttpCodeNot200() throws InterruptedException {
         enqueueFailedResponse();
 
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertNull(response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -127,9 +130,10 @@ class HttpClientTest {
         enqueueSuccessfulResponse(expectedBody);
 
         httpClient.enableBasicAuth(basicAuthUser, basicAuthPassword);
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -152,9 +156,9 @@ class HttpClientTest {
         var password = "password";
 
         httpClient.enableBasicAuth(username, password);
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        RecordedRequest recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -176,9 +180,9 @@ class HttpClientTest {
         enqueueSuccessfulResponse(expectedBody);
 
         httpClient.enableBearerTokenAuth(bearerToken);
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -192,9 +196,9 @@ class HttpClientTest {
         enqueueSuccessfulResponse(expectedBody);
         var token = "token";
         httpClient.enableBearerTokenAuth(token);
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -210,14 +214,38 @@ class HttpClientTest {
         var expectedBody = "anyBody";
         enqueueSuccessfulResponse(expectedBody);
 
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
         assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
         assertNull(recordedRequest.getHeader(HttpHeaders.AUTHORIZATION));
+    }
+
+    @Test
+    void getShouldHandleRedirectsWhenLaxRedirectStrategyIsUsed() throws InterruptedException {
+        var expectedBody = "anyBody";
+        var redirectedUri = uri + "redirected";
+
+        mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.SC_MOVED_TEMPORARILY)
+                .setHeader("Location", redirectedUri));
+        enqueueSuccessfulResponse(expectedBody);
+
+        HttpResponse response = httpClient.get(uri);
+
+        mockWebServer.takeRequest(5, TimeUnit.SECONDS);
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
+        assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/redirected", recordedRequest.getPath());
+        assertEquals(redirectedUri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+        assertNull(recordedRequest.getHeader(HttpHeaders.AUTHORIZATION));
+
+        assertEquals(expectedBody, response.body);
+        assertEquals(HttpStatus.SC_OK, response.getCode());
     }
 
     @Test
@@ -229,9 +257,10 @@ class HttpClientTest {
                 .setResponseCode(HttpStatus.SC_OK);
         mockWebServer.enqueue(mockResponse);
 
-        var response = httpClient.get(uri);
+        HttpResponse response = httpClient.get(uri);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -317,13 +346,37 @@ class HttpClientTest {
         var expectedBody = "anyBody";
         enqueueSuccessfulResponse(expectedBody);
 
-        var response = httpClient.post(uri, expectedBody);
+        HttpResponse response = httpClient.post(uri, expectedBody);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
         assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+    }
+
+    @Test
+    void postShouldHandleRedirectsWhenLaxRedirectStrategyIsUsed() throws InterruptedException {
+        var expectedBody = "anyBody";
+        var redirectedUri = uri + "redirected";
+
+        mockWebServer.enqueue(new MockResponse().setResponseCode(HttpStatus.SC_TEMPORARY_REDIRECT)
+                .setHeader("Location", redirectedUri));
+        enqueueSuccessfulResponse(expectedBody);
+
+        HttpResponse response = httpClient.post(uri, "{}");
+
+        mockWebServer.takeRequest(5, TimeUnit.SECONDS);
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
+        assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/redirected", recordedRequest.getPath());
+        assertEquals(redirectedUri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+        assertNull(recordedRequest.getHeader(HttpHeaders.AUTHORIZATION));
+
+        assertEquals(expectedBody, response.body);
+        assertEquals(HttpStatus.SC_OK, response.getCode());
     }
 
     @Test
@@ -335,9 +388,10 @@ class HttpClientTest {
                 .setResponseCode(HttpStatus.SC_OK);
         mockWebServer.enqueue(mockResponse);
 
-        var response = httpClient.post(uri, expectedBody);
+        HttpResponse response = httpClient.post(uri, expectedBody);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -348,9 +402,10 @@ class HttpClientTest {
     void postShouldReturnResponseWhenHttpCodeNot200() throws InterruptedException {
         enqueueFailedResponse();
 
-        var response = httpClient.post(uri, "{}");
+        HttpResponse response = httpClient.post(uri, "{}");
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertNull(response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
@@ -365,10 +420,11 @@ class HttpClientTest {
         var password = "password";
         httpClient.enableBasicAuth(username, password);
 
-        var response = httpClient.post(uri, expectedBody);
+        HttpResponse response = httpClient.post(uri, expectedBody);
 
-        var token = new String(Base64.encodeBase64(String.format("%s:%s", username, password).getBytes(StandardCharsets.ISO_8859_1)));
-        var recordedRequest = mockWebServer.takeRequest();
+        var token = new String(Base64.encodeBase64(String.format("%s:%s", username, password)
+                .getBytes(StandardCharsets.ISO_8859_1)));
+        RecordedRequest recordedRequest = Objects.requireNonNull(mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         var authorizationHeader = recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION);
         assertEquals(expectedBody, response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
@@ -386,9 +442,10 @@ class HttpClientTest {
         enqueueSuccessfulResponse(expectedBody);
         httpClient.enableBearerTokenAuth(token);
 
-        var response = httpClient.post(uri, expectedBody);
+        HttpResponse response = httpClient.post(uri, expectedBody);
 
-        var recordedRequest = mockWebServer.takeRequest();
+        RecordedRequest recordedRequest = Objects.requireNonNull(
+                mockWebServer.takeRequest(5, TimeUnit.SECONDS));
         assertEquals(expectedBody, response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
