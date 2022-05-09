@@ -1,233 +1,179 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
-import org.jboss.resteasy.client.jaxrs.BasicAuthentication;
-import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpStatus;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RestUserServiceTest {
+    private final static String URI_PATH_FORMAT = "%s/%s";
+    private final static String URI = "http://localhost:9090";
+    private ObjectMapper objectMapper;
+    private MultivaluedHashMap<String, String> config;
 
-    private RestUserService restUserService;
-
+    @Mock
+    private HttpClient httpClient;
     @Mock
     private ComponentModel model;
 
-    @Mock
-    private RestUserClient client;
-
-    @Mock
-    private Client restEasyClient;
-
     @BeforeEach
     void setUp() {
-        var uri = "someUri";
-        var config = new MultivaluedHashMap<String, String>();
-        config.putSingle(URI_PROPERTY, uri);
-        var resteasyWebTarget = mock(ResteasyWebTarget.class);
+        objectMapper = new ObjectMapper();
+        registerBasicConfig();
+    }
 
+    private void registerBasicConfig() {
+        config = new MultivaluedHashMap<String, String>();
+        config.putSingle(URI_PROPERTY, URI);
         when(model.getConfig()).thenReturn(config);
-        when(restEasyClient.target(uri))
-                .thenReturn(resteasyWebTarget);
-        when(resteasyWebTarget.proxy(RestUserClient.class))
-                .thenReturn(client);
-
-        restUserService = new RestUserService(model, restEasyClient);
     }
 
     @Test
-    void shouldRegisterBasicAuthRequestFilterIfBasicAuthEnabledAndCredentialsNotEmpty() {
-        model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, "someUser");
-        model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, "somePassword");
-        model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, "true");
-        restUserService = new RestUserService(model, restEasyClient);
-        ArgumentCaptor<Object> filterCaptor = ArgumentCaptor.forClass(Object.class);
+    void shouldCallEnableApiToken() {
+        var token = "anyToken";
+        enableApiToken(token);
 
-        verify(restEasyClient).register(filterCaptor.capture());
+        new RestUserService(model, httpClient);
 
-        assertTrue(filterCaptor.getValue() instanceof BasicAuthentication);
+        verify(httpClient).enableBearerTokenAuth(token);
     }
 
-
-
-    @Nested
-    class ShouldNotRegisterBasicAuthRequestFilter {
-
-        @ParameterizedTest
-        @CsvSource(
-                value = {
-                        "someUser,somePassword,false'", // deactivated
-                        "someUser,'',true", // activated, password empty
-                        "someUser,null,true", // activated, password null
-                        "'',somePassword,true", // activated, user empty
-                        "null,somePassword,true", // activated, user null
-                        "'','',true", // activated, both empty
-                        "null,null,true", // activated, both null
-                },
-                nullValues = {"null"}
-        )
-        void ifBasicAuthDisabledOrCredentialsEmptyOrNull(String userName, String password, String basicAuthEnabled ) {
-            model.getConfig().add(API_HTTP_BASIC_USERNAME_PROPERTY, userName);
-            model.getConfig().add(API_HTTP_BASIC_PASSWORD_PROPERTY, password);
-            model.getConfig().add(API_HTTP_BASIC_ENABLED_PROPERTY, basicAuthEnabled);
-            restUserService = new RestUserService(model, restEasyClient);
-
-            verify(restEasyClient, never()).register(any());
-        }
-
+    private void enableApiToken(String token) {
+        config.putSingle(API_TOKEN_ENABLED_PROPERTY, Boolean.TRUE.toString());
+        config.putSingle(API_TOKEN_PROPERTY, token);
     }
 
     @Test
-    void shouldRegisterBearerTokenRequestFilterIfTokenAuthEnabledAndTokenNotEmpty() {
-        model.getConfig().add(API_TOKEN_PROPERTY, "someToken");
-        model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "true");
-        restUserService = new RestUserService(model, restEasyClient);
-        ArgumentCaptor<Object> filterCaptor = ArgumentCaptor.forClass(Object.class);
+    void shouldCallEnableEnableBasicAuth() {
+        var username = "anyUsername";
+        var password = "anyPassword";
+        enableBasicAuth(username, password);
 
-        verify(restEasyClient).register(filterCaptor.capture());
+        new RestUserService(model, httpClient);
 
-        assertTrue(filterCaptor.getValue() instanceof BearerTokenRequestFilter);
+        verify(httpClient).enableBasicAuth(username, password);
     }
 
-    @Nested
-    class ShouldNotRegisterBearerTokenRequestFilter {
+    private void enableBasicAuth(String httpBasicAuthUsername, String httpBasicAuthPassword) {
+        config.putSingle(API_HTTP_BASIC_ENABLED_PROPERTY, Boolean.TRUE.toString());
+        config.putSingle(API_HTTP_BASIC_USERNAME_PROPERTY, httpBasicAuthUsername);
+        config.putSingle(API_HTTP_BASIC_PASSWORD_PROPERTY, httpBasicAuthPassword);
+    }
 
-        @Test
-        void ifTokenAuthDisabledAndTokenNotEmpty() {
-            model.getConfig().add(API_TOKEN_PROPERTY, "someToken");
-            model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, "false");
-            restUserService = new RestUserService(model, restEasyClient);
+    @Test
+    void findByEmailShouldReturnAUserWhenUserIsFound() throws IOException {
+        var expectedUser = createAnyLegacyUser();
+        var response = new Response(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
+        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
+        when(httpClient.get(path)).thenReturn(response);
+        var restUserService = new RestUserService(model, httpClient);
 
-            verify(restEasyClient, never()).register(any());
-        }
+        var result = restUserService.findByEmail(expectedUser.getEmail());
 
-        @ParameterizedTest
-        @CsvSource(
-                value = {
-                        "true,''", // empty value
-                        "true,null", // null
-                },
-                nullValues = {"null"}
-        )
-        void ifTokenNullOrEmpty(String tokenEnabled, String tokenValue) {
-            model.getConfig().add(API_TOKEN_PROPERTY, tokenValue);
-            model.getConfig().add(API_TOKEN_ENABLED_PROPERTY, tokenEnabled);
-            restUserService = new RestUserService(model, restEasyClient);
+        assertEquals(result.get(), expectedUser);
+    }
 
-            verify(restEasyClient, never()).register(any());
-        }
+    @NotNull
+    private LegacyUser createAnyLegacyUser() {
+        var legacyUser = new LegacyUser();
+        legacyUser.setEmail("any@email.com");
+        legacyUser.setUsername("anyUsername");
+        legacyUser.setRoles(List.of("admin"));
+        legacyUser.setGroups(List.of("migrated_users"));
+        legacyUser.setRequiredActions(List.of("CONFIGURE_TOTP"));
+        legacyUser.setFirstName("Bob");
+        legacyUser.setLastName("Smith");
+        legacyUser.setEnabled(true);
+        legacyUser.setEmailVerified(true);
+        legacyUser.setAttributes(Map.of("position", List.of("rockstar-developer")));
+        return legacyUser;
+    }
 
+    @Test
+    void findByEmailShouldReturnAnEmptyOptionalWhenUsernameIsNotFound() {
+        var expectedUser = createAnyLegacyUser();
+        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
+        var response = new Response(HttpStatus.SC_NOT_FOUND);
+        var restUserService = new RestUserService(model, httpClient);
+        when(httpClient.get(path)).thenReturn(response);
+
+        var result = restUserService.findByUsername(expectedUser.getEmail());
+
+        assertTrue(result.isEmpty());
     }
 
 
     @Test
-    void shouldFindByEmail() {
-        var email = "someEmail";
-        var expectedResult = new LegacyUser();
-        var response = mock(Response.class);
+    void findByUsernameShouldReturnAUserWhenUserIsFound() throws IOException {
+        var expectedUser = createAnyLegacyUser();
+        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getUsername());
+        var response = new Response(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
+        var restUserService = new RestUserService(model, httpClient);
+        when(httpClient.get(path)).thenReturn(response);
 
-        when(client.findByUsername(email))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(200);
-        when(response.readEntity(LegacyUser.class))
-                .thenReturn(expectedResult);
+        var result = restUserService.findByUsername(expectedUser.getUsername());
 
-        var result = restUserService.findByEmail(email);
-        assertTrue(result.isPresent());
-        assertEquals(expectedResult, result.get());
+        assertEquals(result.get(), expectedUser);
     }
 
     @Test
-    void findByEmailShouldReturnEmptyOptionalIfNotFound() {
-        var email = "someEmail";
-        var response = mock(Response.class);
+    void findByUsernameShouldReturnAnEmptyOptionalWhenUsernameIsNotFound() {
+        var expectedUser = createAnyLegacyUser();
+        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getUsername());
+        var response = new Response(HttpStatus.SC_NOT_FOUND);
+        when(httpClient.get(path)).thenReturn(response);
+        var restUserService = new RestUserService(model, httpClient);
 
-        when(client.findByUsername(email))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(404);
+        var result = restUserService.findByUsername(expectedUser.getUsername());
 
-        var result = restUserService.findByEmail(email);
         assertTrue(result.isEmpty());
     }
 
     @Test
-    void shouldFindByUsername() {
-        var username = "someUsername";
-        var expectedResult = new LegacyUser();
-        var response = mock(Response.class);
+    void isPasswordValidShouldReturnTrueWhenPasswordsMatches() throws IOException {
+        var username = "anyUsername";
+        var password = "anyPassword";
+        var path = String.format(URI_PATH_FORMAT, URI, username);
+        var restUserService = new RestUserService(model, httpClient);
+        var response = new Response(HttpStatus.SC_OK);
+        var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
+        when(httpClient.post(path, expectedBody)).thenReturn(response);
 
-        when(client.findByUsername(username))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(200);
-        when(response.readEntity(LegacyUser.class))
-                .thenReturn(expectedResult);
+        var isPasswordValid = restUserService.isPasswordValid(username, password);
 
-        var result = restUserService.findByUsername(username);
-        assertTrue(result.isPresent());
-        assertEquals(expectedResult, result.get());
+        assertTrue(isPasswordValid);
     }
 
     @Test
-    void findByUsernameShouldReturnEmptyOptionalIfNotFound() {
-        var username = "someUsername";
-        var response = mock(Response.class);
+    void isPasswordValidShouldReturnFalseWhenPasswordsDoNotMatch() {
+        var username = "anyUsername";
+        var password = "anyPassword";
+        var path = String.format(URI_PATH_FORMAT, URI, username);
+        var restUserService = new RestUserService(model, httpClient);
+        var response = new Response(HttpStatus.SC_NOT_FOUND);
+        when(httpClient.post(eq(path), anyString())).thenReturn(response);
 
-        when(client.findByUsername(username))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(404);
+        var isPasswordValid = restUserService.isPasswordValid(username, password);
 
-        var result = restUserService.findByUsername(username);
-        assertTrue(result.isEmpty());
-    }
-
-    @Test
-    void isPasswordValidShouldReturnTrueForValidPassword() {
-        var username = "someUsername";
-        var somePassword = "somePassword";
-        var response = mock(Response.class);
-
-        when(client.validatePassword(username, new UserPasswordDto(somePassword)))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(200);
-
-        var result = restUserService.isPasswordValid(username, somePassword);
-        assertTrue(result);
-    }
-
-    @Test
-    void isPasswordValidShouldReturnFalseForInvalidPassword() {
-        var username = "someUsername";
-        var somePassword = "somePassword";
-        var response = mock(Response.class);
-
-        when(client.validatePassword(username, new UserPasswordDto(somePassword)))
-                .thenReturn(response);
-        when(response.getStatus())
-                .thenReturn(403);
-
-        var result = restUserService.isPasswordValid(username, somePassword);
-        assertFalse(result);
+        assertFalse(isPasswordValid);
     }
 }
