@@ -75,8 +75,6 @@ Make sure your test cases are reasonable, readable and maintainable. Don't forge
 
 When updating the code to work with newer versions of Keycloak, remember to update the following:
 * `keycloak.version` in [pom.xml](pom.xml)
-* `resteasy.version` in [pom.xml](pom.xml)
-(to match dependency in https://mvnrepository.com/artifact/org.keycloak/keycloak-admin-client)
 * `KEYCLOAK_IMAGE` in [docker/.env](docker/.env)
 * `Compatibility` table in [README.md](README.md)
 

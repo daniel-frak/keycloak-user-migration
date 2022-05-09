@@ -18,13 +18,14 @@ https://codesoapbox.dev/keycloak-user-migration
 
 ## Compatibility
 
-| Keycloak Version | Commit                                                                                                                                           |
-|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| 16.1.X           | Current                                                                                                                                          |
+| Keycloak Version | Commit                                                                                                                                             |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| 17.X             | Current                                                                                                                                            |
+| 16.X             | [489779543989b1880177c802f5ee62769a945b85](https://github.com/daniel-frak/keycloak-user-migration/commit/489779543989b1880177c802f5ee62769a945b85) |
 | 15.X             | [922c69440a776f0cab80b68b90c90a6ba620cdd9](https://github.com/daniel-frak/keycloak-user-migration/commit/922c69440a776f0cab80b68b90c90a6ba620cdd9) |
 | 12.X             | [0966d9ba7c94ba461783a5d8dda0735a35c4e6b8](https://github.com/daniel-frak/keycloak-user-migration/commit/0966d9ba7c94ba461783a5d8dda0735a35c4e6b8) |
-| 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30) |
-| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b) |
+| 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)   |
+| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)   |
 
 ## Prerequisites - REST endpoints in the legacy system  
 
