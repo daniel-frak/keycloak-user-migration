@@ -27,6 +27,13 @@ class InMemoryUserRepositoryTest {
     }
 
     @Test
+    void shouldFindByEmail() {
+        Optional<User> user = repository.findByEmail("lucy@example.com");
+
+        assertTrue(user.isPresent());
+    }
+
+    @Test
     void shouldFindAll() {
         List<User> users = repository.findAll();
 
