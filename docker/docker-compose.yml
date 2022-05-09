@@ -8,8 +8,8 @@ services:
       args:
         - KEYCLOAK_IMAGE=${KEYCLOAK_IMAGE}
     environment:
-      KEYCLOAK_USER: admin
-      KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
       DB_VENDOR: h2
     ports:
       - "8024:8080"

@@ -26,18 +26,12 @@ const LEGACY_USER_LAST_NAME = 'Brennan';
 describe('user migration plugin', () => {
 
     before(() => {
-        signOutViaUrl();
         signInAsAdmin();
         configureLoginSettings();
         configureMigrationPlugin();
         configureEmails();
         signOutViaUI();
     })
-
-    function signOutViaUrl() {
-        cy.visit('http://localhost:8024/auth/realms/master/protocol/openid-connect/logout' +
-            '?redirect_uri=http%3A%2F%2Flocalhost%3A8024%2Fauth%2Frealms%2Fmaster%2Faccount%2F');
-    }
 
     function signInAsAdmin() {
         cy.visit('/admin');
@@ -80,7 +74,7 @@ describe('user migration plugin', () => {
 
     function visitUserFederationPage() {
         cy.intercept('GET',
-            '/auth/admin/realms/master/components?parent=master&type=org.keycloak.storage.UserStorageProvider')
+            '/admin/realms/master/components?parent=master&type=org.keycloak.storage.UserStorageProvider')
             .as('storageProviders');
         cy.visit('/admin/master/console/#/realms/master/user-federation/');
         cy.wait('@storageProviders');
@@ -101,7 +95,7 @@ describe('user migration plugin', () => {
     }
 
     function configureAdminPersonalInfo() {
-        cy.intercept('GET', '/auth/realms/master/account/')
+        cy.intercept('GET', '/realms/master/account/')
             .as("accountDetails");
         cy.visit('/realms/master/account/#/personal-info');
         cy.wait('@accountDetails');
@@ -145,7 +139,7 @@ describe('user migration plugin', () => {
     function deleteTestUserIfExists() {
         signInAsAdmin();
         cy.visit('/admin/master/console/#/realms/master/users');
-        cy.intercept('GET', '/auth/admin/realms/master/users*').as("userGet");
+        cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
         cy.get('#viewAllUsers').click();
         cy.wait('@userGet');
 
@@ -205,7 +199,7 @@ describe('user migration plugin', () => {
     }
 
     function triggerPasswordReset() {
-        cy.intercept('GET', '/auth/realms/master/login-actions/reset-credentials*')
+        cy.intercept('GET', '/realms/master/login-actions/reset-credentials*')
             .as('resetCredentials');
         cy.get("a").contains("Forgot Password?").click();
         cy.wait('@resetCredentials');

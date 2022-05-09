@@ -159,28 +159,29 @@ The following example uses the default `master` realm but the demo will also wor
 
 ### Configuration
 
-1. Navigate to `./docker`
-2. Execute `docker-compose up`
-3. Open [http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/) in a browser
-4. Log in with the credentials:
+1. Run `mvn clean package` in the repository root
+2. Navigate to `./docker`
+3. Execute `docker-compose up`
+4. Open [http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/) in a browser
+5. Log in with the credentials:
 
 * User: `admin`
 * Password: `admin`
 
-5. Navigate to "User federation":
+6. Navigate to "User federation":
 
 ![Sidebar](readme-images/sidebar.png)
 
-6. Choose "User migration using a REST client" from the "Add provider..." dropdown:
+7. Choose "User migration using a REST client" from the "Add provider..." dropdown:
 
 ![User federation dropdown](readme-images/user-federation.png)
 
-7. Provide the legacy system endpoint URI in the "Rest client URI" field. For the provided example legacy app the
+8. Provide the legacy system endpoint URI in the "Rest client URI" field. For the provided example legacy app the
    correct value is: `http://legacy-system-example:8080/user-migration-support`:
 
 ![Rest client URI input for the provided example](readme-images/field-rest-client-uri-for-example-app.png)
 
-8. Click "save":
+9. Click "save":
 
 ![Save button](readme-images/save_btn.png)
 
