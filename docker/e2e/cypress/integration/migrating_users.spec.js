@@ -185,10 +185,10 @@ describe('user migration plugin', () => {
     it('should reset password after inputting wrong credentials', () => {
         attemptLoginWithWrongPassword();
         triggerPasswordReset();
+        resetPasswordViaEmail();
+    });
 
-        cy.mhGetMailsBySubject('Reset password')
-            .should('have.length', 1);
-
+    function resetPasswordViaEmail() {
         cy.mhGetMailsBySubject('Reset password').mhFirst().mhGetBody()
             .then(bodyQuotedPrintable => {
                 clickPasswordResetLink(bodyQuotedPrintable);
@@ -196,7 +196,7 @@ describe('user migration plugin', () => {
                 inputNewPassword();
                 assertIsLoggedInAsLegacyUser();
             });
-    });
+    }
 
     function attemptLoginWithWrongPassword() {
         cy.visit('/realms/master/account');
@@ -213,6 +213,8 @@ describe('user migration plugin', () => {
         cy.get('input[type=submit]').click();
         cy.get('body').should('contain.text',
             'You should receive an email shortly with further instructions.');
+        cy.mhGetMailsBySubject('Reset password')
+            .should('have.length', 1);
     }
 
     function clickPasswordResetLink(bodyQuotedPrintable) {
@@ -234,4 +236,11 @@ describe('user migration plugin', () => {
         cy.get('#password-confirm').type(LEGACY_USER_PASSWORD);
         cy.get('input[type=submit]').click();
     }
+
+    it('should reset password before user is migrated', () => {
+        cy.visit('/realms/master/account');
+        cy.get('button').contains('Sign In').click();
+        triggerPasswordReset();
+        resetPasswordViaEmail()
+    });
 });

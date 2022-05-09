@@ -15,15 +15,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -32,18 +30,6 @@ class HttpClientTest {
     private HttpClient httpClient;
     private MockWebServer mockWebServer;
     private String uri;
-
-    private static Stream<Arguments> invalidBasicAuthCredentials() {
-        return Stream.of(
-                Arguments.of(null, null),
-                Arguments.of(null, "somePassword"),
-                Arguments.of("", "somePassword"),
-                Arguments.of(" ", "somePassword"),
-                Arguments.of("someUser", null),
-                Arguments.of("someUser", ""),
-                Arguments.of("someUser", " ")
-        );
-    }
 
     @BeforeEach
     void setUp() throws IOException {
@@ -69,10 +55,41 @@ class HttpClientTest {
     }
 
     @Test
-    void shouldGetWithNoAuth() throws InterruptedException {
+    void getShouldReturnResponseWhenHttpCodeNot200() throws InterruptedException {
+        enqueueFailedResponse();
+
+        var response = httpClient.get(uri);
+
+        var recordedRequest = mockWebServer.takeRequest();
+        assertNull(response.body);
+        assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/", recordedRequest.getPath());
+        assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+    }
+
+    private void enqueueFailedResponse() {
+        var mockResponse = new MockResponse()
+                .setBody("anyBody")
+                .setResponseCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        mockWebServer.enqueue(mockResponse);
+    }
+
+    @ParameterizedTest
+    @CsvSource(value = {
+            "null, null",
+            "null, somePassword",
+            "'', somePassword",
+            "' ', somePassword",
+            "someUser, null",
+            "someuser, ''",
+            "someuser, ' '"
+    }, nullValues = "null")
+    void shouldNotEnableBasicAuthIfCredentialsIncorrect(String basicAuthUser, String basicAuthPassword)
+            throws InterruptedException {
         var expectedBody = "anyBody";
         enqueueSuccessfulResponse(expectedBody);
 
+        httpClient.enableBasicAuth(basicAuthUser, basicAuthPassword);
         var response = httpClient.get(uri);
 
         var recordedRequest = mockWebServer.takeRequest();
@@ -88,24 +105,6 @@ class HttpClientTest {
                 .setBody(body)
                 .setResponseCode(HttpStatus.SC_OK);
         mockWebServer.enqueue(mockResponse);
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidBasicAuthCredentials")
-    void shouldNotEnableBasicAuthIfCredentialsIncorrect(String basicAuthUser, String basicAuthPassword)
-            throws InterruptedException {
-        var expectedBody = "anyBody";
-        enqueueSuccessfulResponse(expectedBody);
-
-        httpClient.enableBasicAuth(basicAuthUser, basicAuthPassword);
-        var response = httpClient.get(uri);
-
-        var recordedRequest = mockWebServer.takeRequest();
-        assertEquals(expectedBody, response.body);
-        assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
-        assertEquals("/", recordedRequest.getPath());
-        assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
-        assertNull(recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION));
     }
 
     @Test
@@ -185,13 +184,32 @@ class HttpClientTest {
     }
 
     @Test
+    void getShouldSupportCustomResponseEncoding() throws InterruptedException {
+        var expectedBody = "anyBody";
+        var mockResponse = new MockResponse()
+                .setBody(expectedBody)
+                .addHeader("Content-Type", "ISO-8859-1")
+                .setResponseCode(HttpStatus.SC_OK);
+        mockWebServer.enqueue(mockResponse);
+
+        var response = httpClient.get(uri);
+
+        var recordedRequest = mockWebServer.takeRequest();
+        assertEquals(expectedBody, response.body);
+        assertEquals(HttpGet.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/", recordedRequest.getPath());
+        assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+        assertNull(recordedRequest.getHeader(HttpHeaders.AUTHORIZATION));
+    }
+
+    @Test
     void postShouldThrowIfIOExceptionIsThrown() {
         var mockResponse = new MockResponse()
                 .setBody(new Buffer().write(new byte[4096]))
                 .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY);
         mockWebServer.enqueue(mockResponse);
 
-        assertThrows(RestUserProviderException.class, () -> httpClient.post(uri, "{}"));
+        assertThrows(HttpRequestException.class, () -> httpClient.post(uri, "{}"));
     }
 
     @Test
@@ -203,6 +221,37 @@ class HttpClientTest {
 
         var recordedRequest = mockWebServer.takeRequest();
         assertEquals(expectedBody, response.body);
+        assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/", recordedRequest.getPath());
+        assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+    }
+
+    @Test
+    void postShouldSupportCustomResponseEncoding() throws InterruptedException {
+        var expectedBody = "anyBody";
+        var mockResponse = new MockResponse()
+                .setBody(expectedBody)
+                .addHeader("Content-Type", "ISO-8859-1")
+                .setResponseCode(HttpStatus.SC_OK);
+        mockWebServer.enqueue(mockResponse);
+
+        var response = httpClient.post(uri, expectedBody);
+
+        var recordedRequest = mockWebServer.takeRequest();
+        assertEquals(expectedBody, response.body);
+        assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
+        assertEquals("/", recordedRequest.getPath());
+        assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
+    }
+
+    @Test
+    void postShouldReturnResponseWhenHttpCodeNot200() throws InterruptedException {
+        enqueueFailedResponse();
+
+        var response = httpClient.post(uri, "{}");
+
+        var recordedRequest = mockWebServer.takeRequest();
+        assertNull(response.body);
         assertEquals(HttpPost.METHOD_NAME, recordedRequest.getMethod());
         assertEquals("/", recordedRequest.getPath());
         assertEquals(uri, Objects.requireNonNull(recordedRequest.getRequestUrl()).toString());
