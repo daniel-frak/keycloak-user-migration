@@ -78,7 +78,7 @@ jobs:
 
       - name: Start containers
         working-directory: docker
-        run: docker-compose up -d --build && ./wait-until "curl -sLf -o /dev/null http://localhost:8024/auth/realms/master" 600
+        run: docker-compose up -d --build && ./wait-until "curl -sLf -o /dev/null http://localhost:8024/realms/master" 600
 
       - name: Install node
         uses: actions/setup-node@v1
