@@ -64,16 +64,20 @@ public class HttpClient {
                 CloseableHttpClient closeableHttpClient = httpClientBuilder.build();
                 CloseableHttpResponse response = closeableHttpClient.execute(request)
         ) {
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode != HttpStatus.SC_OK) {
-                return new HttpResponse(statusCode);
-            }
-
-            String entityAsString = getEntityAsString(response);
-            return new HttpResponse(statusCode, entityAsString);
+            return getHttpResponse(response);
         } catch (IOException e) {
             throw new HttpRequestException(request, e);
         }
+    }
+
+    private HttpResponse getHttpResponse(CloseableHttpResponse response) throws IOException {
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode != HttpStatus.SC_OK) {
+            return new HttpResponse(statusCode);
+        }
+
+        String entityAsString = getEntityAsString(response);
+        return new HttpResponse(statusCode, entityAsString);
     }
 
     private String getEntityAsString(CloseableHttpResponse response) throws IOException {

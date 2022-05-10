@@ -83,6 +83,28 @@ To check if the plugin works correctly after the upgrade:
 2) Run `docker-compose up -d` in `./docker` to create the dependencies necessary for end-to-end testing
 3) Run `npx cypress run` in `./docker/e2e` to run end-to-end tests
 
+## SonarQube analysis on a local environment
+
+It's encouraged that you perform a local code analysis before you submit a Pull Request. 
+
+### Prerequisites
+
+1. Go to the `./docker` folder
+2. Execute `docker-compose -f docker-compose-sonar.yml up -d` to start a local Sonarqube instance
+3. Visit http://localhost:9000/
+4. Log in with the credentials `admin:admin`
+5. Update the password when prompted
+
+### Running the analysis
+
+You can run the analysis using the following command in the repository root:
+
+```shell
+mvn clean verify sonar:sonar -Pcode-coverage -Dsonar.login=your_username -Dsonar.password=your_password
+```
+
+After a successful analysis, the report will be available at http://localhost:9000/projects
+
 ## Any contributions you make will be under the MIT License
 In short, when you submit code changes, your submissions are understood to be under the same
 [MIT License](https://choosealicense.com/licenses/mit/) that covers the project.

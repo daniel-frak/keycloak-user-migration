@@ -64,22 +64,6 @@ class HttpClientTest {
     }
 
     @Test
-    void getShouldThrowIfCloseableHttpClientClosureThrows() throws IOException {
-        enqueueSuccessfulResponse("");
-        mockHttpClientFailingToCloseHttpClient();
-
-        assertThrows(RestUserProviderException.class, () -> httpClient.get(uri));
-    }
-
-    @Test
-    void getShouldThrowIfCloseableHttpResponseClosureThrows() throws IOException {
-        mockHttpClientFailingToCloseHttpResponse();
-        enqueueSuccessfulResponse("");
-
-        assertThrows(RestUserProviderException.class, () -> httpClient.get(uri));
-    }
-
-    @Test
     void getShouldThrowIfRequestThrows() throws IOException {
         var httpClientBuilder = mock(HttpClientBuilder.class);
         var closeableHttpClient = mock(CloseableHttpClient.class);
@@ -276,55 +260,6 @@ class HttpClientTest {
         mockWebServer.enqueue(mockResponse);
 
         assertThrows(HttpRequestException.class, () -> httpClient.post(uri, "{}"));
-    }
-
-    @Test
-    void postShouldThrowIfCloseableHttpClientClosureThrows() throws IOException {
-        enqueueSuccessfulResponse("");
-        mockHttpClientFailingToCloseHttpClient();
-
-        assertThrows(RestUserProviderException.class, () -> httpClient.post(uri, "{}"));
-    }
-
-    private void mockHttpClientFailingToCloseHttpClient() throws IOException {
-        var realHttpClientBuilder = HttpClientBuilder.create();
-        var httpClientBuilder = spy(realHttpClientBuilder);
-        var closeableHttpClient = spy(realHttpClientBuilder.build());
-        httpClient = new HttpClient(httpClientBuilder);
-
-        when(httpClientBuilder.build())
-                .thenReturn(closeableHttpClient);
-        willAnswer(invocation -> {
-            throw new IOException();
-        })
-                .given(closeableHttpClient).close();
-    }
-
-    @Test
-    void postShouldThrowIfCloseableHttpResponseClosureThrows() throws IOException {
-        mockHttpClientFailingToCloseHttpResponse();
-        enqueueSuccessfulResponse("");
-
-        assertThrows(RestUserProviderException.class, () -> httpClient.post(uri, "{}"));
-    }
-
-    private void mockHttpClientFailingToCloseHttpResponse() throws IOException {
-        var realHttpClientBuilder = HttpClientBuilder.create();
-        var realCloseableHttpClient = realHttpClientBuilder.build();
-        var httpClientBuilder = spy(realHttpClientBuilder);
-        var closeableHttpClient = spy(realCloseableHttpClient);
-        httpClient = new HttpClient(httpClientBuilder);
-        when(httpClientBuilder.build())
-                .thenReturn(closeableHttpClient);
-        doAnswer(inv -> {
-            var realResponse = realCloseableHttpClient.execute(inv.getArgument(0));
-            CloseableHttpResponse response = spy(realResponse);
-            willAnswer(invocation -> {
-                throw new IOException();
-            })
-                    .given(response).close();
-            return response;
-        }).when(closeableHttpClient).execute(any(HttpUriRequest.class));
     }
 
     @Test
