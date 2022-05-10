@@ -74,9 +74,9 @@ Make sure your test cases are reasonable, readable and maintainable. Don't forge
 ## Quick guide to upgrading Keycloak compatibility
 
 When updating the code to work with newer versions of Keycloak, remember to update the following:
-* `keycloak.version` in [pom.xml](pom.xml)
-* `KEYCLOAK_IMAGE` in [docker/.env](docker/.env)
-* `Compatibility` table in [README.md](README.md)
+* `keycloak.version` in [pom.xml](pom.xml) (from https://mvnrepository.com/artifact/org.keycloak.bom/keycloak-spi-bom)
+* `KEYCLOAK_IMAGE` in [docker/.env](docker/.env) (from https://quay.io/repository/keycloak/keycloak?tab=tags)
+* `Compatibility history` table in [README.md](README.md)
 
 To check if the plugin works correctly after the upgrade:
 1) Run `mvn clean package` in the project's root directory to run unit tests and build the plugin
