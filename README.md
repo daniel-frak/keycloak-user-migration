@@ -16,11 +16,12 @@ This is a user migration plugin for Keycloak. Read more at:
 
 https://codesoapbox.dev/keycloak-user-migration
 
-## Compatibility
+## Compatibility history
 
 | Keycloak Version | Commit                                                                                                                                             |
 |------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 17.X             | Current                                                                                                                                            |
+| 18.X             | Current                                                                                                                                            |
+| 17.X             | [ca82b795c793094f6d67dac3dc14dcdfd2d0ed59](https://github.com/daniel-frak/keycloak-user-migration/commit/ca82b795c793094f6d67dac3dc14dcdfd2d0ed59) |
 | 16.X             | [489779543989b1880177c802f5ee62769a945b85](https://github.com/daniel-frak/keycloak-user-migration/commit/489779543989b1880177c802f5ee62769a945b85) |
 | 15.X             | [922c69440a776f0cab80b68b90c90a6ba620cdd9](https://github.com/daniel-frak/keycloak-user-migration/commit/922c69440a776f0cab80b68b90c90a6ba620cdd9) |
 | 12.X             | [0966d9ba7c94ba461783a5d8dda0735a35c4e6b8](https://github.com/daniel-frak/keycloak-user-migration/commit/0966d9ba7c94ba461783a5d8dda0735a35c4e6b8) |

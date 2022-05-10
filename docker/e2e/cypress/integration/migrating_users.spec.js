@@ -74,7 +74,7 @@ describe('user migration plugin', () => {
 
     function visitUserFederationPage() {
         cy.intercept('GET',
-            '/admin/realms/master/components?parent=master&type=org.keycloak.storage.UserStorageProvider')
+            '/admin/realms/master/components?parent=*&type=org.keycloak.storage.UserStorageProvider')
             .as('storageProviders');
         cy.visit('/admin/master/console/#/realms/master/user-federation/');
         cy.wait('@storageProviders');
@@ -161,7 +161,7 @@ describe('user migration plugin', () => {
 
     function signInAsLegacyUser() {
         cy.visit('/realms/master/account');
-        cy.get('button').contains('Sign In').click();
+        cy.get('#landingSignInButton').click();
         submitCredentials(LEGACY_USER_USERNAME, LEGACY_USER_PASSWORD);
     }
 
@@ -194,7 +194,7 @@ describe('user migration plugin', () => {
 
     function attemptLoginWithWrongPassword() {
         cy.visit('/realms/master/account');
-        cy.get('button').contains('Sign In').click();
+        cy.get('#landingSignInButton').click();
         submitCredentials(LEGACY_USER_USERNAME, "wrongPassword");
     }
 
@@ -233,7 +233,7 @@ describe('user migration plugin', () => {
 
     it('should reset password before user is migrated', () => {
         cy.visit('/realms/master/account');
-        cy.get('button').contains('Sign In').click();
+        cy.get('#landingSignInButton').click();
         triggerPasswordReset();
         resetPasswordViaEmail()
     });
