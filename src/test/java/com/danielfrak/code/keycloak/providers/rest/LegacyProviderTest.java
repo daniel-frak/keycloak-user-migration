@@ -15,20 +15,20 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserCredentialManager;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
+import org.keycloak.policy.PolicyError;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
 import static java.util.Collections.emptySet;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class LegacyProviderTest {
@@ -53,13 +53,19 @@ class LegacyProviderTest {
     @Mock
     private ComponentModel model;
 
+    @Mock
+    private PasswordPolicyManagerProvider passwordPolicyManagerProvider;
+
     @BeforeEach
     void setUp() {
         legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory, model);
+
+        lenient().when(session.getProvider(PasswordPolicyManagerProvider.class))
+                .thenReturn(passwordPolicyManagerProvider);
     }
 
     @Test
-    void getsUserByUsername() {
+    void shouldGetUserByUsername() {
         final String username = "user";
         final LegacyUser user = new LegacyUser();
         when(legacyUserService.findByUsername(username))
@@ -73,7 +79,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void returnsNullIfUserNotFoundByUsername() {
+    void shouldReturnNullIfUserNotFoundByUsername() {
         final String username = "user";
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.empty());
@@ -84,7 +90,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void getsUserByEmail() {
+    void shouldGetUserByEmail() {
         final String email = "email";
         final LegacyUser user = new LegacyUser();
         when(legacyUserService.findByEmail(email))
@@ -98,7 +104,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void returnsNullIfUserNotFoundByEmail() {
+    void shouldReturnNullIfUserNotFoundByEmail() {
         final String username = "user";
         when(legacyUserService.findByEmail(username))
                 .thenReturn(Optional.empty());
@@ -109,7 +115,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void isValidReturnsFalseOnWrongCredentialType() {
+    void isValidShouldReturnFalseOnWrongCredentialType() {
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(CredentialModel.KERBEROS);
@@ -120,7 +126,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void isValidReturnsFalseWhenInvalidCredentialValue() {
+    void isValidShouldReturnFalseWhenInvalidCredentialValue() {
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
@@ -145,7 +151,8 @@ class LegacyProviderTest {
     }
 
     @Test
-    void isValidReturnsTrueWhenUserValidated() {
+    void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidated() {
+        var userCredentialManager = mock(UserCredentialManager.class);
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
@@ -165,15 +172,17 @@ class LegacyProviderTest {
                 .thenReturn(true);
 
         when(session.userCredentialManager())
-                .thenReturn(mock(UserCredentialManager.class));
+                .thenReturn(userCredentialManager);
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
+        verify(userCredentialManager).updateCredential(realmModel, userModel, input);
     }
 
     @Test
-    void isValidReturnsTrueWhenUserValidatedWithUserId() {
+    void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidatedWithUserId() {
+        var userCredentialManager = mock(UserCredentialManager.class);
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
@@ -193,15 +202,74 @@ class LegacyProviderTest {
                 .thenReturn(true);
 
         when(session.userCredentialManager())
-                .thenReturn(mock(UserCredentialManager.class));
+                .thenReturn(userCredentialManager);
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
+        verify(userCredentialManager).updateCredential(realmModel, userModel, input);
     }
 
     @Test
-    void supportsPasswordCredentialType() {
+    void isValidShouldReturnTrueAndNotUpdateCredentialsAndRequirePasswordChangeWhenUserValidatedButPasswordBreaksPolicy() {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+
+        final String userId = "1234567890";
+        final String password = "password";
+
+        when(userModel.getId())
+                .thenReturn(userId);
+        when(input.getChallengeResponse())
+                .thenReturn(password);
+        when(legacyUserService.isPasswordValid(userId, password))
+                .thenReturn(true);
+        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
+                .thenReturn(new PolicyError("someError"));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(session, never()).userCredentialManager();
+        verify(userModel).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+    }
+
+    @Test
+    void isValidShouldNotAddRequirePasswordActionWhenOneAlreadyExists() {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+
+        final String userId = "1234567890";
+        final String password = "password";
+
+        when(userModel.getId())
+                .thenReturn(userId);
+        when(input.getChallengeResponse())
+                .thenReturn(password);
+        when(legacyUserService.isPasswordValid(userId, password))
+                .thenReturn(true);
+        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
+                .thenReturn(new PolicyError("someError"));
+        when(userModel.getRequiredActionsStream())
+                .thenReturn(Stream.of(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
+
+        legacyProvider.isValid(realmModel, userModel, input);
+
+        verify(userModel, never()).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+    }
+
+    @Test
+    void shouldSupportPasswordCredentialType() {
         assertTrue(legacyProvider.supportsCredentialType(PasswordCredentialModel.TYPE));
     }
 
@@ -218,7 +286,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void removeFederationLinkWhenCredentialUpdates() {
+    void shouldRemoveFederationLinkWhenCredentialUpdates() {
         var input = mock(CredentialInput.class);
         when(userModel.getFederationLink())
                 .thenReturn("someId");
@@ -230,7 +298,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void doNotRemoveFederationLinkWhenBlankAndCredentialUpdates() {
+    void shouldNotRemoveFederationLinkWhenBlankAndCredentialUpdates() {
         var input = mock(CredentialInput.class);
         when(userModel.getFederationLink())
                 .thenReturn(" ");
@@ -242,7 +310,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void doNotRemoveFederationLinkWhenNullAndCredentialUpdates() {
+    void shouldNotRemoveFederationLinkWhenNullAndCredentialUpdates() {
         var input = mock(CredentialInput.class);
         when(userModel.getFederationLink())
                 .thenReturn(null);
@@ -254,19 +322,19 @@ class LegacyProviderTest {
     }
 
     @Test
-    void disableCredentialTypeDoesNothing() {
+    void disableCredentialTypeShouldDoNothing() {
         legacyProvider.disableCredentialType(realmModel, userModel, "someType");
         Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
     }
 
     @Test
-    void closeDoesNothing() {
+    void closeShouldDoNothing() {
         legacyProvider.close();
         Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
     }
 
     @Test
-    void getDisableableCredentialTypesAlwaysReturnsEmptySet() {
+    void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
         assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypes(realmModel, userModel));
     }
 }

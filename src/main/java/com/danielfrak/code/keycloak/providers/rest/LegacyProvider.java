@@ -12,6 +12,8 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.policy.PasswordPolicyManagerProvider;
+import org.keycloak.policy.PolicyError;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
 
@@ -69,18 +71,47 @@ public class LegacyProvider implements UserStorageProvider,
         }
 
         var userIdentifier = getUserIdentifier(userModel);
-        if (legacyUserService.isPasswordValid(userIdentifier, input.getChallengeResponse())) {
-            session.userCredentialManager().updateCredential(realmModel, userModel, input);
-            return true;
+
+        if (!legacyUserService.isPasswordValid(userIdentifier, input.getChallengeResponse())) {
+            return false;
         }
 
-        return false;
+        if (passwordDoesNotBreakPolicy(realmModel, userModel, input.getChallengeResponse())) {
+            session.userCredentialManager().updateCredential(realmModel, userModel, input);
+        } else {
+            addUpdatePasswordAction(userModel, userIdentifier);
+        }
+
+        return true;
     }
 
     private String getUserIdentifier(UserModel userModel) {
         var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION);
         var useUserId = Boolean.parseBoolean(userIdConfig);
         return useUserId ? userModel.getId() : userModel.getUsername();
+    }
+
+    private boolean passwordDoesNotBreakPolicy(RealmModel realmModel, UserModel userModel, String password) {
+        PasswordPolicyManagerProvider passwordPolicyManagerProvider = session.getProvider(
+                PasswordPolicyManagerProvider.class);
+        PolicyError error = passwordPolicyManagerProvider
+                .validate(realmModel, userModel, password);
+
+        return error == null;
+    }
+
+    private void addUpdatePasswordAction(UserModel userModel, String userIdentifier) {
+        if (updatePasswordActionMissing(userModel)) {
+            LOG.infof("Could not use legacy password for user %s due to password policy." +
+                            " Adding UPDATE_PASSWORD action.",
+                    userIdentifier);
+            userModel.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+        }
+    }
+
+    private boolean updatePasswordActionMissing(UserModel userModel) {
+        return userModel.getRequiredActionsStream()
+                .noneMatch(s -> s.contains(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
     }
 
     @Override
@@ -105,11 +136,16 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
+        severFederationLink(user);
+        return false;
+    }
+
+    private void severFederationLink(UserModel user) {
+        LOG.info("Severing federation link for " + user.getUsername());
         String link = user.getFederationLink();
         if (link != null && !link.isBlank()) {
             user.setFederationLink(null);
         }
-        return false;
     }
 
     @Override
