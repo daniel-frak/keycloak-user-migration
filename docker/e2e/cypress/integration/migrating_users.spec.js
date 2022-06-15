@@ -127,7 +127,11 @@ describe('user migration plugin', () => {
 
     beforeEach(() => {
         deleteEmails();
-        deleteTestUserIfExists();
+        signInAsAdmin();
+        deleteTestUserIfExists().then(() => {
+            deletePasswordPoliciesIfExist()
+                .then(() => signOutViaUI());
+        });
     });
 
     function deleteEmails() {
@@ -137,23 +141,59 @@ describe('user migration plugin', () => {
     }
 
     function deleteTestUserIfExists() {
-        signInAsAdmin();
+        cy.log("Deleting test user...");
         cy.visit('/admin/master/console/#/realms/master/users');
-        cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
-        cy.get('#viewAllUsers').click();
-        cy.wait('@userGet');
+        getAllUsers();
 
-        cy.get('body').then($body => {
-            if ($body.find('td:contains("' + LEGACY_USER_EMAIL + '")').length > 0) {
-                cy.contains(LEGACY_USER_EMAIL).parent().contains('Delete').click();
-                cy.get('.modal-dialog button').contains('Delete').click();
-                cy.get('.alert').should('contain', "Success");
+        return cy.get('td').contains(LEGACY_USER_EMAIL)
+            .should('have.length.gte', 0).then(userElement => {
+            if (!userElement.length) {
+                return;
             }
-            signOutViaUI();
+
+            cy.intercept('DELETE', '/admin/realms/master/users/**').as("userDelete");
+            cy.wrap(userElement).parent().contains('Delete').click();
+            cy.get('.modal-dialog button').contains('Delete').click();
+            cy.wait('@userDelete');
+            cy.get('.alert').should('contain', "Success");
         });
     }
 
-    it('should migrate users', () => {
+    function getAllUsers() {
+        cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
+        cy.get('#viewAllUsers').click();
+        cy.wait('@userGet');
+        cy.wait(1000);
+    }
+
+    function deletePasswordPoliciesIfExist() {
+        goToPasswordPoliciesPage();
+        return deleteEveryPasswordPolicyAndSave();
+    }
+
+    function deleteEveryPasswordPolicyAndSave() {
+        cy.log("Deleting password policies...");
+        return cy.get('td[ng-click*="removePolicy"]')
+            .should('have.length.gte', 0).then(btn => {
+            if (!btn.length) {
+                return;
+            }
+            cy.wrap(btn).click({multiple: true});
+
+            cy.intercept('GET', '/admin/realms/master').as("masterPut");
+            cy.get('button').contains('Save').click();
+            cy.wait('@masterPut');
+        });
+    }
+
+    function goToPasswordPoliciesPage() {
+        cy.intercept('GET', '/admin/realms/master').as("masterGet");
+        cy.visit('/admin/master/console/#/realms/master/authentication/password-policy');
+        cy.wait('@masterGet');
+        cy.get("h1").should('contain', 'Authentication');
+    }
+
+    it('should migrate user', () => {
         signInAsLegacyUser();
         updateAccountInformation();
         assertIsLoggedInAsLegacyUser();
@@ -237,4 +277,29 @@ describe('user migration plugin', () => {
         triggerPasswordReset();
         resetPasswordViaEmail()
     });
+
+    it('should migrate user when password breaks policy', () => {
+        signInAsAdmin();
+        addSpecialCharactersPasswordPolicy();
+        signOutViaUI();
+
+        signInAsLegacyUser();
+        provideNewPassword();
+        updateAccountInformation();
+        assertIsLoggedInAsLegacyUser();
+    });
+
+    function addSpecialCharactersPasswordPolicy() {
+        cy.visit('/admin/master/console/#/realms/master/authentication/password-policy');
+        let policyDropdownSelector = 'select[ng-model="selectedPolicy"]';
+        cy.get(policyDropdownSelector).select('Special Characters');
+        cy.get('button').contains('Save').click();
+        cy.get('.alert').should('contain', "Your changes have been saved to the realm");
+    }
+
+    function provideNewPassword() {
+        cy.get('#password-new').type("pa$$word");
+        cy.get('#password-confirm').type("pa$$word");
+        cy.get("input").contains("Submit").click();
+    }
 });

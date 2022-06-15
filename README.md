@@ -163,7 +163,7 @@ The following example uses the default `master` realm but the demo will also wor
 1. Run `mvn clean package` in the repository root
 2. Navigate to `./docker`
 3. Execute `docker-compose up`
-4. Open [http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/) in a browser
+4. Open [http://localhost:8024/admin/](http://localhost:8024/admin/) in a browser
 5. Log in with the credentials:
 
 * User: `admin`
@@ -195,7 +195,7 @@ them automatically.
 
 ![Sign out from admin account](readme-images/sign-out-from-admin.png)
 
-2. Go to the [http://localhost:8024/auth/realms/master/account](http://localhost:8024/auth/realms/master/account) URI.
+2. Go to the [http://localhost:8024/realms/master/account](http://localhost:8024/realms/master/account) URI.
    Click the `Sign in` button to login as an example user:
 
 ![Welcome to Keycloak account](readme-images/welcome-to-keycloak-account.png)
@@ -216,7 +216,7 @@ Setting `requiredActions`, `groups`, `attributes` or `roles` is completely optio
 legacy system for illustration purposes only.
 
 4. The example user is successfully migrated. Log in again as admin
-   ([http://localhost:8024/auth/admin/](http://localhost:8024/auth/admin/)) and navigate to `Users` to verify the
+   ([http://localhost:8024/admin/](http://localhost:8024/admin/)) and navigate to `Users` to verify the
    results:
 
 ![Realm user list](readme-images/realm-user-list.png)
