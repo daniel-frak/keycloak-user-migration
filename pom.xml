@@ -10,7 +10,7 @@
     <properties>
         <java.version>11</java.version>
         <keycloak.version>19.0.1</keycloak.version>
-        <mockito.version>3.9.0</mockito.version>
+        <mockito.version>4.6.1</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -66,7 +66,7 @@
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>3.4.1.Final</version>
+            <version>3.5.0.Final</version>
             <scope>provided</scope>
         </dependency>
 
@@ -74,7 +74,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.7.1</version>
+            <version>5.9.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -82,7 +82,7 @@
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-engine</artifactId>
-            <version>1.7.1</version>
+            <version>1.9.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -105,7 +105,7 @@
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>mockwebserver</artifactId>
-            <version>4.9.3</version>
+            <version>4.10.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -120,7 +120,7 @@
         <dependency>
             <groupId>nl.jqno.equalsverifier</groupId>
             <artifactId>equalsverifier</artifactId>
-            <version>3.10</version>
+            <version>3.10.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
