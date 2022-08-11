@@ -77,7 +77,7 @@ public class LegacyProvider implements UserStorageProvider,
         }
 
         if (passwordDoesNotBreakPolicy(realmModel, userModel, input.getChallengeResponse())) {
-            session.userCredentialManager().updateCredential(realmModel, userModel, input);
+            userModel.credentialManager().updateCredential(input);
         } else {
             addUpdatePasswordAction(userModel, userIdentifier);
         }

@@ -12,6 +12,7 @@ import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
+import org.keycloak.models.SubjectCredentialManager;
 import org.keycloak.models.UserCredentialManager;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
@@ -152,7 +153,7 @@ class LegacyProviderTest {
 
     @Test
     void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidated() {
-        var userCredentialManager = mock(UserCredentialManager.class);
+        var userCredentialManager = mock(SubjectCredentialManager.class);
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
@@ -171,18 +172,18 @@ class LegacyProviderTest {
         when(legacyUserService.isPasswordValid(username, password))
                 .thenReturn(true);
 
-        when(session.userCredentialManager())
+        when(userModel.credentialManager())
                 .thenReturn(userCredentialManager);
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userCredentialManager).updateCredential(realmModel, userModel, input);
+        verify(userCredentialManager).updateCredential(input);
     }
 
     @Test
     void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidatedWithUserId() {
-        var userCredentialManager = mock(UserCredentialManager.class);
+        var subjectCredentialManager = mock(SubjectCredentialManager.class);
         var input = mock(CredentialInput.class);
         when(input.getType())
                 .thenReturn(PasswordCredentialModel.TYPE);
@@ -201,13 +202,15 @@ class LegacyProviderTest {
         when(legacyUserService.isPasswordValid(userId, password))
                 .thenReturn(true);
 
-        when(session.userCredentialManager())
-                .thenReturn(userCredentialManager);
+
+        when(userModel.credentialManager())
+                .thenReturn(subjectCredentialManager);
+
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userCredentialManager).updateCredential(realmModel, userModel, input);
+        verify(subjectCredentialManager).updateCredential(input);
     }
 
     @Test
@@ -235,7 +238,7 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(session, never()).userCredentialManager();
+        verify(userModel, never()).credentialManager();
         verify(userModel).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
     }
 
