@@ -57,9 +57,9 @@ public class UserModelFactory {
 
         UserModel userModel;
         if (isEmpty(legacyUser.getId())) {
-            userModel = session.userLocalStorage().addUser(realm, legacyUser.getUsername());
+            userModel = session.users().addUser(realm, legacyUser.getUsername());
         } else {
-            userModel = session.userLocalStorage().addUser(
+            userModel = session.users().addUser(
                     realm,
                     legacyUser.getId(),
                     legacyUser.getUsername(),
