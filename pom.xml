@@ -9,7 +9,7 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>11</java.version>
-        <keycloak.version>18.0.0</keycloak.version>
+        <keycloak.version>19.0.1</keycloak.version>
         <mockito.version>3.9.0</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
@@ -50,6 +50,14 @@
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-server-spi-private</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-model-legacy-->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-model-legacy</artifactId>
             <version>${keycloak.version}</version>
             <scope>provided</scope>
         </dependency>
