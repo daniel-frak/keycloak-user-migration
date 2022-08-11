@@ -45,13 +45,12 @@ describe('user migration plugin', () => {
      */
     function setAdminV1Theme() {
         cy.visit('/admin/master/console/#/master/realm-settings/themes');
-        // click id=kc-admin-console-theme
+        // Set Admin console theme to "keycloak"
         cy.get('#kc-admin-console-theme').click();
-        // click button keycloak
         cy.get('[aria-label="adminConsoleTheme"]').get('button[role="option"]').contains('keycloak').click();
-        // click safe class =? "pf-c-button pf-m-primary"
+        // Save config
         cy.get('button').contains('Save').click();
-        // logout
+        // Logout
         cy.get('#user-dropdown').click();
         // click a TAG Sign out
         cy.get('a').contains('Sign out').click();
@@ -110,8 +109,29 @@ describe('user migration plugin', () => {
     }
 
     function configureEmails() {
+        writeAdminPersonalInfo();
         configureAdminPersonalInfo();
         configureSmtpSettings();
+    }
+
+    /**
+     * Write Admin user info first, so it becomes visible in account console.
+     */
+    function writeAdminPersonalInfo() {
+        cy.visit('/admin/master/console/#/realms/master/users');
+        getAllUsers();
+        cy.get('td').contains(ADMIN_USERNAME)
+            .should('have.length.gte', 0).then(userElement => {
+            if (!userElement.length) {
+                return;
+            }
+            cy.wrap(userElement).parent().contains('Edit').click();
+            cy.get('#email').clear().type(ADMIN_EMAIL);
+            cy.get('#firstName').clear().type(ADMIN_USERNAME);
+            cy.get('#lastName').clear().type(ADMIN_USERNAME);
+            cy.get('form[name="userForm"]').get('button[type="submit"]').contains('Save').click({force: true});
+        });
+
     }
 
     function configureAdminPersonalInfo() {
@@ -129,7 +149,7 @@ describe('user migration plugin', () => {
 
         cy.get('button').contains('Save').click();
 
-        cy.get('.pf-c-alert').should('contain', "Your account has been updated");
+        cy.get('.pf-c-alert__title').should('contain', "Your account has been updated");
     }
 
     function configureSmtpSettings() {
