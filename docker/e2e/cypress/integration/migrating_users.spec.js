@@ -27,6 +27,8 @@ describe('user migration plugin', () => {
 
     before(() => {
         signInAsAdmin();
+        setAdminV1Theme();
+        signInAsAdmin();
         configureLoginSettings();
         configureMigrationPlugin();
         configureEmails();
@@ -37,6 +39,24 @@ describe('user migration plugin', () => {
         cy.visit('/admin');
         submitCredentials(ADMIN_USERNAME, ADMIN_PASSWORD);
     }
+
+    /**
+     * Configures v1 admin theme, because User Federation plugin config does not work with v2 yet.
+     */
+    function setAdminV1Theme() {
+        cy.visit('/admin/master/console/#/master/realm-settings/themes');
+        // click id=kc-admin-console-theme
+        cy.get('#kc-admin-console-theme').click();
+        // click button keycloak
+        cy.get('[aria-label="adminConsoleTheme"]').get('button[role="option"]').contains('keycloak').click();
+        // click safe class =? "pf-c-button pf-m-primary"
+        cy.get('button').contains('Save').click();
+        // logout
+        cy.get('#user-dropdown').click();
+        // click a TAG Sign out
+        cy.get('a').contains('Sign out').click();
+    }
+
 
     function submitCredentials(user, password) {
         cy.get('#username').type(user);
@@ -147,16 +167,16 @@ describe('user migration plugin', () => {
 
         return cy.get('td').contains(LEGACY_USER_EMAIL)
             .should('have.length.gte', 0).then(userElement => {
-            if (!userElement.length) {
-                return;
-            }
+                if (!userElement.length) {
+                    return;
+                }
 
-            cy.intercept('DELETE', '/admin/realms/master/users/**').as("userDelete");
-            cy.wrap(userElement).parent().contains('Delete').click();
-            cy.get('.modal-dialog button').contains('Delete').click();
-            cy.wait('@userDelete');
-            cy.get('.alert').should('contain', "Success");
-        });
+                cy.intercept('DELETE', '/admin/realms/master/users/**').as("userDelete");
+                cy.wrap(userElement).parent().contains('Delete').click();
+                cy.get('.modal-dialog button').contains('Delete').click();
+                cy.wait('@userDelete');
+                cy.get('.alert').should('contain', "Success");
+            });
     }
 
     function getAllUsers() {
@@ -175,15 +195,15 @@ describe('user migration plugin', () => {
         cy.log("Deleting password policies...");
         return cy.get('td[ng-click*="removePolicy"]')
             .should('have.length.gte', 0).then(btn => {
-            if (!btn.length) {
-                return;
-            }
-            cy.wrap(btn).click({multiple: true});
+                if (!btn.length) {
+                    return;
+                }
+                cy.wrap(btn).click({multiple: true});
 
-            cy.intercept('GET', '/admin/realms/master').as("masterPut");
-            cy.get('button').contains('Save').click();
-            cy.wait('@masterPut');
-        });
+                cy.intercept('GET', '/admin/realms/master').as("masterPut");
+                cy.get('button').contains('Save').click();
+                cy.wait('@masterPut');
+            });
     }
 
     function goToPasswordPoliciesPage() {
