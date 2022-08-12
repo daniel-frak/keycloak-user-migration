@@ -27,8 +27,6 @@ describe('user migration plugin', () => {
 
     before(() => {
         signInAsAdmin();
-        setAdminV1Theme();
-        signInAsAdmin();
         configureLoginSettings();
         configureMigrationPlugin();
         configureEmails();
@@ -39,23 +37,6 @@ describe('user migration plugin', () => {
         cy.visit('/admin');
         submitCredentials(ADMIN_USERNAME, ADMIN_PASSWORD);
     }
-
-    /**
-     * Configures v1 admin theme, because User Federation plugin config does not work with v2 yet.
-     */
-    function setAdminV1Theme() {
-        cy.visit('/admin/master/console/#/master/realm-settings/themes');
-        // Set Admin console theme to "keycloak"
-        cy.get('#kc-admin-console-theme').click();
-        cy.get('[aria-label="adminConsoleTheme"]').get('button[role="option"]').contains('keycloak').click();
-        // Save config
-        cy.get('button').contains('Save').click();
-        // Logout
-        cy.get('#user-dropdown').click();
-        // click a TAG Sign out
-        cy.get('a').contains('Sign out').click();
-    }
-
 
     function submitCredentials(user, password) {
         cy.get('#username').type(user);
@@ -116,6 +97,7 @@ describe('user migration plugin', () => {
 
     /**
      * Write Admin user info first, so it becomes visible in account console.
+     * If fields are not populated here, the will not be visible in user account (KC Bug??)
      */
     function writeAdminPersonalInfo() {
         cy.visit('/admin/master/console/#/realms/master/users');
@@ -201,7 +183,7 @@ describe('user migration plugin', () => {
 
     function getAllUsers() {
         cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
-        cy.get('#viewAllUsers').click();
+        cy.get('#viewAllUsers', { timeout: 10000 }).click();
         cy.wait('@userGet');
         cy.wait(1000);
     }
