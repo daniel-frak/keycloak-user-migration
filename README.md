@@ -29,6 +29,15 @@ https://codesoapbox.dev/keycloak-user-migration
 | 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)   |
 | 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)   |
 
+## Keycloak 19+ compatibility notice
+Keycloak 19 introduced the new React based admin console `keycloak.v2` as default. 
+Since this theme apparently still lacks support for custom configuration properties,
+you will need to use the old admin console `keycloak` (configurable under `Realm Settings -> Themes`) to configure this plugin.
+More details on the new admin console and how to disable it are available 
+at the Keycloak [Migration Guide](https://www.keycloak.org/docs/latest/upgrading/index.html#new-admin-console-is-now-the-default-console).
+
+A corresponding [issue](https://github.com/keycloak/keycloak/issues/13753) has been submitted on GitHub.
+
 ## Prerequisites - REST endpoints in the legacy system
 
 You must provide two REST endpoints (GET and POST) in your legacy authentication system under the
