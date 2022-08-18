@@ -41,7 +41,10 @@ describe('user migration plugin', () => {
     function submitCredentials(user, password) {
         cy.get('#username').type(user);
         cy.get('#password').type(password);
+        cy.intercept('POST', 'http://localhost:8024/realms/master/login-actions/authenticate*')
+            .as("loginSubmit");
         cy.get('#kc-login').click();
+        cy.wait("@loginSubmit");
     }
 
     function signOutViaUI() {
@@ -100,7 +103,10 @@ describe('user migration plugin', () => {
      * If fields are not populated here, the will not be visible in user account (KC Bug??)
      */
     function writeAdminPersonalInfo() {
+        cy.intercept('GET', '/resources/**/admin/keycloak/partials/user-list.html')
+            .as("userList");
         cy.visit('/admin/master/console/#/realms/master/users');
+        cy.wait('@userList');
         getAllUsers();
         cy.get('td').contains(ADMIN_USERNAME)
             .should('have.length.gte', 0).then(userElement => {
@@ -164,7 +170,10 @@ describe('user migration plugin', () => {
 
     function deleteTestUserIfExists() {
         cy.log("Deleting test user...");
+        cy.intercept('GET', '/resources/**/admin/keycloak/partials/user-list.html')
+            .as("userList");
         cy.visit('/admin/master/console/#/realms/master/users');
+        cy.wait('@userList');
         getAllUsers();
 
         return cy.get('td').contains(LEGACY_USER_EMAIL)

@@ -36,7 +36,7 @@ you will need to use the old admin console `keycloak` (configurable under `Realm
 More details on the new admin console and how to disable it are available 
 at the Keycloak [Migration Guide](https://www.keycloak.org/docs/latest/upgrading/index.html#new-admin-console-is-now-the-default-console).
 
-A corresponding [issue](https://github.com/keycloak/keycloak/issues/13753) has been submitted on GitHub.
+A corresponding [issue](https://github.com/keycloak/keycloak-ui/issues/2989) has been submitted on GitHub.
 
 ## Prerequisites - REST endpoints in the legacy system
 
