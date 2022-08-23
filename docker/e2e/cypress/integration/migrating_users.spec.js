@@ -72,6 +72,7 @@ describe('user migration plugin', () => {
                     cy.get('input').clear().type(LEGACY_SYSTEM_URL);
                 });
                 cy.get('button').filter(':visible').contains('Save').click();
+                cy.url().should('match', /.*\/User%20migration%20using%20a%20REST%20client\/.+/);
             });
     }
 
@@ -192,7 +193,7 @@ describe('user migration plugin', () => {
 
     function getAllUsers() {
         cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
-        cy.get('#viewAllUsers', { timeout: 10000 }).click();
+        cy.get('#viewAllUsers', {timeout: 10000}).click();
         cy.wait('@userGet');
         cy.wait(1000);
     }
