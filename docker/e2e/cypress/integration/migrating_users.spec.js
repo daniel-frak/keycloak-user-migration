@@ -41,7 +41,10 @@ describe('user migration plugin', () => {
     function submitCredentials(user, password) {
         cy.get('#username').type(user);
         cy.get('#password').type(password);
+        cy.intercept('POST', 'http://localhost:8024/realms/master/login-actions/authenticate*')
+            .as("loginSubmit");
         cy.get('#kc-login').click();
+        cy.wait("@loginSubmit");
     }
 
     function signOutViaUI() {
@@ -69,6 +72,7 @@ describe('user migration plugin', () => {
                     cy.get('input').clear().type(LEGACY_SYSTEM_URL);
                 });
                 cy.get('button').filter(':visible').contains('Save').click();
+                cy.url().should('match', /.*\/User%20migration%20using%20a%20REST%20client\/.+/);
             });
     }
 
@@ -90,8 +94,33 @@ describe('user migration plugin', () => {
     }
 
     function configureEmails() {
+        writeAdminPersonalInfo();
         configureAdminPersonalInfo();
         configureSmtpSettings();
+    }
+
+    /**
+     * Write Admin user info first, so it becomes visible in account console.
+     * If fields are not populated here, the will not be visible in user account (KC Bug??)
+     */
+    function writeAdminPersonalInfo() {
+        cy.intercept('GET', '/resources/**/admin/keycloak/partials/user-list.html')
+            .as("userList");
+        cy.visit('/admin/master/console/#/realms/master/users');
+        cy.wait('@userList');
+        getAllUsers();
+        cy.get('td').contains(ADMIN_USERNAME)
+            .should('have.length.gte', 0).then(userElement => {
+            if (!userElement.length) {
+                return;
+            }
+            cy.wrap(userElement).parent().contains('Edit').click();
+            cy.get('#email').clear().type(ADMIN_EMAIL);
+            cy.get('#firstName').clear().type(ADMIN_USERNAME);
+            cy.get('#lastName').clear().type(ADMIN_USERNAME);
+            cy.get('form[name="userForm"]').get('button[type="submit"]').contains('Save').click({force: true});
+        });
+
     }
 
     function configureAdminPersonalInfo() {
@@ -109,7 +138,7 @@ describe('user migration plugin', () => {
 
         cy.get('button').contains('Save').click();
 
-        cy.get('.pf-c-alert').should('contain', "Your account has been updated");
+        cy.get('.pf-c-alert__title').should('contain', "Your account has been updated");
     }
 
     function configureSmtpSettings() {
@@ -142,26 +171,29 @@ describe('user migration plugin', () => {
 
     function deleteTestUserIfExists() {
         cy.log("Deleting test user...");
+        cy.intercept('GET', '/resources/**/admin/keycloak/partials/user-list.html')
+            .as("userList");
         cy.visit('/admin/master/console/#/realms/master/users');
+        cy.wait('@userList');
         getAllUsers();
 
         return cy.get('td').contains(LEGACY_USER_EMAIL)
             .should('have.length.gte', 0).then(userElement => {
-            if (!userElement.length) {
-                return;
-            }
+                if (!userElement.length) {
+                    return;
+                }
 
-            cy.intercept('DELETE', '/admin/realms/master/users/**').as("userDelete");
-            cy.wrap(userElement).parent().contains('Delete').click();
-            cy.get('.modal-dialog button').contains('Delete').click();
-            cy.wait('@userDelete');
-            cy.get('.alert').should('contain', "Success");
-        });
+                cy.intercept('DELETE', '/admin/realms/master/users/**').as("userDelete");
+                cy.wrap(userElement).parent().contains('Delete').click();
+                cy.get('.modal-dialog button').contains('Delete').click();
+                cy.wait('@userDelete');
+                cy.get('.alert').should('contain', "Success");
+            });
     }
 
     function getAllUsers() {
         cy.intercept('GET', '/admin/realms/master/users*').as("userGet");
-        cy.get('#viewAllUsers').click();
+        cy.get('#viewAllUsers', {timeout: 10000}).click();
         cy.wait('@userGet');
         cy.wait(1000);
     }
@@ -175,15 +207,15 @@ describe('user migration plugin', () => {
         cy.log("Deleting password policies...");
         return cy.get('td[ng-click*="removePolicy"]')
             .should('have.length.gte', 0).then(btn => {
-            if (!btn.length) {
-                return;
-            }
-            cy.wrap(btn).click({multiple: true});
+                if (!btn.length) {
+                    return;
+                }
+                cy.wrap(btn).click({multiple: true});
 
-            cy.intercept('GET', '/admin/realms/master').as("masterPut");
-            cy.get('button').contains('Save').click();
-            cy.wait('@masterPut');
-        });
+                cy.intercept('GET', '/admin/realms/master').as("masterPut");
+                cy.get('button').contains('Save').click();
+                cy.wait('@masterPut');
+            });
     }
 
     function goToPasswordPoliciesPage() {

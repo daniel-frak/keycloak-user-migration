@@ -55,7 +55,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -88,7 +88,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel("wrong_username"));
@@ -103,7 +103,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -128,7 +128,7 @@ class UserModelFactoryTest {
         final LegacyUser legacyUser = createLegacyUser(username, id);
         final TestUserModel testUserModel = new TestUserModel(username, id);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, legacyUser.getId(), username, true, false))
                 .thenReturn(testUserModel);
@@ -146,7 +146,7 @@ class UserModelFactoryTest {
         final String username = "user";
         final RoleModel newRoleModel = mock(RoleModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -171,7 +171,7 @@ class UserModelFactoryTest {
         final String username = "user";
         final GroupModel newGroupModel = mock(GroupModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -195,7 +195,7 @@ class UserModelFactoryTest {
         final RoleModel newRoleModel = mock(RoleModel.class);
         final RoleModel anotherRoleModel = mock(RoleModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -227,7 +227,7 @@ class UserModelFactoryTest {
         final ClientModel clientModel1 = mock(ClientModel.class);
         final ClientModel clientModel2 = mock(ClientModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -269,7 +269,7 @@ class UserModelFactoryTest {
         final ClientModel clientModel1 = mock(ClientModel.class);
         final ClientModel clientModel2 = mock(ClientModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -307,7 +307,7 @@ class UserModelFactoryTest {
         var nonPresentRoleName = "thisRoleDoesntYetExistInRealm";
         var roleModel = mock(RoleModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -331,7 +331,7 @@ class UserModelFactoryTest {
         final GroupModel newGroupModel = mock(GroupModel.class);
         final GroupModel anotherGroupModel = mock(GroupModel.class);
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -359,7 +359,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final GroupModel newGroupModel = mock(GroupModel.class);
 
-        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(session.users()).thenReturn(userProvider);
         when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
         when(realm.getGroupsStream()).then(i -> Stream.of(newGroupModel));
         when(newGroupModel.getName()).thenReturn(groupName);
@@ -380,7 +380,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(session.users()).thenReturn(userProvider);
         when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
 
         LegacyUser legacyUser = createLegacyUser(username);
@@ -401,7 +401,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage()).thenReturn(userProvider);
+        when(session.users()).thenReturn(userProvider);
         when(userProvider.addUser(realm, username)).thenReturn(new TestUserModel(username));
 
         LegacyUser legacyUser = createLegacyUser(username);
@@ -421,7 +421,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -439,7 +439,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
@@ -456,7 +456,7 @@ class UserModelFactoryTest {
         final RealmModel realm = mock(RealmModel.class);
         final String username = "user";
 
-        when(session.userLocalStorage())
+        when(session.users())
                 .thenReturn(userProvider);
         when(userProvider.addUser(realm, username))
                 .thenReturn(new TestUserModel(username));
