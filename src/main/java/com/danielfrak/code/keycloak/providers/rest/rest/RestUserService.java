@@ -2,76 +2,95 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
-import org.jboss.resteasy.client.jaxrs.BasicAuthentication;
-import org.jboss.resteasy.client.jaxrs.ResteasyWebTarget;
+import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderException;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpStatus;
 import org.keycloak.component.ComponentModel;
 
-import javax.ws.rs.client.Client;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.Locale;
 import java.util.Optional;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 
 public class RestUserService implements LegacyUserService {
 
-    private final RestUserClient client;
+    private final String uri;
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
 
-    public RestUserService(ComponentModel model, Client restEasyClient) {
-        String uri = model.getConfig().getFirst(URI_PROPERTY);
-        var tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
-        if (tokenAuthEnabled) {
-            String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
-            registerBearerTokenRequestFilter(restEasyClient, token);
-        }
-        var basicAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY));
+    public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
+        this.httpClient = httpClient;
+        this.uri = model.getConfig().getFirst(URI_PROPERTY);
+        this.objectMapper = objectMapper;
+
+        configureBasicAuth(model, httpClient);
+        configureBearerTokenAuth(model, httpClient);
+    }
+
+    private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
+        var basicAuthConfig = model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY);
+        var basicAuthEnabled = Boolean.parseBoolean(basicAuthConfig);
         if (basicAuthEnabled) {
             String basicAuthUser = model.getConfig().getFirst(API_HTTP_BASIC_USERNAME_PROPERTY);
             String basicAuthPassword = model.getConfig().getFirst(API_HTTP_BASIC_PASSWORD_PROPERTY);
-            registerBasicAuthFilter(restEasyClient, basicAuthUser, basicAuthPassword);
+            httpClient.enableBasicAuth(basicAuthUser, basicAuthPassword);
         }
-        this.client = buildClient(restEasyClient, uri);
     }
 
-    private Client registerBasicAuthFilter(Client restEasyClient, String basicAuthUser, String basicAuthPassword) {
-        if (basicAuthUser != null
-                && !basicAuthUser.isEmpty()
-                && basicAuthPassword != null
-                && !basicAuthPassword.isEmpty()) {
-            restEasyClient.register(new BasicAuthentication(basicAuthUser, basicAuthPassword));
+    private void configureBearerTokenAuth(ComponentModel model, HttpClient httpClient) {
+        var tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
+        if (tokenAuthEnabled) {
+            String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
+            httpClient.enableBearerTokenAuth(token);
         }
-        return restEasyClient;
-    }
-
-    private Client registerBearerTokenRequestFilter(Client restEasyClient, String token) {
-        if (token != null && !token.isEmpty()) {
-            restEasyClient.register(new BearerTokenRequestFilter(token));
-        }
-        return restEasyClient;
-    }
-
-    private RestUserClient buildClient(Client restEasyClient, String uri) {
-
-        ResteasyWebTarget target = (ResteasyWebTarget) restEasyClient.target(uri);
-        return target.proxy(RestUserClient.class);
     }
 
     @Override
     public Optional<LegacyUser> findByEmail(String email) {
-        return findByUsername(email);
+        return findLegacyUser(email)
+                .filter(u -> equalsCaseInsensitive(email, u.getEmail()));
+    }
+
+    private boolean equalsCaseInsensitive(String a, String b) {
+        if(a == null || b == null) {
+            return false;
+        }
+
+        return a.toUpperCase(Locale.ROOT).equals(b.toUpperCase(Locale.ROOT));
     }
 
     @Override
     public Optional<LegacyUser> findByUsername(String username) {
-        final Response response = client.findByUsername(username);
-        if (response.getStatus() != 200) {
-            return Optional.empty();
+        return findLegacyUser(username)
+                .filter(u -> equalsCaseInsensitive(username, u.getUsername()));
+    }
+
+    private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
+        var getUsernameUri = String.format("%s/%s", this.uri, usernameOrEmail);
+        try {
+            var response = this.httpClient.get(getUsernameUri);
+            if (response.getCode() != HttpStatus.SC_OK) {
+                return Optional.empty();
+            }
+            var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
+            return Optional.ofNullable(legacyUser);
+        } catch (RuntimeException|IOException e) {
+            throw new RestUserProviderException(e);
         }
-        return Optional.ofNullable(response.readEntity(LegacyUser.class));
     }
 
     @Override
     public boolean isPasswordValid(String username, String password) {
-        final Response response = client.validatePassword(username, new UserPasswordDto(password));
-        return response.getStatus() == 200;
+        var passwordValidationUri = String.format("%s/%s", this.uri, username);
+        var dto = new UserPasswordDto(password);
+        try {
+            var json = objectMapper.writeValueAsString(dto);
+            var response = httpClient.post(passwordValidationUri, json);
+            return response.getCode() == HttpStatus.SC_OK;
+        } catch (IOException e) {
+            throw new RestUserProviderException(e);
+        }
     }
 }

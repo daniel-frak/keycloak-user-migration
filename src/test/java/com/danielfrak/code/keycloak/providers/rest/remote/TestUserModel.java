@@ -3,6 +3,7 @@ package com.danielfrak.code.keycloak.providers.rest.remote;
 import org.keycloak.models.ClientModel;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.RoleModel;
+import org.keycloak.models.SubjectCredentialManager;
 import org.keycloak.models.UserModel;
 
 import java.util.*;
@@ -172,6 +173,11 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void setServiceAccountClientLink(String clientInternalId) {
+        throw new RuntimeException("Not implemented");
+    }
+
+    @Override
+    public SubjectCredentialManager credentialManager() {
         throw new RuntimeException("Not implemented");
     }
 

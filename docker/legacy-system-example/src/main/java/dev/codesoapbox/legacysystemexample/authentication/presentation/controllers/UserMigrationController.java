@@ -24,25 +24,25 @@ public class UserMigrationController {
         this.migrationService = migrationService;
     }
 
-    @GetMapping("/{username}")
+    @GetMapping("/{usernameOrEmail}")
     @Operation(summary = "Returns data required for migrating a user to Keycloak")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User was found"),
             @ApiResponse(responseCode = "400", description = "User could not be found")})
-    public ResponseEntity<UserMigrationDetails> getMigrationDetails(@PathVariable String username) {
-        return migrationService.getMigrationDetails(username)
+    public ResponseEntity<UserMigrationDetails> getMigrationDetails(@PathVariable String usernameOrEmail) {
+        return migrationService.getMigrationDetails(usernameOrEmail)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
     }
 
-    @PostMapping("/{username}")
+    @PostMapping("/{usernameOrEmail}")
     @Operation(summary = "Verifies password for given username")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Password is correct"),
             @ApiResponse(responseCode = "400", description = "Invalid password")})
-    public ResponseEntity<?> verifyPassword(@PathVariable String username,
+    public ResponseEntity<?> verifyPassword(@PathVariable String usernameOrEmail,
                                             @RequestBody UserValidationDetails userValidationDetails) {
-        return migrationService.passwordIsCorrect(username, userValidationDetails.getPassword())
+        return migrationService.passwordIsCorrect(usernameOrEmail, userValidationDetails.getPassword())
                 ? ResponseEntity.ok().build()
                 : ResponseEntity.badRequest().build();
     }

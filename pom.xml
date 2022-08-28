@@ -9,15 +9,14 @@
     <version>1.0-SNAPSHOT</version>
     <properties>
         <java.version>11</java.version>
-        <keycloak.version>16.1.1</keycloak.version>
-        <resteasy.version>3.15.1.Final</resteasy.version>
-        <mockito.version>3.9.0</mockito.version>
+        <keycloak.version>19.0.1</keycloak.version>
+        <mockito.version>4.6.1</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <jacoco.version>0.8.5</jacoco.version>
+        <jacoco.version>0.8.8</jacoco.version>
     </properties>
 
     <dependencyManagement>
@@ -47,11 +46,27 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-server-spi-private -->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-server-spi-private</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-model-legacy-->
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-model-legacy</artifactId>
+            <version>${keycloak.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.jboss.logging/jboss-logging -->
         <dependency>
             <groupId>org.jboss.logging</groupId>
             <artifactId>jboss-logging</artifactId>
-            <version>3.4.1.Final</version>
+            <version>3.5.0.Final</version>
             <scope>provided</scope>
         </dependency>
 
@@ -59,7 +74,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.7.1</version>
+            <version>5.9.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -67,7 +82,7 @@
         <dependency>
             <groupId>org.junit.platform</groupId>
             <artifactId>junit-platform-engine</artifactId>
-            <version>1.7.1</version>
+            <version>1.9.0</version>
             <scope>test</scope>
         </dependency>
 
@@ -88,16 +103,24 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-client</artifactId>
-            <version>${resteasy.version}</version>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.10.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
         </dependency>
 
         <!--https://mvnrepository.com/artifact/nl.jqno.equalsverifier/equalsverifier-->
         <dependency>
             <groupId>nl.jqno.equalsverifier</groupId>
             <artifactId>equalsverifier</artifactId>
-            <version>3.4.1</version>
+            <version>3.10.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

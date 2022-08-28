@@ -25,7 +25,7 @@ public class InMemoryUserRepository implements UserRepository {
 
         return User.builder()
                 .username(username)
-                .email(username + "@localhost.com")
+                .email(username + "@example.com")
                 .firstName(name)
                 .lastName(lastName)
                 .password("password")
@@ -42,5 +42,12 @@ public class InMemoryUserRepository implements UserRepository {
     @Override
     public List<User> findAll() {
         return this.users;
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return users.stream()
+                .filter(u -> u.getEmail().equals(email))
+                .findFirst();
     }
 }
