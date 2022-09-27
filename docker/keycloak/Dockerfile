@@ -1,15 +1,14 @@
-ARG KEYCLOAK_IMAGE
+ARG KEYCLOAK_IMAGE=quay.io/keycloak/keycloak:19.0.1
+
+FROM maven as builder
+COPY pom.xml /tmp/
+COPY src /tmp/src
+WORKDIR /tmp/
+RUN mvn clean package
 
 FROM $KEYCLOAK_IMAGE
-
 USER root
-
-COPY . /project
-#RUN cd /project && ./mvnw clean package
-
-FROM $KEYCLOAK_IMAGE
-USER root
-COPY --from=0 /project/target/*.jar /opt/keycloak/providers/app.jar
+COPY --from=builder /tmp/target/*.jar /opt/keycloak/providers/app.jar
 USER 1000
 
 ENTRYPOINT ["/opt/keycloak/bin/kc.sh", "start-dev" , "--features-disabled=admin2"]
