@@ -61,12 +61,13 @@ describe('user migration plugin', () => {
     }
 
     function configureMigrationPlugin() {
+        // TODO delete existing configured plugins
         cy.visit('/admin/master/console/#/master/user-federation/User migration using a REST client/new');
         cy.wait(1000);
         cy.get('#kc-console-display-name').clear().type('REST client provider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
-        cy.get('button').contains('Save').click();
-        // cy.url().should('match', /.*\/User%20migration%20using%20a%20REST%20client\/.+/);
+        cy.get('button').contains('Save').click()
+        cy.get('.pf-c-alert__title').should('contain', "User federation provider successfully");
     }
 
 
@@ -90,13 +91,13 @@ describe('user migration plugin', () => {
      * If fields are not populated here, the will not be visible in user account (KC Bug??)
      */
     function writeAdminPersonalInfo() {
-        cy.intercept('GET', '/admin/realms/master/components?type=org.keycloak.storage.UserStorageProvider')
-            .as("userList");
         cy.visit('/admin/master/console/#/master/users');
-        cy.wait('@userList');
+        cy.url().should('include', '/admin/master/console/#/master/users');
         cy.get('.pf-c-input-group').get('input').clear().type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
         cy.get('table').get('td[data-label="Username"]').get('a').contains(ADMIN_USERNAME).click();
+        cy.get('#kc-email').clear();
+        cy.wait(500);
         cy.get('#kc-email').clear().type(ADMIN_EMAIL);
         cy.get('#kc-firstname').clear().type(ADMIN_USERNAME);
         cy.get('#kc-lastname').clear().type(ADMIN_USERNAME);
@@ -113,6 +114,8 @@ describe('user migration plugin', () => {
         // Wait a while, otherwise Keycloak overrides the inputs randomly
         cy.wait(5000);
 
+        cy.get('#email-address').clear();
+        cy.wait(500);
         cy.get('#email-address').clear().type(ADMIN_EMAIL);
         cy.get('#first-name').clear().type(ADMIN_USERNAME);
         cy.get('#last-name').clear().type(ADMIN_USERNAME);
@@ -151,10 +154,7 @@ describe('user migration plugin', () => {
     }
 
     function deleteTestUserIfExists() {
-        cy.intercept('GET', '/admin/realms/master/components?type=org.keycloak.storage.UserStorageProvider')
-            .as("userList");
         cy.visit('/admin/master/console/#/master/users');
-        cy.wait('@userList');
         cy.get('.pf-c-input-group').get('input').clear().type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
 
