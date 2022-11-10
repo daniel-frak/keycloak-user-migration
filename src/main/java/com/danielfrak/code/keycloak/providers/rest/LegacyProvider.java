@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 /**
  * Provides legacy user migration functionality
@@ -45,10 +46,6 @@ public class LegacyProvider implements UserStorageProvider,
         this.model = model;
     }
 
-    @Override
-    public UserModel getUserByUsername(String username, RealmModel realm) {
-        return getUserModel(realm, username, () -> legacyUserService.findByUsername(username));
-    }
 
     private UserModel getUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
         return user.get()
@@ -57,11 +54,6 @@ public class LegacyProvider implements UserStorageProvider,
                     LOG.warnf("User not found in external repository: %s", username);
                     return null;
                 });
-    }
-
-    @Override
-    public UserModel getUserByEmail(String email, RealmModel realm) {
-        return getUserModel(realm, email, () -> legacyUserService.findByEmail(email));
     }
 
     @Override
@@ -120,11 +112,6 @@ public class LegacyProvider implements UserStorageProvider,
     }
 
     @Override
-    public UserModel getUserById(String id, RealmModel realm) {
-        throw new UnsupportedOperationException("User lookup by id not implemented");
-    }
-
-    @Override
     public boolean isConfiguredFor(RealmModel realmModel, UserModel userModel, String s) {
         return false;
     }
@@ -154,8 +141,22 @@ public class LegacyProvider implements UserStorageProvider,
     }
 
     @Override
-    public Set<String> getDisableableCredentialTypes(RealmModel realm, UserModel user) {
-        return Collections.emptySet();
+    public Stream<String> getDisableableCredentialTypesStream(RealmModel realmModel, UserModel userModel) {
+        return Stream.empty();
     }
 
+    @Override
+    public UserModel getUserById(RealmModel realmModel, String s) {
+        throw new UnsupportedOperationException("User lookup by id not implemented");
+    }
+
+    @Override
+    public UserModel getUserByUsername(RealmModel realmModel, String username) {
+        return getUserModel(realmModel, username, () -> legacyUserService.findByUsername(username));
+    }
+
+    @Override
+    public UserModel getUserByEmail(RealmModel realmModel, String email) {
+        return getUserModel(realmModel, email, () -> legacyUserService.findByEmail(email));
+    }
 }
