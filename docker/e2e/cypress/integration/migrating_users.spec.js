@@ -61,23 +61,27 @@ describe('user migration plugin', () => {
     }
 
     function configureMigrationPlugin() {
-        // TODO delete existing configured plugins
-        cy.visit('/admin/master/console/#/master/user-federation/User migration using a REST client/new');
-        cy.wait(1000);
+        visitMigrationConfigPage();
         cy.get('#kc-console-display-name').clear().type('REST client provider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
         cy.get('button').contains('Save').click()
         cy.get('.pf-c-alert__title').should('contain', "User federation provider successfully");
     }
 
-
-    function goToPluginSettings($providerDropdown, providerDropdownSelector) {
-        if ($providerDropdown.is(':visible')) {
-            cy.get(providerDropdownSelector)
-                .select('User migration using a REST client');
-        } else {
-            cy.contains('Edit').click();
-        }
+    /**
+     * Navigate to plugin config page.
+     * Edit existing plugin config or create new migration config.
+     */
+    function visitMigrationConfigPage() {
+        cy.intercept('GET', '/admin/realms/master')
+            .as("realm");
+        cy.visit('/admin/master/console/#/master/user-federation');
+        cy.get("h1").should('contain', 'User federation');
+        cy.wait("@realm");
+        // Wait for provider list to load
+        cy.wait(1000);
+        cy.get('div[class="pf-l-gallery pf-m-gutter"]').get('article').first().click({force: true});
+        cy.get("h1").should('contain', 'User migration using a REST client');
     }
 
     function configureEmails() {
@@ -97,7 +101,6 @@ describe('user migration plugin', () => {
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
         cy.get('table').get('td[data-label="Username"]').get('a').contains(ADMIN_USERNAME).click();
         cy.get('#kc-email').clear();
-        cy.wait(500);
         cy.get('#kc-email').clear().type(ADMIN_EMAIL);
         cy.get('#kc-firstname').clear().type(ADMIN_USERNAME);
         cy.get('#kc-lastname').clear().type(ADMIN_USERNAME);
@@ -115,7 +118,6 @@ describe('user migration plugin', () => {
         cy.wait(5000);
 
         cy.get('#email-address').clear();
-        cy.wait(500);
         cy.get('#email-address').clear().type(ADMIN_EMAIL);
         cy.get('#first-name').clear().type(ADMIN_USERNAME);
         cy.get('#last-name').clear().type(ADMIN_USERNAME);
@@ -190,6 +192,7 @@ describe('user migration plugin', () => {
     }
 
     function goToPasswordPoliciesPage() {
+        // Can't get cypress to navigate to the policies page unless adding a "wait" here.
         cy.wait(1000);
         cy.intercept('GET', '/admin/realms/master/authentication/required-actions').as("masterGet");
         cy.visit('/admin/master/console/#/master/authentication/policies');
