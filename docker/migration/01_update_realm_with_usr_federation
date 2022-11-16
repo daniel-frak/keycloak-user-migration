@@ -1,0 +1,43 @@
+{
+  "enabled": true,
+  "realm": "$(env:MIGRATE_REALM_NAME)",
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "id": "acf8c12c-77bd-4861-a4a1-1ed25f34587c",
+        "name": "User migration using a REST client",
+        "providerId": "User migration using a REST client",
+        "subComponents": {},
+        "config": {
+          "API_HTTP_BASIC_ENABLED": [
+            "true"
+          ],
+          "API_HTTP_BASIC_PASSWORD": [
+            "$(env:MIGRATE_STORAGE_API_PASS)"
+          ],
+          "MIGRATE_UNMAPPED_GROUPS": [
+            "true"
+          ],
+          "cachePolicy": [
+            "NO_CACHE"
+          ],
+          "MIGRATE_UNMAPPED_ROLES": [
+            "true"
+          ],
+          "priority": [
+            "0"
+          ],
+          "URI": [
+            "$(env:MIGRATE_STORAGE_API_ENDPOINT)"
+          ],
+          "enabled": [
+            "true"
+          ],
+          "API_HTTP_BASIC_USERNAME": [
+            "$(env:MIGRATE_STORAGE_API_USER)"
+          ]
+        }
+      }
+    ]
+  }
+}

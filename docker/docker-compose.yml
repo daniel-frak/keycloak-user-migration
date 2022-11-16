@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.7'
 
 services:
   keycloak:
@@ -7,20 +7,47 @@ services:
       dockerfile: docker/keycloak/Dockerfile
       args:
         - KEYCLOAK_IMAGE=${KEYCLOAK_IMAGE}
+    entrypoint: ["/opt/keycloak/bin/kc.sh", "--debug", "start-dev"]
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       DB_VENDOR: h2
+      DEBUG_PORT: "*:8787"
+#      DEBUG_SUSPEND: "y"
+      JAVA_TOOL_OPTIONS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=8790 -Dcom.sun.management.jmxremote.local.only=false -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dquarkus-log-max-startup-records=10000"
     ports:
       - "8024:8080"
+      - "8787:8787"
+      - "8790:8790"
     networks:
       - internal
 
   mailhog:
-    image: mailhog/mailhog
+    image: mailhog/mailhog:latest
     ports:
       - 1025:1025 # smtp server
       - 8025:8025 # web ui
+    networks:
+      - internal
+
+  realm-migration:
+    profiles: ["cli-only"]
+    image: ${MIGRATOR_IMAGE}
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080/
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+      KEYCLOAK_SSLVERIFY: "false"
+      SPRING_PROFILES_INCLUDE: debug
+      IMPORT_PATH: /config
+      IMPORT_FORCE: "false"
+      IMPORT_VARSUBSTITUTION_ENABLED: "true"
+      MIGRATE_REALM_NAME: test
+      MIGRATE_STORAGE_API_USER: whoisit
+      MIGRATE_STORAGE_API_PASS: isitwho
+      MIGRATE_STORAGE_API_ENDPOINT: http://legacy-system-example:8080/user-migration-support
+    volumes:
+      - ./migration:/config
     networks:
       - internal
 
