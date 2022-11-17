@@ -282,11 +282,11 @@ class LegacyProviderTest {
                 "someString"));
     }
 
-    @Test
-    void getUserByIdShouldThrowException() {
-        var realm = mock(RealmModel.class);
-        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById(realm, "someId"));
-    }
+//    @Test
+//    void getUserByIdShouldThrowException() {
+//        var realm = mock(RealmModel.class);
+//        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById(realm, "someId"));
+//    }
 
     @Test
     void shouldRemoveFederationLinkWhenCredentialUpdates() {

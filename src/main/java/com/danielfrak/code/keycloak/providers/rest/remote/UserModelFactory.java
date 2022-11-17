@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.keycloak.storage.StorageId;
+import org.keycloak.storage.adapter.InMemoryUserAdapter;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 
@@ -56,16 +58,25 @@ public class UserModelFactory {
         LOG.infof("Creating user model for: %s", legacyUser.getUsername());
 
         UserModel userModel;
-        if (isEmpty(legacyUser.getId())) {
-            userModel = session.users().addUser(realm, legacyUser.getUsername());
-        } else {
-            userModel = session.users().addUser(
+        if (shouldBeMigrated(legacyUser)) {
+            LOG.debugf("User %s should be migrated. Adding user...", legacyUser.getUsername());
+            if (isEmpty(legacyUser.getId())) {
+                userModel = session.users().addUser(realm, legacyUser.getUsername());
+            } else {
+                userModel = session.users().addUser(
                     realm,
                     legacyUser.getId(),
                     legacyUser.getUsername(),
                     true,
                     false
-            );
+                );
+            }
+        } else {
+            LOG.debugf("User %s should NOT be migrated. Creating in memory user...", legacyUser.getUsername());
+            InMemoryUserAdapter adapter = new InMemoryUserAdapter(session, realm, new StorageId(model.getId(), legacyUser.getUsername()).getId());
+            adapter.addDefaults();
+            adapter.setUsername(legacyUser.getUsername());
+            userModel = adapter;
         }
 
         validateUsernamesEqual(legacyUser, userModel);
@@ -96,6 +107,16 @@ public class UserModelFactory {
         return userModel;
     }
 
+    private static boolean shouldBeMigrated(LegacyUser legacyUser) {
+        if (legacyUser.getAttributes() == null) {
+            return true;
+        }
+        return legacyUser.getAttributes().getOrDefault("migrate", List.of("true"))
+            .stream()
+            .map(Boolean::parseBoolean)
+            .findFirst()
+            .orElse(Boolean.TRUE);
+    }
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
         if (!userModel.getUsername().equals(legacyUser.getUsername())) {
             throw new IllegalStateException(String.format("Local and remote users differ: [%s != %s]",

@@ -30,7 +30,7 @@ public class UserMigrationDetails {
                 .lastName(user.getLastName())
                 .enabled(true)
                 .emailVerified(true)
-                .attributes(Map.of("attribute 1", List.of("value1", "value 2")))
+                .attributes(Map.of("attribute 1", List.of("value1", "value 2"), "migrate", List.of(String.valueOf(user.isMigrated()))))
                 .roles(List.of("role 1", "role 2"))
                 .groups(List.of("group 1", "group2"))
                 .requiredActions(List.of("UPDATE_PROFILE"))

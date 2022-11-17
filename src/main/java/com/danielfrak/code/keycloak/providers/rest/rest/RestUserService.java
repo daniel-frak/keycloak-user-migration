@@ -5,6 +5,7 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderException;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
 import org.apache.http.HttpStatus;
 import org.keycloak.component.ComponentModel;
 
@@ -19,11 +20,13 @@ public class RestUserService implements LegacyUserService {
     private final String uri;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final Cache<String, LegacyUser> cache;
 
-    public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
+    public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper, Cache<String, LegacyUser> cache) {
         this.httpClient = httpClient;
         this.uri = model.getConfig().getFirst(URI_PROPERTY);
         this.objectMapper = objectMapper;
+        this.cache = cache;
 
         configureBasicAuth(model, httpClient);
         configureBearerTokenAuth(model, httpClient);
@@ -68,14 +71,23 @@ public class RestUserService implements LegacyUserService {
     }
 
     private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
+        if (usernameOrEmail == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(cache.get(usernameOrEmail, this::loadLegacyUser));
+    }
+
+    private LegacyUser loadLegacyUser(String usernameOrEmail) {
+        if (usernameOrEmail == null) {
+            return null;
+        }
         var getUsernameUri = String.format("%s/%s", this.uri, usernameOrEmail);
         try {
             var response = this.httpClient.get(getUsernameUri);
             if (response.getCode() != HttpStatus.SC_OK) {
-                return Optional.empty();
+                return null;
             }
-            var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
-            return Optional.ofNullable(legacyUser);
+            return objectMapper.readValue(response.getBody(), LegacyUser.class);
         } catch (RuntimeException|IOException e) {
             throw new RestUserProviderException(e);
         }

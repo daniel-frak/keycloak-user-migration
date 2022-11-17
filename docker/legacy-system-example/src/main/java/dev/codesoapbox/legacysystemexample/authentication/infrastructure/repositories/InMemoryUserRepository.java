@@ -13,14 +13,14 @@ public class InMemoryUserRepository implements UserRepository {
 
     public InMemoryUserRepository() {
         this.users = List.of(
-                generateUser("Lucy", "Brennan"),
-                generateUser("Mark", "Brown"),
-                generateUser("Kate", "Thomson"),
-                generateUser("John", "Doe")
+                generateUser("Lucy", "Brennan", false),
+                generateUser("Mark", "Brown", true),
+                generateUser("Kate", "Thomson", true),
+                generateUser("John", "Doe", true)
         );
     }
 
-    private User generateUser(String name, String lastName) {
+    private User generateUser(String name, String lastName, boolean migrated) {
         String username = name.toLowerCase(Locale.ROOT);
 
         return User.builder()
@@ -29,6 +29,7 @@ public class InMemoryUserRepository implements UserRepository {
                 .firstName(name)
                 .lastName(lastName)
                 .password("password")
+                .migrated(migrated)
                 .build();
     }
 

@@ -14,7 +14,9 @@ import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PolicyError;
+import org.keycloak.storage.StorageId;
 import org.keycloak.storage.UserStorageProvider;
+import org.keycloak.storage.adapter.InMemoryUserAdapter;
 import org.keycloak.storage.user.UserLookupProvider;
 
 import java.util.Collections;
@@ -68,10 +70,12 @@ public class LegacyProvider implements UserStorageProvider,
             return false;
         }
 
-        if (passwordDoesNotBreakPolicy(realmModel, userModel, input.getChallengeResponse())) {
-            userModel.credentialManager().updateCredential(input);
-        } else {
-            addUpdatePasswordAction(userModel, userIdentifier);
+        if (!userModel.getClass().equals(InMemoryUserAdapter.class)) {
+            if (passwordDoesNotBreakPolicy(realmModel, userModel, input.getChallengeResponse())) {
+                userModel.credentialManager().updateCredential(input);
+            } else {
+                addUpdatePasswordAction(userModel, userIdentifier);
+            }
         }
 
         return true;
@@ -147,7 +151,9 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public UserModel getUserById(RealmModel realmModel, String s) {
-        throw new UnsupportedOperationException("User lookup by id not implemented");
+        StorageId storageId = new StorageId(s);
+        String username = storageId.getExternalId();
+        return getUserByUsername(realmModel, username);
     }
 
     @Override
