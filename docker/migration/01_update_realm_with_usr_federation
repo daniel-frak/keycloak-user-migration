@@ -18,6 +18,9 @@
           "MIGRATE_UNMAPPED_GROUPS": [
             "true"
           ],
+          "CACHE_SEGMENT": [
+            "test"
+          ],
           "cachePolicy": [
             "NO_CACHE"
           ],
