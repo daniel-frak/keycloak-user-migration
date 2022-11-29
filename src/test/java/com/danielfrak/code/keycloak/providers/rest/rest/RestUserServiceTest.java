@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.keycloak.common.util.Encode;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.mockito.Mock;
@@ -118,7 +119,7 @@ class RestUserServiceTest {
     void findByEmailShouldReturnAUserWhenUserIsFoundAndEmailMatches() throws IOException {
         var expectedUser = createALegacyUser("someUsername", "email@example.com");
         var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
-        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
+        var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode(expectedUser.getEmail()));
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         when(httpClient.get(path)).thenReturn(response);
@@ -133,7 +134,7 @@ class RestUserServiceTest {
     void findByEmailShouldReturnAUserWhenUserIsFoundAndEmailMatchesCaseInsensitive() throws IOException {
         var expectedUser = createALegacyUser("someUsername", "email@example.com");
         var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
-        var path = String.format(URI_PATH_FORMAT, URI, "EMAIL@EXAMPLE.COM");
+        var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode("EMAIL@EXAMPLE.COM"));
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         when(httpClient.get(path)).thenReturn(response);
@@ -163,7 +164,7 @@ class RestUserServiceTest {
     @Test
     void findByEmailShouldReturnAnEmptyOptionalWhenUserIsNotFound() {
         var expectedUser = createALegacyUser("someUsername", "email@example.com");
-        var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getEmail());
+        var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode(expectedUser.getEmail()));
         var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         when(httpClient.get(path)).thenReturn(response);
@@ -249,6 +250,20 @@ class RestUserServiceTest {
     }
 
     @Test
+    void findByUsernameShouldReturnAUserWhenUserIsFoundAndUsernameContainsSpace() throws IOException {
+        var expectedUser = createALegacyUser("some Username", "email@example.com");
+        var path = String.format(URI_PATH_FORMAT, URI, "SOME+USERNAME");
+        var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        when(httpClient.get(path)).thenReturn(response);
+
+        var result = restUserService.findByUsername("SOME USERNAME");
+
+        assertTrue(result.isPresent());
+        assertEquals(result.get(), expectedUser);
+    }
+
+    @Test
     void findByUsernameShouldReturnAnEmptyOptionalWhenUserIsNotFound() {
         var expectedUser = createALegacyUser("someUsername", "email@example.com");
         var path = String.format(URI_PATH_FORMAT, URI, expectedUser.getUsername());
@@ -300,6 +315,21 @@ class RestUserServiceTest {
         var username = "someUsername";
         var password = "anyPassword";
         var path = String.format(URI_PATH_FORMAT, URI, username);
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var response = new HttpResponse(HttpStatus.SC_OK);
+        var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
+        when(httpClient.post(path, expectedBody)).thenReturn(response);
+
+        var isPasswordValid = restUserService.isPasswordValid(username, password);
+
+        assertTrue(isPasswordValid);
+    }
+
+    @Test
+    void isPasswordValidShouldReturnTrueWhenPasswordsMatchesAndUsernameContainsSpace() throws IOException {
+        var username = "some Username";
+        var password = "anyPassword";
+        var path = String.format(URI_PATH_FORMAT, URI, "some+Username");
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         var response = new HttpResponse(HttpStatus.SC_OK);
         var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
