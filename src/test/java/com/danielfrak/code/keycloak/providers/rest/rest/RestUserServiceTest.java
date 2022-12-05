@@ -329,7 +329,7 @@ class RestUserServiceTest {
     void isPasswordValidShouldNotThrowNullPointerExceptionWhenPasswordIsNull() throws IOException {
         String username = null;
         var password = "anyPassword";
-        var path = String.format(URI_PATH_FORMAT, URI, "null");
+        var path = String.format(URI_PATH_FORMAT, URI, username);
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         var response = new HttpResponse(HttpStatus.SC_OK);
         var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
