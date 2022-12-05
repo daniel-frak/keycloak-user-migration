@@ -326,6 +326,21 @@ class RestUserServiceTest {
     }
 
     @Test
+    void isPasswordValidShouldNotThrowNullPointerExceptionWhenPasswordIsNull() throws IOException {
+        String username = null;
+        var password = "anyPassword";
+        var path = String.format(URI_PATH_FORMAT, URI, "null");
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var response = new HttpResponse(HttpStatus.SC_OK);
+        var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
+        when(httpClient.post(path, expectedBody)).thenReturn(response);
+
+        var isPasswordValid = restUserService.isPasswordValid(username, password);
+
+        assertTrue(isPasswordValid);
+    }
+
+    @Test
     void isPasswordValidShouldReturnTrueWhenPasswordsMatchesAndUsernameContainsSpace() throws IOException {
         var username = "some Username";
         var password = "anyPassword";
