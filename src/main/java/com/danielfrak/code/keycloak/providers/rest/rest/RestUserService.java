@@ -6,6 +6,7 @@ import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderEx
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.keycloak.common.util.Encode;
 import org.keycloak.component.ComponentModel;
 
 import java.io.IOException;
@@ -68,6 +69,9 @@ public class RestUserService implements LegacyUserService {
     }
 
     private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
+        if (usernameOrEmail != null) {
+            usernameOrEmail = Encode.urlEncode(usernameOrEmail);
+        }
         var getUsernameUri = String.format("%s/%s", this.uri, usernameOrEmail);
         try {
             var response = this.httpClient.get(getUsernameUri);
@@ -83,6 +87,9 @@ public class RestUserService implements LegacyUserService {
 
     @Override
     public boolean isPasswordValid(String username, String password) {
+        if (username != null) {
+            username = Encode.urlEncode(username);
+        }
         var passwordValidationUri = String.format("%s/%s", this.uri, username);
         var dto = new UserPasswordDto(password);
         try {
