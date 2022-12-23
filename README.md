@@ -30,6 +30,9 @@ https://codesoapbox.dev/keycloak-user-migration
 | 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)     |
 | 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)     |
 
+### Note about compatibility with JBoss Keycloak distributions
+
+Using this plugin with legacy JBoss distributions of Keycloak might result in a `java.lang.NoClassDefFoundError: org/apache/commons/codec/binary/Base64` error. It seems that [adding the maven-shade-plugin](https://github.com/daniel-frak/keycloak-user-migration/issues/72) as a dependency fixes this issue.
 
 ## Prerequisites - REST endpoints in the legacy system
 
