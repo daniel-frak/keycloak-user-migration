@@ -48,7 +48,7 @@ describe('user migration plugin', () => {
     }
 
     function signOutViaUI() {
-        cy.get('#pf-dropdown-toggle-id-10').click()
+        cy.get('#pf-dropdown-toggle-id-8').click()
         cy.get('#sign-out').get('a').contains('Sign out').click({force: true});
     }
 
@@ -56,13 +56,20 @@ describe('user migration plugin', () => {
         cy.visit('/admin/master/console/#/master/realm-settings/login');
 
         cy.get('#kc-forgot-pw-switch')
-            .uncheck({force: true})
+            .uncheck({force: true});
+        cy.wait(500);
+        cy.get('#kc-forgot-pw-switch')
             .check({force: true});
+        cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
     }
 
     function configureMigrationPlugin() {
         visitMigrationConfigPage();
-        cy.get('#kc-console-display-name').clear().type('REST client provider');
+        cy.wait(500);
+        cy.get('#kc-ui-display-name').clear();
+        // Wait for field to clear.
+        cy.wait(500);
+        cy.get('#kc-ui-display-name').type('RESTclientprovider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
         cy.get('button').contains('Save').click()
         cy.get('.pf-c-alert__title').should('contain', "User federation provider successfully");
@@ -97,7 +104,7 @@ describe('user migration plugin', () => {
     function writeAdminPersonalInfo() {
         cy.visit('/admin/master/console/#/master/users');
         cy.url().should('include', '/admin/master/console/#/master/users');
-        cy.get('.pf-c-input-group').get('input').clear().type('*');
+        cy.get('input[name="search-input"]').clear().type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
         cy.get('table').get('td[data-label="Username"]').get('a').contains(ADMIN_USERNAME).click();
         cy.get('#kc-email').clear();
@@ -115,9 +122,10 @@ describe('user migration plugin', () => {
         cy.wait('@accountDetails');
 
         // Wait a while, otherwise Keycloak overrides the inputs randomly
-        cy.wait(5000);
-
+        cy.wait(2000);
         cy.get('#email-address').clear();
+        // Wait for email to be cleared
+        cy.wait(2000);
         cy.get('#email-address').clear().type(ADMIN_EMAIL);
         cy.get('#first-name').clear().type(ADMIN_USERNAME);
         cy.get('#last-name').clear().type(ADMIN_USERNAME);
@@ -179,15 +187,26 @@ describe('user migration plugin', () => {
     }
 
     function deleteEveryPasswordPolicyAndSave() {
-        cy.log("Deleting password policies...");
-        return cy.get('.keycloak__policies_authentication__minus-icon')
-            .should('have.length.gte', 0).then(btn => {
-                if (!btn.length) {
-                    return;
+        // Will not find policies if not waiting here.
+        cy.wait(2000);
+        return cy.get('body')
+            .then($body => {
+                if ($body.find('.keycloak__policies_authentication__form').length) {
+                    cy.log("Deleting password policies...");
+                    let deleteButtons = cy.get('#pf-tab-section-1-passwordPolicy').get('.keycloak__policies_authentication__minus-icon');
+                    return deleteButtons
+                        .should('have.length.gte', 0).then(btn => {
+
+                            if (!btn.length) {
+                                return;
+                            }
+                            cy.wrap(btn).click({multiple: true});
+                            cy.get('button[data-testid="save"]').contains('Save').click();
+                            cy.get('.pf-c-alert__title').should('contain', "Password policies successfully updated");
+                        });
+                } else {
+                    return 'OK';
                 }
-                cy.wrap(btn).click({multiple: true});
-                cy.get('button').contains('Save').click();
-                cy.get('.pf-c-alert__title').should('contain', "Password policies successfully updated");
             });
     }
 
