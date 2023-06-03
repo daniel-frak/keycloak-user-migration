@@ -16,7 +16,7 @@
         <maven.compiler.source>${java.version}</maven.compiler.source>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <jacoco.version>0.8.8</jacoco.version>
+        <jacoco.version>0.8.10</jacoco.version>
     </properties>
 
     <dependencyManagement>
