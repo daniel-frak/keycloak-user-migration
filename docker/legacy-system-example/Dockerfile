@@ -1,9 +1,11 @@
-FROM maven:3.8-openjdk-11-slim AS build
+ARG MAVEN_IMAGE
+ARG OPENJDK_IMAGE
+FROM $MAVEN_IMAGE AS build
 COPY src /usr/legacy-system-example/src
 COPY pom.xml /usr/legacy-system-example
 RUN mvn -f /usr/legacy-system-example/pom.xml clean package
 
-FROM openjdk:11-jdk-slim
+FROM $OPENJDK_IMAGE
 VOLUME /tmp
 ARG JAR_FILE=target/*.jar
 COPY --from=build /usr/legacy-system-example/${JAR_FILE} app.jar
