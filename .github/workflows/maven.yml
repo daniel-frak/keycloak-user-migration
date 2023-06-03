@@ -83,7 +83,7 @@ jobs:
           && ./wait-until "curl -sLf -o /dev/null http://localhost:8024/realms/master" 300
 
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: 18.x
 
