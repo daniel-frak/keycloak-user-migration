@@ -15,7 +15,7 @@
 	<description>Example legacy system for testing Keycloak user migration plugin</description>
 	<properties>
 		<java.version>11</java.version>
-		<springdoc.version>1.5.9</springdoc.version>
+		<springdoc.version>1.7.0</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>
