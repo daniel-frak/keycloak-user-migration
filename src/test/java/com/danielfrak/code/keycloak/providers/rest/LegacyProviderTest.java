@@ -105,6 +105,20 @@ class LegacyProviderTest {
     }
 
     @Test
+    void shouldReturnNullIfUserWithDuplicateIdExists() {
+        final String email = "email";
+        final LegacyUser user = new LegacyUser();
+        when(legacyUserService.findByEmail(email))
+                .thenReturn(Optional.of(user));
+        when(userModelFactory.isDuplicateUserId(user, realmModel))
+                .thenReturn(true);
+
+        var result = legacyProvider.getUserByEmail(realmModel, email);
+
+        assertNull(result);
+    }
+
+    @Test
     void shouldReturnNullIfUserNotFoundByEmail() {
         final String username = "user";
         when(legacyUserService.findByEmail(username))

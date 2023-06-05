@@ -49,6 +49,14 @@ public class LegacyProvider implements UserStorageProvider,
 
     private UserModel getUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
         return user.get()
+                .filter(u -> {
+                    // Make sure we're not trying to migrate users if they have changed their username
+                    boolean duplicate = userModelFactory.isDuplicateUserId(u, realm);
+                    if (duplicate) {
+                        LOG.warnf("User with the same user id already exists: %s", u.getId());
+                    }
+                    return !duplicate;
+                })
                 .map(u -> userModelFactory.create(u, realm))
                 .orElseGet(() -> {
                     LOG.warnf("User not found in external repository: %s", username);
