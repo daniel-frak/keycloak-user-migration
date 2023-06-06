@@ -1,0 +1,74 @@
+name: Release new version
+
+on:
+  release:
+    types: [created]
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set Up Java
+        uses: actions/setup-java@v2
+        with:
+          distribution: adopt
+          java-version: 11
+      - name: Setup Git user
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Action"
+      - name: Set POM version to ${{ github.ref_name }}
+        run: mvn versions:set -DnewVersion=${GITHUB_REF##*/}
+      - name: Commit changes before releasing
+        # Don't fail if nothing to commit
+        run: |
+          git add pom.xml ./\*.java ./\*.md
+          set +e
+          git commit -m "build: Set version to $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+          set -e
+      - name: Build jar
+        run: mvn clean package
+      - name: Create Release
+        uses: jasonetco/upload-to-release@v0.1.1
+        with:
+          args: target/keycloak-rest-provider-${{ github.ref_name }}.jar application/java-archive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Increment version after releasing
+        run: mvn versions:set -DnextSnapshot
+      - name: Commit changes after publishing (version increment)
+        run: |
+          git add pom.xml
+          git commit -m "build: Increment version to $(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)"
+#      - name: Synchronize tags before pushing
+#        # https://stackoverflow.com/a/39534896
+#        run: git pull origin ${{ github.ref }} --tags -f
+#        @TODO Investigate why two pushes in a workflow fail the workflow
+#      - name: Push changes after publishing (version increment)
+#        uses: ad-m/github-push-action@master
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          branch: ${{ github.ref }}
+      - name: Update latest version in README.md to ${{ github.ref_name }}
+        uses: mingjun97/file-regex-replace@v1
+        with:
+          regex: '(?<=\| )SNAPSHOT(?= )'
+          replacement: '${{ github.ref_name }}'
+      - name: Commit changes after publishing (documentation update)
+        # Don't fail if nothing to commit
+        run: |
+          git add README.md
+          set +e
+          git commit -m "docs: Update latest version in README.md to ${{ github.ref_name }}"
+          set -e
+#      - name: Synchronize tags before pushing
+#        # https://stackoverflow.com/a/39534896
+#        run: git pull origin ${{ github.ref }} --tags -f
+      - name: Push changes after publishing (documentation update)
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          branch: ${{ github.ref }}

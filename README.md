@@ -18,18 +18,20 @@ https://codesoapbox.dev/keycloak-user-migration
 
 ## Compatibility history
 
-| Keycloak Version | Commit                                                                                                                                               |
-|------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 21.X             | Current                                                                                                                                              |
-| 20.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/64e2fb30b7eac94ca944a5ef2759dcc5417ad9b2)   |
-| 19.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/f4836a26aff16009738d5f6c74af0f8e69ba8d26)   |
-| 18.X             | [4de28f2e2893b83911e79e242574fe3139144451](https://github.com/daniel-frak/keycloak-user-migration/commit/4de28f2e2893b83911e79e242574fe3139144451)   |
-| 17.X             | [ca82b795c793094f6d67dac3dc14dcdfd2d0ed59](https://github.com/daniel-frak/keycloak-user-migration/commit/ca82b795c793094f6d67dac3dc14dcdfd2d0ed59)   |
-| 16.X             | [489779543989b1880177c802f5ee62769a945b85](https://github.com/daniel-frak/keycloak-user-migration/commit/489779543989b1880177c802f5ee62769a945b85)   |
-| 15.X             | [922c69440a776f0cab80b68b90c90a6ba620cdd9](https://github.com/daniel-frak/keycloak-user-migration/commit/922c69440a776f0cab80b68b90c90a6ba620cdd9)   |
-| 12.X             | [0966d9ba7c94ba461783a5d8dda0735a35c4e6b8](https://github.com/daniel-frak/keycloak-user-migration/commit/0966d9ba7c94ba461783a5d8dda0735a35c4e6b8)   |
-| 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)     |
-| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)     |
+*(`SNAPSHOT` means that the version is not yet released)*
+
+| Keycloak Version | Version/Commit                                                                                                                                     |
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| 21.X             | SNAPSHOT                                                                                                                                           |
+| 20.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/64e2fb30b7eac94ca944a5ef2759dcc5417ad9b2) |
+| 19.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/f4836a26aff16009738d5f6c74af0f8e69ba8d26) |
+| 18.X             | [4de28f2e2893b83911e79e242574fe3139144451](https://github.com/daniel-frak/keycloak-user-migration/commit/4de28f2e2893b83911e79e242574fe3139144451) |
+| 17.X             | [ca82b795c793094f6d67dac3dc14dcdfd2d0ed59](https://github.com/daniel-frak/keycloak-user-migration/commit/ca82b795c793094f6d67dac3dc14dcdfd2d0ed59) |
+| 16.X             | [489779543989b1880177c802f5ee62769a945b85](https://github.com/daniel-frak/keycloak-user-migration/commit/489779543989b1880177c802f5ee62769a945b85) |
+| 15.X             | [922c69440a776f0cab80b68b90c90a6ba620cdd9](https://github.com/daniel-frak/keycloak-user-migration/commit/922c69440a776f0cab80b68b90c90a6ba620cdd9) |
+| 12.X             | [0966d9ba7c94ba461783a5d8dda0735a35c4e6b8](https://github.com/daniel-frak/keycloak-user-migration/commit/0966d9ba7c94ba461783a5d8dda0735a35c4e6b8) |
+| 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)   |
+| 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)   |
 
 ### Note about compatibility with JBoss Keycloak distributions
 
