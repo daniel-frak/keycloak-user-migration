@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: adopt
-          java-version: 11
+          java-version: 17
       - name: Setup Git user
         run: |
           git config --local user.email "actions@github.com"
