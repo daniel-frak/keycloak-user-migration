@@ -7,7 +7,7 @@ This project is an example of how you can retrofit your legacy identity provider
 
 ### Prerequisites
 
-* JDK 11+
+* JDK 17+
 * Maven (or you can use mvnw provided in the project)
 
 Once you have the code available locally, you can build the project with:

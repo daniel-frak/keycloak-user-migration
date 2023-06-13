@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.5.5</version>
+		<version>3.1.0</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>dev.codesoapbox</groupId>
@@ -14,8 +14,8 @@
 	<name>legacy-system-example</name>
 	<description>Example legacy system for testing Keycloak user migration plugin</description>
 	<properties>
-		<java.version>11</java.version>
-		<springdoc.version>1.5.9</springdoc.version>
+		<java.version>17</java.version>
+		<springdoc.version>1.7.0</springdoc.version>
 	</properties>
 	<dependencies>
 		<dependency>

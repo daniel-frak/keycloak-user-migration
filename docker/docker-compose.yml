@@ -7,6 +7,7 @@ services:
       dockerfile: docker/keycloak/Dockerfile
       args:
         - KEYCLOAK_IMAGE=${KEYCLOAK_IMAGE}
+        - MAVEN_IMAGE=${MAVEN_IMAGE}
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
@@ -28,6 +29,9 @@ services:
     build:
       context: legacy-system-example
       dockerfile: Dockerfile
+      args:
+        - MAVEN_IMAGE=${MAVEN_IMAGE}
+        - OPENJDK_IMAGE=${OPENJDK_IMAGE}
     ports:
       - "8080:8080"
     networks:

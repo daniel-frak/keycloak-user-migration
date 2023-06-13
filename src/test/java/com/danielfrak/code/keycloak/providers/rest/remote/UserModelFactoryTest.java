@@ -470,4 +470,53 @@ class UserModelFactoryTest {
                 .collect(Collectors.toSet()));
     }
 
+    @Test
+    void isDuplicateUserIdReturnsFalseWhenNotMigratingUserId() {
+        LegacyUser legacyUser = createLegacyUser("user");
+        final RealmModel realm = mock(RealmModel.class);
+
+        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void isDuplicateUserIdReturnsTrueIfTheUserIdAlreadyExists() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String userId = "0123456789";
+        final String username = "user";
+
+        when(session.users())
+                .thenReturn(userProvider);
+        when(userProvider.getUserById(realm, userId))
+                .thenReturn(new TestUserModel(username, userId));
+
+        LegacyUser legacyUser = createLegacyUser(username, userId);
+
+        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
+
+        assertTrue(result);
+    }
+
+
+    @Test
+    void isDuplicateUserIdReturnsFalseIfTheUserIdDoesntExists() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String userId = "0123456789";
+        final String username = "user";
+
+        when(session.users())
+                .thenReturn(userProvider);
+        when(userProvider.getUserById(realm, userId))
+                .thenReturn(null);
+
+        LegacyUser legacyUser = createLegacyUser(username, userId);
+
+        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
+
+        assertFalse(result);
+    }
+
 }
