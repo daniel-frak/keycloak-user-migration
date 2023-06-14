@@ -80,6 +80,14 @@ The GET request will have to return user data as a JSON response in the form:
   ],
   "requiredActions": [
     "requiredActions"
+  ],
+  "legacyFederatedIdentities": [
+    {
+      "identityProvider": "string",
+      "userId": "string",
+      "userName": "string",
+      "token": "string"
+    }
   ]
 }
 ```
@@ -139,6 +147,14 @@ response might look like this:
     "UPDATE_PASSWORD",
     "UPDATE_PROFILE",
     "update_user_locale"
+  ],
+  "legacyFederatedIdentities": [
+    {
+      "identityProvider": "google",
+      "userId": "105503037730434619227",
+      "userName": "bob",
+      "token": ""
+    }
   ]
 }
 ```
