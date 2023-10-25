@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
-    <version>4.0.0-SNAPSHOT</version>
+    <version>4.0.1</version>
     <properties>
         <java.version>17</java.version>
         <keycloak.version>24.0.2</keycloak.version>
@@ -18,6 +17,22 @@
 
         <jacoco.version>0.8.12</jacoco.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>codeartifact</id>
+            <name>codeartifact</name>
+            <url>https://alayacare-406883902139.d.codeartifact.us-east-1.amazonaws.com/maven/alaya-maven/</url>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>codeartifact</id>
+            <name>codeartifact</name>
+            <url>https://alayacare-406883902139.d.codeartifact.us-east-1.amazonaws.com/maven/alaya-maven/</url>
+        </repository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>

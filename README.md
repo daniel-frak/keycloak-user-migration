@@ -16,6 +16,18 @@ This is a user migration plugin for Keycloak. Read more at:
 
 https://codesoapbox.dev/keycloak-user-migration
 
+## ACCloud package publish (Temporary)
+
+To push this package to code artifact assuming code artifact is already configured in the `pom.xml`
+
+Generate a code artifact auth token using a profile with write access and use maven deploy:
+
+```
+export CODEARTIFACT_AUTH_TOKEN=$(aws --profile=<profile-with-writeaccess> codeartifact get-authorization-token --domain=alayacare --query=authorizationToken --output=text)
+
+maven deploy
+```
+
 ## Compatibility history
 
 *(`SNAPSHOT` means that the version is not yet released)*
