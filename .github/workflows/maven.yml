@@ -3,9 +3,10 @@ name: Build and analyze
 on:
   workflow_dispatch:
   push:
-    branches: [ "*", "**" ]
+    branches:
+      - master
   pull_request:
-    branches: [ master ]
+    types: [ opened, synchronize, reopened ]
 
 jobs:
   build:
