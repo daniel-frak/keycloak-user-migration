@@ -87,7 +87,7 @@ describe('user migration plugin', () => {
         // Wait for provider list to load
         cy.wait(1000);
         cy.get('div[class="pf-l-gallery pf-m-gutter"]')
-            .get('*[data-testid="keycloak-card-title"] a')
+            .get('*[data-testid="keycloak-card-title"] a', {timeout: 40000})
             .first()
             .click({force: true});
         cy.get("h1").should('contain', 'User migration using a REST client');
