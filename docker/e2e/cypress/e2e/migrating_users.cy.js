@@ -66,7 +66,6 @@ describe('user migration plugin', () => {
     function configureMigrationPlugin() {
         visitMigrationConfigPage();
         cy.get('#kc-ui-display-name')
-            .focus()
             .invoke('val', '') // clear() doesn't seem to work here for some reason
             .type('RESTclientprovider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
@@ -84,10 +83,9 @@ describe('user migration plugin', () => {
         cy.visit('/admin/master/console/#/master/user-federation');
         cy.get("h1").should('contain', 'User federation');
         cy.wait("@realm");
-        // Wait for provider list to load
-        cy.wait(1000);
-        cy.get('div[class="pf-l-gallery pf-m-gutter"]')
-            .get('*[data-testid="keycloak-card-title"] a', {timeout: 40000})
+        // Either add provider, or edit existing:
+        cy.get('*[data-testid="User migration using a REST client-card"], ' +
+            'div[class="pf-l-gallery pf-m-gutter"] *[data-testid="keycloak-card-title"] a')
             .first()
             .click({force: true});
         cy.get("h1").should('contain', 'User migration using a REST client');
