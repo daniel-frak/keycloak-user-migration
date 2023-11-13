@@ -93,6 +93,17 @@ public class UserModelFactory {
                 .forEach(userModel::addRequiredAction);
         }
 
+        if (legacyUser.getLegacyFederatedIdentities() != null) {
+            legacyUser.getLegacyFederatedIdentities()
+                .forEach(x ->
+                    session.users().addFederatedIdentity(
+                        realm,
+                        userModel,
+                        this.createFederatedIdentityModel(x)
+                    )
+                );
+        }
+
         return userModel;
     }
 
@@ -102,6 +113,15 @@ public class UserModelFactory {
         }
 
         return session.users().getUserById(realm, legacyUser.getId()) != null;
+    }
+
+    private FederatedIdentityModel createFederatedIdentityModel(LegacyFederatedIdentity fi) {
+        return new FederatedIdentityModel(
+            fi.getIdentityProvider(),
+            fi.getUserId(),
+            fi.getUserName(),
+            fi.getToken()
+        );
     }
 
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
