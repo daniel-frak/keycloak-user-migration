@@ -65,11 +65,9 @@ describe('user migration plugin', () => {
 
     function configureMigrationPlugin() {
         visitMigrationConfigPage();
-        cy.wait(500);
-        cy.get('#kc-ui-display-name').clear();
-        // Wait for field to clear.
-        cy.wait(500);
-        cy.get('#kc-ui-display-name').type('RESTclientprovider');
+        cy.get('#kc-ui-display-name')
+            .invoke('val', '') // clear() doesn't seem to work here for some reason
+            .type('RESTclientprovider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
         cy.get('button').contains('Save').click()
         cy.get('.pf-c-alert__title').should('contain', "User federation provider successfully");
@@ -85,9 +83,11 @@ describe('user migration plugin', () => {
         cy.visit('/admin/master/console/#/master/user-federation');
         cy.get("h1").should('contain', 'User federation');
         cy.wait("@realm");
-        // Wait for provider list to load
-        cy.wait(1000);
-        cy.get('div[class="pf-l-gallery pf-m-gutter"]').get('article').first().click({force: true});
+        // Either add provider, or edit existing:
+        cy.get('*[data-testid="User migration using a REST client-card"], ' +
+            'div[class="pf-l-gallery pf-m-gutter"] *[data-testid="keycloak-card-title"] a')
+            .first()
+            .click({force: true});
         cy.get("h1").should('contain', 'User migration using a REST client');
     }
 
@@ -104,13 +104,13 @@ describe('user migration plugin', () => {
     function writeAdminPersonalInfo() {
         cy.visit('/admin/master/console/#/master/users');
         cy.url().should('include', '/admin/master/console/#/master/users');
-        cy.get('input[name="search-input"]').clear().type('*');
+        cy.get('*[placeholder="Search user"').clear().type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
         cy.get('table').get('td[data-label="Username"]').get('a').contains(ADMIN_USERNAME).click();
         cy.get('#kc-email').clear();
         cy.get('#kc-email').clear().type(ADMIN_EMAIL);
-        cy.get('#kc-firstname').clear().type(ADMIN_USERNAME);
-        cy.get('#kc-lastname').clear().type(ADMIN_USERNAME);
+        cy.get('*[data-testid="firstName-input"]').clear().type(ADMIN_USERNAME);
+        cy.get('*[data-testid="lastName-input"]').clear().type(ADMIN_USERNAME);
         cy.get('.pf-c-form__actions').get('button[type="submit"]').contains('Save').click({force: true});
 
     }
@@ -225,9 +225,19 @@ describe('user migration plugin', () => {
         assertIsLoggedInAsLegacyUser();
     });
 
+    function clickSignBtnInIfExists() {
+        cy.get('body').then((body) => {
+            const element = "#landingSignInButton";
+            if (body.find(element).length > 0) {
+                // Only click if exists
+                cy.get(element).click();
+            }
+        });
+    }
+
     function signInAsLegacyUser() {
         cy.visit('/realms/master/account');
-        cy.get('#landingSignInButton').click();
+        clickSignBtnInIfExists();
         submitCredentials(LEGACY_USER_USERNAME, LEGACY_USER_PASSWORD);
     }
 
@@ -260,7 +270,7 @@ describe('user migration plugin', () => {
 
     function attemptLoginWithWrongPassword() {
         cy.visit('/realms/master/account');
-        cy.get('#landingSignInButton').click();
+        clickSignBtnInIfExists();
         submitCredentials(LEGACY_USER_USERNAME, "wrongPassword");
     }
 
@@ -299,7 +309,7 @@ describe('user migration plugin', () => {
 
     it('should reset password before user is migrated', () => {
         cy.visit('/realms/master/account');
-        cy.get('#landingSignInButton').click();
+        clickSignBtnInIfExists();
         triggerPasswordReset();
         resetPasswordViaEmail()
     });

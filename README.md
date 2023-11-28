@@ -22,7 +22,8 @@ https://codesoapbox.dev/keycloak-user-migration
 
 | Keycloak Version | Version/Commit                                                                                                                                     |
 |------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 21.X             | [1.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/1.0.0)                                                                                                                                           |
+| 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                                                                                           |
+| 21.X             | [1.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/1.0.0)                                                                 |
 | 20.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/64e2fb30b7eac94ca944a5ef2759dcc5417ad9b2) |
 | 19.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/f4836a26aff16009738d5f6c74af0f8e69ba8d26) |
 | 18.X             | [4de28f2e2893b83911e79e242574fe3139144451](https://github.com/daniel-frak/keycloak-user-migration/commit/4de28f2e2893b83911e79e242574fe3139144451) |
