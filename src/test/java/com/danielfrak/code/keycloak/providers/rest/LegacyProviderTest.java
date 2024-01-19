@@ -13,7 +13,6 @@ import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.SubjectCredentialManager;
-import org.keycloak.models.UserCredentialManager;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
@@ -24,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
@@ -74,7 +74,7 @@ class LegacyProviderTest {
         when(userModelFactory.create(user, realmModel))
                 .thenReturn(userModel);
 
-        var result = legacyProvider.getUserByUsername(username, realmModel);
+        var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertEquals(userModel, result);
     }
@@ -85,7 +85,7 @@ class LegacyProviderTest {
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.empty());
 
-        var result = legacyProvider.getUserByUsername(username, realmModel);
+        var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertNull(result);
     }
@@ -99,9 +99,23 @@ class LegacyProviderTest {
         when(userModelFactory.create(user, realmModel))
                 .thenReturn(userModel);
 
-        var result = legacyProvider.getUserByEmail(email, realmModel);
+        var result = legacyProvider.getUserByEmail(realmModel, email);
 
         assertEquals(userModel, result);
+    }
+
+    @Test
+    void shouldReturnNullIfUserWithDuplicateIdExists() {
+        final String email = "email";
+        final LegacyUser user = new LegacyUser();
+        when(legacyUserService.findByEmail(email))
+                .thenReturn(Optional.of(user));
+        when(userModelFactory.isDuplicateUserId(user, realmModel))
+                .thenReturn(true);
+
+        var result = legacyProvider.getUserByEmail(realmModel, email);
+
+        assertNull(result);
     }
 
     @Test
@@ -110,7 +124,7 @@ class LegacyProviderTest {
         when(legacyUserService.findByEmail(username))
                 .thenReturn(Optional.empty());
 
-        var result = legacyProvider.getUserByEmail(username, realmModel);
+        var result = legacyProvider.getUserByEmail(realmModel, username);
 
         assertNull(result);
     }
@@ -285,7 +299,7 @@ class LegacyProviderTest {
     @Test
     void getUserByIdShouldThrowException() {
         var realm = mock(RealmModel.class);
-        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById("someId", realm));
+        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById(realm, "someId"));
     }
 
     @Test
@@ -338,6 +352,6 @@ class LegacyProviderTest {
 
     @Test
     void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
-        assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypes(realmModel, userModel));
+        assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel).collect(Collectors.toSet()));
     }
 }

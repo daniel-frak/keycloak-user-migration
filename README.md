@@ -18,9 +18,14 @@ https://codesoapbox.dev/keycloak-user-migration
 
 ## Compatibility history
 
-| Keycloak Version | Commit                                                                                                                                             |
+*(`SNAPSHOT` means that the version is not yet released)*
+
+| Keycloak Version | Version/Commit                                                                                                                                     |
 |------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 19.X             | Current                                                                                                                                            |
+| 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                                                                                           |
+| 21.X             | [1.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/1.0.0)                                                                 |
+| 20.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/64e2fb30b7eac94ca944a5ef2759dcc5417ad9b2) |
+| 19.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/f4836a26aff16009738d5f6c74af0f8e69ba8d26) |
 | 18.X             | [4de28f2e2893b83911e79e242574fe3139144451](https://github.com/daniel-frak/keycloak-user-migration/commit/4de28f2e2893b83911e79e242574fe3139144451) |
 | 17.X             | [ca82b795c793094f6d67dac3dc14dcdfd2d0ed59](https://github.com/daniel-frak/keycloak-user-migration/commit/ca82b795c793094f6d67dac3dc14dcdfd2d0ed59) |
 | 16.X             | [489779543989b1880177c802f5ee62769a945b85](https://github.com/daniel-frak/keycloak-user-migration/commit/489779543989b1880177c802f5ee62769a945b85) |
@@ -29,14 +34,9 @@ https://codesoapbox.dev/keycloak-user-migration
 | 11.x             | [9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30](https://github.com/daniel-frak/keycloak-user-migration/tree/9f59cdf7fa888c31c5cda3d1fe014c9a0682ab30)   |
 | 9.X              | [c9c64162b91cedc29d8bf360c3df50b69fdb4c6b](https://github.com/daniel-frak/keycloak-user-migration/tree/c9c64162b91cedc29d8bf360c3df50b69fdb4c6b)   |
 
-## Keycloak 19+ compatibility notice
-Keycloak 19 introduced the new React based admin console `keycloak.v2` as default. 
-Since this theme apparently still lacks support for custom configuration properties,
-you will need to use the old admin console `keycloak` (configurable under `Realm Settings -> Themes`) to configure this plugin.
-More details on the new admin console and how to disable it are available 
-at the Keycloak [Migration Guide](https://www.keycloak.org/docs/latest/upgrading/index.html#new-admin-console-is-now-the-default-console).
+### Note about compatibility with JBoss Keycloak distributions
 
-A corresponding [issue](https://github.com/keycloak/keycloak-ui/issues/2989) has been submitted on GitHub.
+Using this plugin with legacy JBoss distributions of Keycloak might result in a `java.lang.NoClassDefFoundError: org/apache/commons/codec/binary/Base64` error. It seems that [adding the maven-shade-plugin](https://github.com/daniel-frak/keycloak-user-migration/issues/72) as a dependency fixes this issue.
 
 ## Prerequisites - REST endpoints in the legacy system
 

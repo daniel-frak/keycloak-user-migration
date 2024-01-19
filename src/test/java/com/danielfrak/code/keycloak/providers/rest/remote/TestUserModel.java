@@ -7,6 +7,7 @@ import org.keycloak.models.SubjectCredentialManager;
 import org.keycloak.models.UserModel;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 public class TestUserModel implements UserModel {
 
@@ -17,10 +18,10 @@ public class TestUserModel implements UserModel {
     private String lastName;
     private boolean isEnabled;
     private boolean isEmailVerified;
-    private Map<String, List<String>> attributes = new HashMap<>();
-    private Set<RoleModel> roles = new HashSet<>();
-    private Set<GroupModel> groups = new HashSet<>();
-    private Set<String> requiredActions = new HashSet<>();
+    private final Map<String, List<String>> attributes = new HashMap<>();
+    private final Set<RoleModel> roles = new HashSet<>();
+    private final Set<GroupModel> groups = new HashSet<>();
+    private final Set<String> requiredActions = new HashSet<>();
     private String federationLink;
 
     public TestUserModel(String username) {
@@ -122,7 +123,7 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
-    public List<String> getAttribute(String name) {
+    public Stream<String> getAttributeStream(String s) {
         throw new RuntimeException("Not implemented");
     }
 
@@ -137,8 +138,8 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
-    public Set<GroupModel> getGroups() {
-        return groups;
+    public Stream<GroupModel> getGroupsStream() {
+        return this.groups.stream();
     }
 
     @Override
@@ -187,8 +188,8 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
-    public Set<String> getRequiredActions() {
-        return this.requiredActions;
+    public Stream<String> getRequiredActionsStream() {
+        return this.requiredActions.stream();
     }
 
     @Override
@@ -211,13 +212,14 @@ public class TestUserModel implements UserModel {
         throw new RuntimeException("Not implemented");
     }
 
+
     @Override
-    public Set<RoleModel> getRealmRoleMappings() {
-        return roles;
+    public Stream<RoleModel> getRealmRoleMappingsStream() {
+        return this.roles.stream();
     }
 
     @Override
-    public Set<RoleModel> getClientRoleMappings(ClientModel app) {
+    public Stream<RoleModel> getClientRoleMappingsStream(ClientModel clientModel) {
         throw new RuntimeException("Not implemented");
     }
 
@@ -232,8 +234,8 @@ public class TestUserModel implements UserModel {
     }
 
     @Override
-    public Set<RoleModel> getRoleMappings() {
-        return roles;
+    public Stream<RoleModel> getRoleMappingsStream() {
+        return this.roles.stream();
     }
 
     @Override

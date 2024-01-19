@@ -96,6 +96,14 @@ public class UserModelFactory {
         return userModel;
     }
 
+    public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {
+        if (isEmpty(legacyUser.getId())) {
+            return false;
+        }
+
+        return session.users().getUserById(realm, legacyUser.getId()) != null;
+    }
+
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
         if (!userModel.getUsername().equalsIgnoreCase(legacyUser.getUsername())) {
             throw new IllegalStateException(String.format("Local and remote users differ: [%s != %s]",

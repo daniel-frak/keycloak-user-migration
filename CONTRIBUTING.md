@@ -81,7 +81,8 @@ When updating the code to work with newer versions of Keycloak, remember to upda
 To check if the plugin works correctly after the upgrade:
 1) Run `mvn clean package` in the project's root directory to run unit tests and build the plugin
 2) Run `docker-compose up -d` in `./docker` to create the dependencies necessary for end-to-end testing
-3) Run `npx cypress run` in `./docker/e2e` to run end-to-end tests
+3) If this is the first time you're doing this, run `npm install` in `./docker/e2e` to install Cypress
+4) Run `npx cypress run` in `./docker/e2e` to run end-to-end tests
 
 ## SonarQube analysis on a local environment
 
