@@ -48,16 +48,12 @@ describe('user migration plugin', () => {
     }
 
     function signOutViaUI() {
-        cy.get('#pf-dropdown-toggle-id-8').click()
+        cy.get('#pf-dropdown-toggle-id-6').click()
         cy.get('#sign-out').get('a').contains('Sign out').click({force: true});
     }
 
     function configureLoginSettings() {
         cy.visit('/admin/master/console/#/master/realm-settings/login');
-
-        cy.get('#kc-forgot-pw-switch')
-            .uncheck({force: true});
-        cy.wait(500);
         cy.get('#kc-forgot-pw-switch')
             .check({force: true});
         cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
