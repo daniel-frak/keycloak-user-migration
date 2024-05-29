@@ -44,7 +44,7 @@ jobs:
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -P code-coverage -P sonar-cloud --file pom.xml
 
       - name: Archive plugin jar
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plugin-jar-file
           path: target/*.jar
@@ -60,7 +60,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download a single artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: plugin-jar-file
           path: target
@@ -102,14 +102,14 @@ jobs:
 
       - name: Archive videos
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-videos
           path: docker/e2e/cypress/videos
 
       - name: Archive screenshots
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: cypress-screenshots
           path: docker/e2e/cypress/screenshots
