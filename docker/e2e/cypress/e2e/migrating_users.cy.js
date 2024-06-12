@@ -23,6 +23,17 @@ const LEGACY_USER_EMAIL = 'lucy@example.com';
 const LEGACY_USER_FIRST_NAME = 'Lucy';
 const LEGACY_USER_LAST_NAME = 'Brennan';
 
+const USER_DETAILS_EMAIL_ID = '#email';
+const ADMIN_PERSONAL_INFO_EMAIL_ID = '#email';
+const ADMIN_PERSONAL_INFO_FIRST_NAME_ID = '#firstName';
+const ADMIN_PERSONAL_INFO_LAST_NAME_ID = '#lastName';
+const ACCOUNT_INFORMATION_EMAIL_ID = '#email';
+const ACCOUNT_INFORMATION_FIRST_NAME_ID = '#firstName';
+const ACCOUNT_INFORMATION_LAST_NAME_ID = '#lastName';
+const ACCOUNT_DROPDOWN_SELECTOR = '[data-testid="options"]';
+const RESET_PASSWORD_EMAIL_ID = '#username';
+const RESET_PASSWORD_NEW_PASSWORD_ID = '#password-new';
+const RESET_PASSWORD_CONFIRM_NEW_PASSWORD_ID = '#password-confirm';
 describe('user migration plugin', () => {
 
     before(() => {
@@ -48,19 +59,19 @@ describe('user migration plugin', () => {
     }
 
     function signOutViaUI() {
-        cy.get('#pf-dropdown-toggle-id-8').click()
+        cy.get('#user-dropdown').click()
         cy.get('#sign-out').get('a').contains('Sign out').click({force: true});
     }
 
     function configureLoginSettings() {
         cy.visit('/admin/master/console/#/master/realm-settings/login');
 
-        cy.get('#kc-forgot-pw-switch')
-            .uncheck({force: true});
-        cy.wait(500);
-        cy.get('#kc-forgot-pw-switch')
-            .check({force: true});
-        cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
+        cy.get('#kc-forgot-pw-switch').then(($checkbox) => {
+            if (!$checkbox.prop('checked')) {
+                cy.wrap($checkbox).check({ force: true });
+                cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
+            }
+        });
     }
 
     function configureMigrationPlugin() {
@@ -107,28 +118,28 @@ describe('user migration plugin', () => {
         cy.get('*[placeholder="Search user"').clear().type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
         cy.get('table').get('td[data-label="Username"]').get('a').contains(ADMIN_USERNAME).click();
-        cy.get('#kc-email').clear();
-        cy.get('#kc-email').clear().type(ADMIN_EMAIL);
-        cy.get('*[data-testid="firstName-input"]').clear().type(ADMIN_USERNAME);
-        cy.get('*[data-testid="lastName-input"]').clear().type(ADMIN_USERNAME);
+        cy.get(USER_DETAILS_EMAIL_ID).clear();
+        cy.get(USER_DETAILS_EMAIL_ID).clear().type(ADMIN_EMAIL);
+        cy.get('*[data-testid="firstName"]').clear().type(ADMIN_USERNAME);
+        cy.get('*[data-testid="lastName"]').clear().type(ADMIN_USERNAME);
         cy.get('.pf-c-form__actions').get('button[type="submit"]').contains('Save').click({force: true});
 
     }
 
     function configureAdminPersonalInfo() {
-        cy.intercept('GET', '/realms/master/account/')
+        cy.intercept('GET', '/realms/master/account/**')
             .as("accountDetails");
-        cy.visit('/realms/master/account/#/personal-info');
+        cy.visit('/realms/master/account');
         cy.wait('@accountDetails');
 
         // Wait a while, otherwise Keycloak overrides the inputs randomly
         cy.wait(2000);
-        cy.get('#email-address').clear();
+        cy.get(ADMIN_PERSONAL_INFO_EMAIL_ID).clear();
         // Wait for email to be cleared
         cy.wait(2000);
-        cy.get('#email-address').clear().type(ADMIN_EMAIL);
-        cy.get('#first-name').clear().type(ADMIN_USERNAME);
-        cy.get('#last-name').clear().type(ADMIN_USERNAME);
+        cy.get(ADMIN_PERSONAL_INFO_EMAIL_ID).clear().type(ADMIN_EMAIL);
+        cy.get(ADMIN_PERSONAL_INFO_FIRST_NAME_ID).clear().type(ADMIN_USERNAME);
+        cy.get(ADMIN_PERSONAL_INFO_LAST_NAME_ID).clear().type(ADMIN_USERNAME);
 
         cy.get('button').contains('Save').click();
 
@@ -242,14 +253,15 @@ describe('user migration plugin', () => {
     }
 
     function updateAccountInformation() {
-        cy.get('#email').should('have.value', LEGACY_USER_EMAIL);
-        cy.get('#firstName').should('have.value', LEGACY_USER_FIRST_NAME);
-        cy.get('#lastName').should('have.value', LEGACY_USER_LAST_NAME);
+        cy.get(ACCOUNT_INFORMATION_EMAIL_ID).should('have.value', LEGACY_USER_EMAIL);
+        cy.get(ACCOUNT_INFORMATION_FIRST_NAME_ID).should('have.value', LEGACY_USER_FIRST_NAME);
+        cy.get(ACCOUNT_INFORMATION_LAST_NAME_ID).should('have.value', LEGACY_USER_LAST_NAME);
         cy.get("input").contains("Submit").click();
     }
 
     function assertIsLoggedInAsLegacyUser() {
-        cy.get('#landingLoggedInUser').should('contain', LEGACY_USER_FIRST_NAME + ' ' + LEGACY_USER_LAST_NAME);
+        cy.get(ACCOUNT_DROPDOWN_SELECTOR)
+            .should('contain', LEGACY_USER_FIRST_NAME + ' ' + LEGACY_USER_LAST_NAME);
     }
 
     it('should reset password after inputting wrong credentials', () => {
@@ -279,7 +291,7 @@ describe('user migration plugin', () => {
             .as('resetCredentials');
         cy.get("a").contains("Forgot Password?").click();
         cy.wait('@resetCredentials');
-        cy.get('#username').clear().type(LEGACY_USER_EMAIL);
+        cy.get(RESET_PASSWORD_EMAIL_ID).clear().type(LEGACY_USER_EMAIL);
         cy.get('input[type=submit]').click();
         cy.get('body').should('contain.text',
             'You should receive an email shortly with further instructions.');
@@ -302,8 +314,8 @@ describe('user migration plugin', () => {
     }
 
     function inputNewPassword() {
-        cy.get('#password-new').type(LEGACY_USER_PASSWORD);
-        cy.get('#password-confirm').type(LEGACY_USER_PASSWORD);
+        cy.get(RESET_PASSWORD_NEW_PASSWORD_ID).type(LEGACY_USER_PASSWORD);
+        cy.get(RESET_PASSWORD_CONFIRM_NEW_PASSWORD_ID).type(LEGACY_USER_PASSWORD);
         cy.get('input[type=submit]').click();
     }
 

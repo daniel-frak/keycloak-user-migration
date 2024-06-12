@@ -22,7 +22,9 @@ https://codesoapbox.dev/keycloak-user-migration
 
 | Keycloak Version | Version/Commit                                                                                                                                     |
 |------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                                                                                           |
+| 24.X             | [4.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/4.0.0)                                                                                                                                           |
+| 23.X             | [3.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/3.0.0)                                                                 |
+| 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                 |
 | 21.X             | [1.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/1.0.0)                                                                 |
 | 20.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/64e2fb30b7eac94ca944a5ef2759dcc5417ad9b2) |
 | 19.X             | [f4836a26aff16009738d5f6c74af0f8e69ba8d26](https://github.com/daniel-frak/keycloak-user-migration/commit/f4836a26aff16009738d5f6c74af0f8e69ba8d26) |
@@ -160,6 +162,13 @@ request will be performed to `http://www.old-legacy-system.com/auth/12345678`, i
 
 As this is the correct password, the user will be logged in. After the first successful login, the federation link to
 the legacy system is severed and any interactions with the user will be done completely through Keycloak.
+From this point onward, should the user change their information (e.g. password) in the legacy system,
+**that information will not get updated in Keycloak**.
+
+*If you need both the legacy system and Keycloak to be publicly accessible at the same time (which is not
+recommended), you may need to modify this plugin to not sever the link. A good starting point is the
+[LegacyProvider](https://github.com/daniel-frak/keycloak-user-migration/blob/c4aaa174fecfed9a58a3c2f7c80d7d2f300d0821/src/main/java/com/danielfrak/code/keycloak/providers/rest/LegacyProvider.java#L134)
+class. Keep in mind that you would also need some way to update changes from Keycloak to your legacy system.*
 
 ## Launching and configuring the example
 
