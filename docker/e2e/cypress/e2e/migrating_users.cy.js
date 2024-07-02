@@ -41,8 +41,8 @@ describe('user migration plugin', () => {
         configureLoginSettings();
         configureMigrationPlugin();
         configureEmails();
-        signOutViaUI();
-    })
+        signOutViaUIAndClearCache();
+    });
 
     function signInAsAdmin() {
         cy.visit('/admin');
@@ -58,9 +58,12 @@ describe('user migration plugin', () => {
         cy.wait("@loginSubmit");
     }
 
-    function signOutViaUI() {
+    function signOutViaUIAndClearCache() {
         cy.get('#user-dropdown').click()
         cy.get('#sign-out').get('a').contains('Sign out').click({force: true});
+        cy.clearAllCookies();
+        cy.clearAllLocalStorage();
+        cy.clearAllSessionStorage();
     }
 
     function configureLoginSettings() {
@@ -166,7 +169,7 @@ describe('user migration plugin', () => {
         signInAsAdmin();
         deleteTestUserIfExists().then(() => {
             deletePasswordPoliciesIfExist()
-                .then(() => signOutViaUI());
+                .then(() => signOutViaUIAndClearCache());
         });
     });
 
@@ -332,7 +335,7 @@ describe('user migration plugin', () => {
     it('should migrate user when password breaks policy', () => {
         signInAsAdmin();
         addSpecialCharactersPasswordPolicy();
-        signOutViaUI();
+        signOutViaUIAndClearCache();
 
         signInAsLegacyUser();
         provideNewPassword();
