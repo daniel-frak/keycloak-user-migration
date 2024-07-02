@@ -68,8 +68,10 @@ describe('user migration plugin', () => {
 
         cy.get('#kc-forgot-pw-switch').then(($checkbox) => {
             if (!$checkbox.prop('checked')) {
+                cy.intercept('PUT', 'http://localhost:8024/admin/realms/master')
+                    .as("saveForgotPassword");
                 cy.wrap($checkbox).check({ force: true });
-                cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
+                cy.wait("@saveForgotPassword");
             }
         });
     }
@@ -176,7 +178,8 @@ describe('user migration plugin', () => {
 
     function deleteTestUserIfExists() {
         cy.visit('/admin/master/console/#/master/users');
-        cy.get('.pf-c-input-group').get('input').clear().type('*');
+        cy.get('.pf-c-input-group').get('input').clear();
+        cy.get('.pf-c-input-group').get('input').type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
 
         let userButton = cy.get('table').get('td[data-label="Username"]').get('a').contains(LEGACY_USER_USERNAME);
