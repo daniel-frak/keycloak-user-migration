@@ -76,13 +76,22 @@ Make sure your test cases are reasonable, readable and maintainable. Don't forge
 When updating the code to work with newer versions of Keycloak, remember to update the following:
 * `keycloak.version` in [pom.xml](pom.xml) (from https://mvnrepository.com/artifact/org.keycloak.bom/keycloak-spi-bom)
 * `KEYCLOAK_IMAGE` in [docker/.env](docker/.env) (from https://quay.io/repository/keycloak/keycloak?tab=tags)
-* `Compatibility history` table in [README.md](README.md) - the plugin version should be `SNAPSHOT`
+* `Compatibility history` table in [README.md](README.md) (the plugin version should be `SNAPSHOT`)
 
 To check if the plugin works correctly after the upgrade:
 1) Run `mvn clean package` in the project's root directory to run unit tests and build the plugin
 2) Run `docker-compose up -d` in `./docker` to create the dependencies necessary for end-to-end testing
 3) If this is the first time you're doing this, run `npm install` in `./docker/e2e` to install Cypress
 4) Run `npx cypress run` in `./docker/e2e` to run end-to-end tests
+
+## Quick guide to upgrading Java version
+
+When updating the version of Java used by the plugin, remember to update the following:
+* `MAVEN_IMAGE` and `OPENJDK_IMAGE` in [.env](docker/.env) (from https://hub.docker.com/_/maven/tags?page=&page_size=&ordering=&name=temurin, https://hub.docker.com/_/openjdk/tags?page=&page_size=&ordering=&name=jdk-slim)
+* `Set up JDK` step in [maven.yml](.github/workflows/maven.yml) (from https://github.com/actions/setup-java)
+* `Set Up Java` step in [release.yml](.github/workflows/release.yml) (from https://github.com/actions/setup-java)
+
+To check if the plugin works correctly after the upgrade, perform the same steps as described in "Quick guide to upgrading Keycloak compatibility" above.
 
 ## SonarQube analysis on a local environment
 

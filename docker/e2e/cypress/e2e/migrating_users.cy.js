@@ -41,8 +41,8 @@ describe('user migration plugin', () => {
         configureLoginSettings();
         configureMigrationPlugin();
         configureEmails();
-        signOutViaUI();
-    })
+        signOutViaUIAndClearCache();
+    });
 
     function signInAsAdmin() {
         cy.visit('/admin');
@@ -58,9 +58,12 @@ describe('user migration plugin', () => {
         cy.wait("@loginSubmit");
     }
 
-    function signOutViaUI() {
+    function signOutViaUIAndClearCache() {
         cy.get('#user-dropdown').click()
         cy.get('#sign-out').get('a').contains('Sign out').click({force: true});
+        cy.clearAllCookies();
+        cy.clearAllLocalStorage();
+        cy.clearAllSessionStorage();
     }
 
     function configureLoginSettings() {
@@ -68,8 +71,11 @@ describe('user migration plugin', () => {
 
         cy.get('#kc-forgot-pw-switch').then(($checkbox) => {
             if (!$checkbox.prop('checked')) {
+                cy.intercept('PUT', 'http://localhost:8024/admin/realms/master')
+                    .as("saveForgotPassword");
                 cy.wrap($checkbox).check({ force: true });
-                cy.get('.pf-v5-c-alert__title').should('contain', "Forgot password changed successfully");
+                cy.wait("@saveForgotPassword");
+
             }
         });
     }
@@ -164,7 +170,7 @@ describe('user migration plugin', () => {
         signInAsAdmin();
         deleteTestUserIfExists().then(() => {
             deletePasswordPoliciesIfExist()
-                .then(() => signOutViaUI());
+                .then(() => signOutViaUIAndClearCache());
         });
     });
 
@@ -176,7 +182,8 @@ describe('user migration plugin', () => {
 
     function deleteTestUserIfExists() {
         cy.visit('/admin/master/console/#/master/users');
-        cy.get('.pf-c-input-group').get('input').clear().type('*');
+        cy.get('.pf-c-input-group').get('input').clear();
+        cy.get('.pf-c-input-group').get('input').type('*');
         cy.get('.pf-c-input-group').get('.pf-c-button.pf-m-control').click();
 
         let userButton = cy.get('table').get('td[data-label="Username"]').get('a').contains(LEGACY_USER_USERNAME);
@@ -329,7 +336,7 @@ describe('user migration plugin', () => {
     it('should migrate user when password breaks policy', () => {
         signInAsAdmin();
         addSpecialCharactersPasswordPolicy();
-        signOutViaUI();
+        signOutViaUIAndClearCache();
 
         signInAsLegacyUser();
         provideNewPassword();
