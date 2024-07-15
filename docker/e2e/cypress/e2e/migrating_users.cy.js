@@ -69,7 +69,7 @@ describe('user migration plugin', () => {
         cy.get('#kc-forgot-pw-switch').then(($checkbox) => {
             if (!$checkbox.prop('checked')) {
                 cy.wrap($checkbox).check({ force: true });
-                cy.get('.pf-c-alert__title').should('contain', "Forgot password changed successfully");
+                cy.get('.pf-v5-c-alert__title').should('contain', "Forgot password changed successfully");
             }
         });
     }
@@ -81,7 +81,7 @@ describe('user migration plugin', () => {
             .type('RESTclientprovider');
         cy.get('#URI').clear().type(LEGACY_SYSTEM_URL);
         cy.get('button').contains('Save').click()
-        cy.get('.pf-c-alert__title').should('contain', "User federation provider successfully");
+        cy.get('.pf-v5-c-alert__title').should('contain', "User federation provider successfully");
     }
 
     /**
@@ -143,7 +143,7 @@ describe('user migration plugin', () => {
 
         cy.get('button').contains('Save').click();
 
-        cy.get('.pf-c-alert__title').should('contain', "Your account has been updated");
+        cy.get('.pf-v5-c-alert__title').should('contain', "Your account has been updated");
     }
 
     function configureSmtpSettings() {
@@ -154,7 +154,7 @@ describe('user migration plugin', () => {
         cy.get('#kc-sender-email-address').clear().type(SMTP_FROM);
 
         cy.get('button').contains('Test connection').click();
-        cy.get('.pf-c-alert__title').should('contain', "Success! SMTP connection successful. E-mail was sent!");
+        cy.get('.pf-v5-c-alert__title').should('contain', "Success! SMTP connection successful. E-mail was sent!");
 
         cy.get('button').contains('Save').click();
     }
@@ -213,7 +213,7 @@ describe('user migration plugin', () => {
                             }
                             cy.wrap(btn).click({multiple: true});
                             cy.get('button[data-testid="save"]').contains('Save').click();
-                            cy.get('.pf-c-alert__title').should('contain', "Password policies successfully updated");
+                            cy.get('.pf-v5-c-alert__title').should('contain', "Password policies successfully updated");
                         });
                 } else {
                     return 'OK';
@@ -342,7 +342,7 @@ describe('user migration plugin', () => {
         cy.get('.pf-c-select__toggle').click()
         cy.get('button[role="option"]').contains('Special Characters').click();
         cy.get('button[data-testid="save"]').contains('Save').click();
-        cy.get('.pf-c-alert__title').should('contain', "Password policies successfully updated");
+        cy.get('.pf-v5-c-alert__title').should('contain', "Password policies successfully updated");
     }
 
     function provideNewPassword() {
