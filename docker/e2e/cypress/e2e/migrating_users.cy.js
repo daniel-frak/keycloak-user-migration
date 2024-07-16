@@ -75,6 +75,7 @@ describe('user migration plugin', () => {
                     .as("saveForgotPassword");
                 cy.wrap($checkbox).check({ force: true });
                 cy.wait("@saveForgotPassword");
+
             }
         });
     }
