@@ -11,6 +11,7 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_LOG_LEVEL: DEBUG
       DB_VENDOR: h2
     ports:
       - "8024:8080"
