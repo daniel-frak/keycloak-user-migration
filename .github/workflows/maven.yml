@@ -97,7 +97,6 @@ jobs:
       - name: Run e2e tests
         working-directory: docker/e2e
         # Video recording turned off due to free GitHub CI runners seemingly not being powerful enough for it.
-        # Headed Chrome used to minimize issues with tests failing for no reason.
         run: npx cypress run --headed --browser electron --config video=false
 
       - name: Archive videos
