@@ -4,6 +4,7 @@ import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
+import org.keycloak.models.credential.OTPCredentialModel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -91,6 +92,14 @@ public class UserModelFactory {
         if (legacyUser.getRequiredActions() != null) {
             legacyUser.getRequiredActions()
                 .forEach(userModel::addRequiredAction);
+        }
+
+        if (legacyUser.getTotps() != null) {
+            legacyUser.getTotps().forEach((totp) -> {
+                var otpModel = OTPCredentialModel.createTOTP(totp.getSecret(), 6, 30, "HmacSHA1", "BASE32");
+                otpModel.setUserLabel(totp.getName());
+                userModel.credentialManager().createStoredCredential(otpModel);
+            });
         }
 
         return userModel;
