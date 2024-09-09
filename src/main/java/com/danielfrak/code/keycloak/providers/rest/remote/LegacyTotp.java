@@ -10,16 +10,16 @@ public class LegacyTotp {
         return this.base32Secret;
     }
 
-    public String setSecret(String secret) {
-        return this.base32Secret = secret;
+    public void setSecret(String secret) {
+        this.base32Secret = secret;
     }
 
     public String getName() {
         return this.name;
     }
 
-    public String setName(String name) {
-        return this.name = name;
+    public void setName(String name) {
+        this.name = name;
     }
 
     @Override

@@ -95,7 +95,7 @@ public class UserModelFactory {
         }
 
         if (legacyUser.getTotps() != null) {
-            legacyUser.getTotps().forEach((totp) -> {
+            legacyUser.getTotps().forEach(totp -> {
                 var otpModel = OTPCredentialModel.createTOTP(totp.getSecret(), 6, 30, "HmacSHA1", "BASE32");
                 otpModel.setUserLabel(totp.getName());
                 userModel.credentialManager().createStoredCredential(otpModel);

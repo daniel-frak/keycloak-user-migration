@@ -498,8 +498,8 @@ class UserModelFactoryTest {
         var resultSet = result.credentialManager().getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE).collect(Collectors.toSet());
 
         assertEquals(2, resultSet.size());
-        assertEquals("{\"value\":\"SECRET\"}", resultSet.stream().filter((item) -> item.getUserLabel().equals("device 1")).findFirst().get().getSecretData());
-        assertEquals("{\"value\":\"SECRET2\"}", resultSet.stream().filter((item) -> item.getUserLabel().equals("device 2")).findFirst().get().getSecretData());
+        assertEquals("{\"value\":\"SECRET\"}", resultSet.stream().filter(item -> item.getUserLabel().equals("device 1")).findFirst().get().getSecretData());
+        assertEquals("{\"value\":\"SECRET2\"}", resultSet.stream().filter(item -> item.getUserLabel().equals("device 2")).findFirst().get().getSecretData());
     }
 
     @Test
