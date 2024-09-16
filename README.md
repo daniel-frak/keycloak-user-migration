@@ -84,6 +84,12 @@ The GET request will have to return user data as a JSON response in the form:
   ],
   "requiredActions": [
     "requiredActions"
+  ],
+  "totps": [
+    {
+      "name": "string",
+      "secret": "string"
+    }
   ]
 }
 ```
@@ -143,6 +149,12 @@ response might look like this:
     "UPDATE_PASSWORD",
     "UPDATE_PROFILE",
     "update_user_locale"
+  ],
+  "totps": [
+    {
+      "name": "Totp Device 1",
+      "secret": "base32Secret"
+    }
   ]
 }
 ```
