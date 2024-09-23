@@ -99,6 +99,7 @@ class LegacyUserTest {
         user.setTotps(expectedValue);
         assertEquals(expectedValue, user.getTotps());
     }
+
     @Test
     void testEquals() {
         EqualsVerifier.simple().forClass(LegacyUser.class)

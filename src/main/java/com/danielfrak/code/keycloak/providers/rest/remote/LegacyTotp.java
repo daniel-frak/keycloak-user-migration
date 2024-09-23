@@ -3,6 +3,7 @@ package com.danielfrak.code.keycloak.providers.rest.remote;
 import java.util.Objects;
 
 public class LegacyTotp {
+    
     private String base32Secret;
     private String name;
 

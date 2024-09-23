@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 public class TestCredentialManager implements SubjectCredentialManager {
+    
     private final Set<CredentialModel> storedCredentials = new HashSet<>();
 
     @Override

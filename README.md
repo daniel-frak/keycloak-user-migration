@@ -308,3 +308,7 @@ automatically map legacy groups to Keycloak groups, by specifying the mapping in
 
 This switch can be toggled to decide whether groups which are not defined in the legacy group conversion map should be
 migrated anyway or simply ignored.
+
+## Totp
+This module supports the migration of HmacSHA1 totp devices.
+The Totp device must have a Base32 encoded secret, 6 digits and a 30 second period to work.

@@ -1,12 +1,12 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
-
 import nl.jqno.equalsverifier.EqualsVerifier;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class LegacyTotpTest {
+
     @Test
     void shouldGetAndSetName() {
         var totp = new LegacyTotp();
