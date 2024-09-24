@@ -153,7 +153,11 @@ response might look like this:
   "totps": [
     {
       "name": "Totp Device 1",
-      "secret": "base32Secret"
+      "secret": "secret",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "HmacSHA1",
+      "encoding": "BASE32"
     }
   ]
 }
@@ -310,5 +314,17 @@ This switch can be toggled to decide whether groups which are not defined in the
 migrated anyway or simply ignored.
 
 ## Totp
-This module supports the migration of HmacSHA1 totp devices.
-The Totp device must have a Base32 encoded secret, 6 digits and a 30 second period to work.
+This module supports the migration of totp devices. The totp configuration block looks like this:
+```json
+{
+  "name": "Totp Device 1",
+  "secret": "secret",
+  "digits": 6,
+  "period": 30,
+  "algorithm": "HmacSHA1",
+  "encoding": "BASE32"
+}
+```
+name should be the name of the totp device, while secret is the secret, that could be encoded in "BASE32" or as the utf8 bytes. 
+For the utf8 bytes just set the encoding attribute to null.
+Possible Algorithms are: HmacSHA1, HmacSHA256, HmacSHA512

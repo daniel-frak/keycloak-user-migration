@@ -17,11 +17,43 @@ class LegacyTotpTest {
 
 
     @Test
-    void shouldGetAndSetBase32Secret() {
+    void shouldGetAndSetSecret() {
         var totp = new LegacyTotp();
         var expectedValue = "value1";
         totp.setSecret(expectedValue);
         assertEquals(expectedValue, totp.getSecret());
+    }
+
+    @Test
+    void shouldGetAndSetDigits() {
+        var totp = new LegacyTotp();
+        var expectedValue = 6;
+        totp.setDigits(expectedValue);
+        assertEquals(expectedValue, totp.getDigits());
+    }
+
+    @Test
+    void shouldGetAndSetPeriod() {
+        var totp = new LegacyTotp();
+        var expectedValue = 30;
+        totp.setPeriod(expectedValue);
+        assertEquals(expectedValue, totp.getPeriod());
+    }
+
+    @Test
+    void shouldGetAndSetAlgorithm() {
+        var totp = new LegacyTotp();
+        var expectedValue = "value1";
+        totp.setAlgorithm(expectedValue);
+        assertEquals(expectedValue, totp.getAlgorithm());
+    }
+
+    @Test
+    void shouldGetAndSetEncpding() {
+        var totp = new LegacyTotp();
+        var expectedValue = "value1";
+        totp.setEncoding(expectedValue);
+        assertEquals(expectedValue, totp.getEncoding());
     }
 
     @Test
