@@ -15,7 +15,6 @@ class LegacyTotpTest {
         assertEquals(expectedValue, totp.getName());
     }
 
-
     @Test
     void shouldGetAndSetSecret() {
         var totp = new LegacyTotp();

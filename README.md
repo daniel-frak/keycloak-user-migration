@@ -88,7 +88,11 @@ The GET request will have to return user data as a JSON response in the form:
   "totps": [
     {
       "name": "string",
-      "secret": "string"
+      "secret": "string",
+      "digits": "int",
+      "period": "int",
+      "algorithm": "string",
+      "encoding": "string"
     }
   ]
 }
@@ -314,7 +318,7 @@ This switch can be toggled to decide whether groups which are not defined in the
 migrated anyway or simply ignored.
 
 ## Totp
-This module supports the migration of totp devices. The totp configuration block looks like this:
+This module supports the migration of totp devices. The totp configuration block could look like this:
 ```json
 {
   "name": "Totp Device 1",
@@ -325,6 +329,6 @@ This module supports the migration of totp devices. The totp configuration block
   "encoding": "BASE32"
 }
 ```
-name should be the name of the totp device, while secret is the secret, that could be encoded in "BASE32" or as the utf8 bytes. 
-For the utf8 bytes just set the encoding attribute to null.
-Possible Algorithms are: HmacSHA1, HmacSHA256, HmacSHA512
+`name` should be the name of the totp device, while `secret` is the secret, that could be encoded in "BASE32" or as UTF-8 plaintext.
+For the utf8 bytes just set the `encoding` attribute to null.
+Possible `algorithm`s are: HmacSHA1, HmacSHA256, HmacSHA512
