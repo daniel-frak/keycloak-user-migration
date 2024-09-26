@@ -6,7 +6,7 @@
 
     <groupId>com.danielfrak.code.keycloak.providers</groupId>
     <artifactId>keycloak-rest-provider</artifactId>
-    <version>5.0.1-SNAPSHOT</version>
+    <version>5.1.0</version>
     <properties>
         <java.version>21</java.version>
         <keycloak.version>25.0.0</keycloak.version>
