@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
+import org.keycloak.models.credential.OTPCredentialModel;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -468,6 +469,37 @@ class UserModelFactoryTest {
 
         assertEquals(Set.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"), result.getRequiredActionsStream()
                 .collect(Collectors.toSet()));
+    }
+
+    @Test
+    void migratesTotp() {
+        final UserProvider userProvider = mock(UserProvider.class);
+        final RealmModel realm = mock(RealmModel.class);
+        final String username = "user";
+
+        when(session.users())
+                .thenReturn(userProvider);
+        when(userProvider.addUser(realm, username))
+                .thenReturn(new TestUserModel(username));
+
+        LegacyUser legacyUser = createLegacyUser(username);
+        var legacyTotp1 = new LegacyTotp();
+        legacyTotp1.setName("device 1");
+        legacyTotp1.setSecret("SECRET");
+
+        var legacyTotp2 = new LegacyTotp();
+        legacyTotp2.setName("device 2");
+        legacyTotp2.setSecret("SECRET2");
+
+        legacyUser.setTotps(List.of(legacyTotp1, legacyTotp2));
+
+        var result = userModelFactory.create(legacyUser, realm);
+
+        var resultSet = result.credentialManager().getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE).collect(Collectors.toSet());
+
+        assertEquals(2, resultSet.size());
+        assertEquals("{\"value\":\"SECRET\"}", resultSet.stream().filter(item -> item.getUserLabel().equals("device 1")).findFirst().get().getSecretData());
+        assertEquals("{\"value\":\"SECRET2\"}", resultSet.stream().filter(item -> item.getUserLabel().equals("device 2")).findFirst().get().getSecretData());
     }
 
     @Test

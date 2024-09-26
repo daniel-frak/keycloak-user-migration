@@ -84,6 +84,16 @@ The GET request will have to return user data as a JSON response in the form:
   ],
   "requiredActions": [
     "requiredActions"
+  ],
+  "totps": [
+    {
+      "name": "string",
+      "secret": "string",
+      "digits": "int",
+      "period": "int",
+      "algorithm": "string",
+      "encoding": "string"
+    }
   ]
 }
 ```
@@ -143,6 +153,16 @@ response might look like this:
     "UPDATE_PASSWORD",
     "UPDATE_PROFILE",
     "update_user_locale"
+  ],
+  "totps": [
+    {
+      "name": "Totp Device 1",
+      "secret": "secret",
+      "digits": 6,
+      "period": 30,
+      "algorithm": "HmacSHA1",
+      "encoding": "BASE32"
+    }
   ]
 }
 ```
@@ -296,3 +316,19 @@ automatically map legacy groups to Keycloak groups, by specifying the mapping in
 
 This switch can be toggled to decide whether groups which are not defined in the legacy group conversion map should be
 migrated anyway or simply ignored.
+
+## Totp
+This module supports the migration of totp devices. The totp configuration block could look like this:
+```json
+{
+  "name": "Totp Device 1",
+  "secret": "secret",
+  "digits": 6,
+  "period": 30,
+  "algorithm": "HmacSHA1",
+  "encoding": "BASE32"
+}
+```
+`name` should be the name of the totp device, while `secret` is the secret, that could be encoded in "BASE32" or as UTF-8 plaintext.
+For the utf8 bytes just set the `encoding` attribute to null.
+Possible `algorithm`s are: HmacSHA1, HmacSHA256, HmacSHA512

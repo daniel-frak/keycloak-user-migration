@@ -18,11 +18,12 @@ public class TestUserModel implements UserModel {
     private String lastName;
     private boolean isEnabled;
     private boolean isEmailVerified;
+    private String federationLink;
     private final Map<String, List<String>> attributes = new HashMap<>();
     private final Set<RoleModel> roles = new HashSet<>();
     private final Set<GroupModel> groups = new HashSet<>();
     private final Set<String> requiredActions = new HashSet<>();
-    private String federationLink;
+    private final TestCredentialManager testCredentialManager = new TestCredentialManager();
 
     public TestUserModel(String username) {
         this.username = username;
@@ -179,7 +180,7 @@ public class TestUserModel implements UserModel {
 
     @Override
     public SubjectCredentialManager credentialManager() {
-        throw new RuntimeException("Not implemented");
+        return this.testCredentialManager;
     }
 
     @Override

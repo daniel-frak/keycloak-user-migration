@@ -20,6 +20,7 @@ public class LegacyUser {
     private List<String> roles;
     private List<String> groups;
     private List<String> requiredActions;
+    private List<LegacyTotp> totps;
 
     public String getId() {
         return id;
@@ -109,6 +110,14 @@ public class LegacyUser {
         this.requiredActions = requiredActions;
     }
 
+    public List<LegacyTotp> getTotps() {
+        return this.totps;
+    }
+
+    public void setTotps(List<LegacyTotp> totps) {
+        this.totps = totps;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -129,12 +138,13 @@ public class LegacyUser {
                 Objects.equals(attributes, legacyUser.attributes) &&
                 Objects.equals(roles, legacyUser.roles) &&
                 Objects.equals(groups, legacyUser.groups) &&
-                Objects.equals(requiredActions, legacyUser.requiredActions);
+                Objects.equals(requiredActions, legacyUser.requiredActions) &&
+                Objects.equals(totps, legacyUser.totps);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id, username, email, firstName, lastName, isEnabled, isEmailVerified, attributes,
-                roles, groups, requiredActions);
+                roles, groups, requiredActions, totps);
     }
 }

@@ -90,6 +90,17 @@ class LegacyUserTest {
     }
 
     @Test
+    void shouldGetAndSetTotps() {
+        var user = new LegacyUser();
+        var legacyTotp = new LegacyTotp();
+        legacyTotp.setName("value1");
+        legacyTotp.setSecret("value2");
+        var expectedValue = singletonList(legacyTotp);
+        user.setTotps(expectedValue);
+        assertEquals(expectedValue, user.getTotps());
+    }
+
+    @Test
     void testEquals() {
         EqualsVerifier.simple().forClass(LegacyUser.class)
                 .verify();
