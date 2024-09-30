@@ -6,11 +6,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -191,6 +187,18 @@ public class UserModelFactory {
         if (isEmpty(groupName)) {
             return Optional.empty();
         }
+
+        try {
+            if (UUID.fromString(groupName).toString().equals(groupName)) {
+                GroupModel group = realm.getGroupById(groupName);
+                if (group == null) {
+                    LOG.infof("There is no group for this id %s", groupName);
+                    return Optional.empty();
+                }
+                LOG.infof("Found existing group %s with id %s", group.getName(), group.getId());
+                return Optional.of(group);
+            }
+        } catch (IllegalArgumentException ignore) {}
 
         final String effectiveGroupName = groupName;
         Optional<GroupModel> group = realm.getGroupsStream()
