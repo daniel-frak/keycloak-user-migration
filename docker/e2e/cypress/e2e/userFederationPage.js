@@ -19,13 +19,13 @@ class UserFederationPage {
 
     visit() {
         cy.intercept('/admin/realms/master/components*')
-            .as("components")
+            .as("userFederationComponents")
         cy.visit('/admin/master/console/#/master/user-federation');
-        cy.wait('@components');
-        cy.wait(2000); // The initial page will always claim there are no components, so we must wait to make sure.
+        cy.wait('@userFederationComponents');
     }
 
     removePluginIfExists() {
+        cy.wait(4000); // The initial page will always claim there are no components, so we must wait to make sure.
         this.elements.pluginDropdown()
             .should('have.length.gte', 0).then(userElement => {
             if (!userElement.length) {

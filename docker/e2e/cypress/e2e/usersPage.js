@@ -28,10 +28,13 @@ class UsersPage {
 
     findByName(userName) {
         this.elements.searchUserInput().clear({force: true});
-        this.elements.searchUserInput().type(userName);
+        this.elements.searchUserInput().type(userName.charAt(0));
+        // Type in twice because for some reason typing the first letter defocuses this input:
+        this.elements.searchUserInput().type(userName.slice(1));
         cy.intercept("/admin/realms/master/ui-ext/brute-force-user*")
             .as("findUsers");
         this.elements.searchUserInput().type("{enter}");
+        cy.get('[role=progressbar]').should('not.exist');
         return cy.wait("@findUsers")
             .then(response => response.response?.body[0]?.id);
 
