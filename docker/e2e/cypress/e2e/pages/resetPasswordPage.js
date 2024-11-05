@@ -1,4 +1,5 @@
-class UpdatePasswordPage {
+class ResetPasswordPage {
+
     elements = {
         passwordInput: () => cy.get('#password-new'),
         confirmPasswordInput: () => cy.get('#password-confirm'),
@@ -12,4 +13,4 @@ class UpdatePasswordPage {
     }
 }
 
-module.exports = UpdatePasswordPage;
+module.exports = new ResetPasswordPage();

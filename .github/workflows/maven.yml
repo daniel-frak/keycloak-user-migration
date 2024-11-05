@@ -40,7 +40,7 @@ jobs:
       - name: Build and analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: "dfc3a63c86e79fe71dd4dccbd583f36089fd5371"
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -P code-coverage -P sonar-cloud --file pom.xml
 
       - name: Archive plugin jar
@@ -81,7 +81,7 @@ jobs:
       - name: Start containers
         working-directory: docker
         run: |
-          docker-compose up -d --build \
+          docker compose up -d --build \
           && ./wait-until "curl -sLf -o /dev/null http://localhost:8024/realms/master" 300
 
       - name: Install node
@@ -120,13 +120,13 @@ jobs:
 
       - name: Display legacy system logs
         if: always()
-        run: docker logs keycloak_migration_demo_legacy-system-example_1
+        run: docker logs keycloak_migration_demo-legacy-system-example-1
 
       - name: Display Keycloak logs
         if: always()
-        run: docker logs keycloak_migration_demo_keycloak_1
+        run: docker logs keycloak_migration_demo-keycloak-1
 
       - name: Stop containers
         if: always()
         working-directory: docker
-        run: docker-compose down
+        run: docker compose down

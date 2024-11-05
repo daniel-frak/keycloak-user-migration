@@ -9,4 +9,4 @@ class UpdateAccountInformationPage {
     }
 }
 
-module.exports = UpdateAccountInformationPage;
+module.exports = new UpdateAccountInformationPage();

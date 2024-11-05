@@ -10,6 +10,11 @@ class ResetPasswordEmail {
         return cy.mhGetMailsBySubject(RESET_PASSWORD_EMAIL_SUBJECT).mhFirst().mhGetBody();
     }
 
+    visitResetPasswordPage() {
+        this.getResetPasswordUrl()
+            .then(resetPassUrl => cy.visit(resetPassUrl));
+    }
+
     getResetPasswordUrl() {
         return this.open()
             .then(bodyQuotedPrintable => {
@@ -18,6 +23,9 @@ class ResetPasswordEmail {
             });
     }
 
+    /**
+     * @returns string
+     */
     getUrlFromLink(body, linkText) {
         const linkPattern = new RegExp('<a href="([^"]*).+' + linkText + '.*?<\\/a>');
         return linkPattern.exec(body)[1]
@@ -26,4 +34,4 @@ class ResetPasswordEmail {
     }
 }
 
-module.exports = ResetPasswordEmail;
+module.exports = new ResetPasswordEmail();

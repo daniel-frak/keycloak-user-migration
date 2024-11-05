@@ -34,7 +34,7 @@ To create a Pull Request:
 4. Ensure the test suite passes.
 5. Issue that pull request!
 
-Once you have opened the Pull Request, your code will be analyzed by SonarQube.
+Once you have opened the Pull Request, SonarQube will analyze your code.
 You should fix all bugs and code smells found by the analysis, as well as write the necessary tests if code coverage
 is found to be below the quality gate. If you find that some reported issues are false positives, let the
 reviewer know in the comments of the PR.
@@ -47,13 +47,13 @@ Thank you for your contribution!
 
 ## Coding style
 
-Try to follow the coding style prevalent throughout the codebase - consistency is best!
+Try to follow the coding style prevalent throughout the codebase — consistency is best!
 If you feel like doing things another way would be better for the project, feel free to open an issue to discuss your
 concerns.
 
 ## Tests
 
-The quality gate for this project's test coverage is set at 100%. That is not a required value, it's an expected one.
+The quality gate for this project's test coverage is set at 100%. That is not a required value, it's expected.
 
 A plugin should be trustworthy and the best way to generate trust is by having a complete suite of tests
 proving that everything works correctly. This suite of tests also provides a way to document the code's behavior,
@@ -68,8 +68,8 @@ Coverage is, then, only a tool to find the obvious issue - code not covered by t
 tests.
 
 Test what you can through unit tests. What can't be tested using unit tests, test via supplementary integration tests
-or end-to-end tests (found in `docker/e2e/cypress/integration`).
-Make sure your test cases are reasonable, readable and maintainable. Don't forget about edge cases!
+or end-to-end tests (found in `docker/e2e/cypress/e2e`).
+Make sure your test cases are reasonable, readable and maintainable. Remember about edge cases!
 
 ## Quick guide to upgrading Keycloak compatibility
 
@@ -91,7 +91,8 @@ When updating the version of Java used by the plugin, remember to update the fol
 * `Set up JDK` step in [maven.yml](.github/workflows/maven.yml) (from https://github.com/actions/setup-java)
 * `Set Up Java` step in [release.yml](.github/workflows/release.yml) (from https://github.com/actions/setup-java)
 
-To check if the plugin works correctly after the upgrade, perform the same steps as described in "Quick guide to upgrading Keycloak compatibility" above.
+To check if the plugin works correctly after the upgrade, perform the same steps as described in
+"Quick guide to upgrading Keycloak compatibility" above.
 
 ## SonarQube analysis on a local environment
 
