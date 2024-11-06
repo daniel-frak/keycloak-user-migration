@@ -1,4 +1,5 @@
 class ForgotPasswordPage {
+
     elements = {
         userNameInput: () => cy.get('#username'),
         submitBtn: () => cy.get('input[type=submit]')
@@ -18,4 +19,4 @@ class ForgotPasswordPage {
     }
 }
 
-module.exports = ForgotPasswordPage;
+module.exports = new ForgotPasswordPage();

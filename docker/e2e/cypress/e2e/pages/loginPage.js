@@ -4,7 +4,6 @@ class LoginPage {
         usernameField: () => cy.get('#username'),
         passwordField: () => cy.get('#password'),
         logInBtn: () => cy.get('#kc-login'),
-        forgotPasswordBtn: () => cy.get("a").contains("Forgot Password?")
     }
 
     visitForAdmin() {
@@ -26,4 +25,4 @@ class LoginPage {
     }
 }
 
-module.exports = LoginPage;
+module.exports = new LoginPage();

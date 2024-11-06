@@ -1,4 +1,5 @@
 class RealmSettingsLoginPage {
+
     elements = {
         forgotPasswordSwitch: () => cy.get('#kc-forgot-pw-switch')
     }
@@ -19,4 +20,4 @@ class RealmSettingsLoginPage {
     }
 }
 
-module.exports = RealmSettingsLoginPage;
+module.exports = new RealmSettingsLoginPage();

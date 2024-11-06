@@ -202,7 +202,7 @@ The following example uses the default `master` realm but the demo will also wor
 
 1. Run `mvn clean package` in the repository root
 2. Navigate to `./docker`
-3. Execute `docker-compose up`
+3. Execute `docker compose up`
 4. Open [http://localhost:8024/admin/](http://localhost:8024/admin/) in a browser
 5. Log in with the credentials:
 
