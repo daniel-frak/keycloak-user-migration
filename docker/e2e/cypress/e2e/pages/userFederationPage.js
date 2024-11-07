@@ -24,11 +24,17 @@ class UserFederationPage {
     }
 
     visit() {
-        cy.intercept('/admin/realms/master/components*')
-            .as("components")
+        cy.intercept('/admin/realms/master/components*&type=org.keycloak.storage.UserStorageProvider*')
+            .as("getUserStorageProviders")
         cy.visit('/admin/master/console/#/master/user-federation');
-        cy.wait('@components');
-        cy.wait(2000); // The initial page will always claim there are no components, so we must wait to make sure.
+        cy.wait('@getUserStorageProviders');
+
+        /*
+        The initial page will always claim there are no configured User Federation Providers,
+        and there is no way to check whether it has updated the DOM using the @getUserStorageProviders request.
+        Therefore, an artificial wait is introduced to make sure the DOM has updated.
+         */
+        cy.wait(5000);
     }
 
     removePluginIfExists() {

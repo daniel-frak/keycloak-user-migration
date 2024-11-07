@@ -2,7 +2,7 @@ class ForgotPasswordPage {
 
     elements = {
         userNameInput: () => cy.get('#username'),
-        submitBtn: () => cy.get('input[type=submit]')
+        form: () => cy.get('#kc-reset-password-form')
     }
 
     visit() {
@@ -11,7 +11,7 @@ class ForgotPasswordPage {
 
     triggerPasswordReset(userEmail) {
         this.elements.userNameInput().clear().type(userEmail);
-        this.elements.submitBtn().click();
+        this.elements.form().submit();
         cy.get('body').should('contain.text',
             'You should receive an email shortly with further instructions.');
         cy.mhGetMailsBySubject('Reset password')

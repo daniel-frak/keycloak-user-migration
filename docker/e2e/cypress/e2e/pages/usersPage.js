@@ -15,10 +15,10 @@ class UsersPage {
     }
 
     visit() {
-        cy.intercept('/admin/realms/master/components*')
-            .as("components")
+        cy.intercept('admin/realms/master/ui-ext/brute-force-user*')
+            .as("userList")
         cy.visit('/admin/master/console/#/master/users');
-        cy.wait('@components');
+        cy.wait('@userList');
     }
 
     goToUserDetails(userName) {
@@ -68,7 +68,7 @@ class UsersPage {
 
     assertUserWasDeleted(userName) {
         return this.findByName(userName)
-            .then((() => this.elements.foundUserTable().should('not.exist')))
+            .then((() => this.elements.foundUserTable(userName).should('not.exist')))
             .then((() => this.elements.emptySearchResultsText().should('exist')));
     }
 }

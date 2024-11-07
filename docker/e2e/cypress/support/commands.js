@@ -56,7 +56,7 @@ Cypress.Commands.add("setupKeycloak", () => {
         userFederationPage.visit();
         userFederationPage.removePluginIfExists();
         userFederationPage.goToUserMigrationPluginPage();
-        userMigrationProviderPage.addPlugin(data.legacySystem.url);
+        userMigrationProviderPage.configurePlugin(data.legacySystem.url);
     }
 
     /**
@@ -88,8 +88,19 @@ Cypress.Commands.add("resetState", () => {
     }
 
     function deleteTestUserIfExists() {
+        removeImportedUsers();
         usersPage.visit();
         return usersPage.deleteUserIfExists(data.legacyUser.username);
+    }
+
+    /*
+    Users which still have a federation link (e.g. they have been imported but have not successfully logged in yet)
+    cannot be removed using normal means. The "Remove imported users" option on the User Federation Plugin page
+    removes those users (but will not remove users for whom the federation link has already been severed).
+     */
+    function removeImportedUsers() {
+        userMigrationProviderPage.visit();
+        userMigrationProviderPage.removeImportedUsers();
     }
 
     function deletePasswordPoliciesIfExist() {
