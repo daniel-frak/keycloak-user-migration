@@ -21,8 +21,9 @@ https://codesoapbox.dev/keycloak-user-migration
 *(`SNAPSHOT` means that the version is not yet released)*
 
 | Keycloak Version | Version/Commit                                                                                                                                     |
-|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
-| 25.X             | [5.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/5.0.0)
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------
+| 26.X             | SNAPSHOT                                                                                                                                           |
+| 25.X             | [5.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/5.0.0)                                                                 
 | 24.X             | [4.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/4.0.0)                                                                 |
 | 23.X             | [3.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/3.0.0)                                                                 |
 | 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                 |
@@ -39,7 +40,10 @@ https://codesoapbox.dev/keycloak-user-migration
 
 ### Note about compatibility with JBoss Keycloak distributions
 
-Using this plugin with legacy JBoss distributions of Keycloak might result in a `java.lang.NoClassDefFoundError: org/apache/commons/codec/binary/Base64` error. It seems that [adding the maven-shade-plugin](https://github.com/daniel-frak/keycloak-user-migration/issues/72) as a dependency fixes this issue.
+Using this plugin with legacy JBoss distributions of Keycloak might result in a
+`java.lang.NoClassDefFoundError: org/apache/commons/codec/binary/Base64` error. It seems
+that [adding the maven-shade-plugin](https://github.com/daniel-frak/keycloak-user-migration/issues/72) as a dependency
+fixes this issue.
 
 ## Prerequisites - REST endpoints in the legacy system
 
@@ -318,7 +322,9 @@ This switch can be toggled to decide whether groups which are not defined in the
 migrated anyway or simply ignored.
 
 ## Totp
+
 This module supports the migration of totp devices. The totp configuration block could look like this:
+
 ```json
 {
   "name": "Totp Device 1",
@@ -329,6 +335,8 @@ This module supports the migration of totp devices. The totp configuration block
   "encoding": "BASE32"
 }
 ```
-`name` should be the name of the totp device, while `secret` is the secret, that could be encoded in "BASE32" or as UTF-8 plaintext.
+
+`name` should be the name of the totp device, while `secret` is the secret, that could be encoded in "BASE32" or as
+UTF-8 plaintext.
 For the utf8 bytes just set the `encoding` attribute to null.
 Possible `algorithm`s are: HmacSHA1, HmacSHA256, HmacSHA512

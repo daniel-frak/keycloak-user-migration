@@ -7,6 +7,9 @@ class UserMigrationProviderPage {
         header: () => cy.get("h1"),
         uiDisplayName: () => cy.getByTestId('name'),
         restClientUri: () => cy.getByTestId('URI'),
+        actionDropdown: () => cy.getByTestId('action-dropdown'),
+        actionDropdownRemoveImportedBtn: () => cy.get('button').contains('Remove imported'),
+        modalConfirmButton: () => cy.getByTestId('confirm'),
         saveBtn: () => cy.get('button').contains('Save')
     }
 
@@ -15,7 +18,7 @@ class UserMigrationProviderPage {
         userFederationPage.goToUserMigrationPluginPage(data.providerName, data.pluginName);
     }
 
-    addPlugin(legacySystemUrl) {
+    configurePlugin(legacySystemUrl) {
         this.elements.uiDisplayName()
             .invoke('val', '') // clear() doesn't seem to work here for some reason
             .type(data.pluginName);
@@ -26,6 +29,15 @@ class UserMigrationProviderPage {
         cy.intercept('PUT', '/admin/realms/master/components/*').as('savePlugin');
         this.elements.saveBtn().click()
         cy.wait('@savePlugin').its('response.statusCode').should('be.oneOf', [201, 204]);
+    }
+
+    removeImportedUsers() {
+        this.elements.actionDropdown().click();
+        this.elements.actionDropdownRemoveImportedBtn().click();
+        cy.intercept('POST', '/admin/realms/master/user-storage/*/remove-imported-users')
+            .as('removeImportedUsers')
+        this.elements.modalConfirmButton().click();
+        cy.wait('@removeImportedUsers');
     }
 }
 
