@@ -119,7 +119,7 @@ public class UserModelFactory {
     }
 
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
-        if (!userModel.getUsername().equals(legacyUser.getUsername())) {
+        if (!userModel.getUsername().equalsIgnoreCase(legacyUser.getUsername())) {
             throw new IllegalStateException(String.format("Local and remote users differ: [%s != %s]",
                     userModel.getUsername(),
                     legacyUser.getUsername()));
@@ -182,19 +182,22 @@ public class UserModelFactory {
                 .map(Optional::get);
     }
 
-    private Optional<GroupModel> getGroupModel(RealmModel realm, String groupName) {
-        if (groupMap.containsKey(groupName)) {
-            groupName = groupMap.get(groupName);
+    private Optional<GroupModel> getGroupModel(RealmModel realm, String groupId) {
+        if (groupMap.containsKey(groupId)) {
+            groupId = groupMap.get(groupId);
         } else if (isConfigDisabled(MIGRATE_UNMAPPED_GROUPS_PROPERTY)) {
             return Optional.empty();
         }
-        if (isEmpty(groupName)) {
+        if (isEmpty(groupId)) {
             return Optional.empty();
         }
 
-        final String effectiveGroupName = groupName;
+        final String effectiveGroupId = groupId;
         Optional<GroupModel> group = realm.getGroupsStream()
-                .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
+                .filter(g ->
+                        effectiveGroupId.equalsIgnoreCase(g.getId()) ||
+                        effectiveGroupId.equalsIgnoreCase(g.getName())
+                ).findFirst();
 
         GroupModel realmGroup = group
                 .map(g -> {
@@ -202,7 +205,7 @@ public class UserModelFactory {
                     return g;
                 })
                 .orElseGet(() -> {
-                    GroupModel newGroup = realm.createGroup(effectiveGroupName);
+                    GroupModel newGroup = realm.createGroup(effectiveGroupId);
                     LOG.infof("Created group %s with id %s", newGroup.getName(), newGroup.getId());
                     return newGroup;
                 });
