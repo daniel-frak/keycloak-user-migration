@@ -15,6 +15,7 @@ services:
       DB_VENDOR: h2
     ports:
       - "8024:8080"
+      - "5005:5005" # For remote debugging
     networks:
       - internal
 
