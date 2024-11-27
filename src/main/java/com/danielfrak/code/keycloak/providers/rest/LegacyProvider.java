@@ -16,6 +16,7 @@ import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PolicyError;
 import org.keycloak.storage.UserStorageProvider;
 import org.keycloak.storage.user.UserLookupProvider;
+import org.keycloak.storage.user.UserRegistrationProvider;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -29,7 +30,8 @@ import java.util.stream.Stream;
 public class LegacyProvider implements UserStorageProvider,
         UserLookupProvider,
         CredentialInputUpdater,
-        CredentialInputValidator {
+        CredentialInputValidator,
+        UserRegistrationProvider {
 
     private static final Logger LOG = Logger.getLogger(LegacyProvider.class);
     private static final Set<String> supportedCredentialTypes = Collections.singleton(PasswordCredentialModel.TYPE);
@@ -166,5 +168,16 @@ public class LegacyProvider implements UserStorageProvider,
     @Override
     public UserModel getUserByEmail(RealmModel realmModel, String email) {
         return getUserModel(realmModel, email, () -> legacyUserService.findByEmail(email));
+    }
+
+    @Override
+    public UserModel addUser(RealmModel realmModel, String userName) {
+        // We don't want to add a user
+        return null;
+    }
+
+    @Override
+    public boolean removeUser(RealmModel realmModel, UserModel userModel) {
+        return true;
     }
 }

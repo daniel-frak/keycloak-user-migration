@@ -14,6 +14,7 @@ const forgotPasswordPage = require("./pages/forgotPasswordPage");
 const resetPasswordEmail = require("./pages/resetPasswordEmail");
 const updatePasswordPage = require("./pages/updatePasswordPage");
 const updateAccountInformationPage = require("./pages/updateAccountInformationPage");
+const usersPage = require("./pages/usersPage");
 
 describe('user migration plugin', () => {
 
@@ -80,4 +81,12 @@ describe('user migration plugin', () => {
         passwordPoliciesPage.addSpecialCharactersPasswordPolicy();
         keycloak.signOutViaUIAndClearCache();
     }
+
+    it('should delete half-migrated user (when federation link is not yet severed)', () => {
+        attemptLoginWithWrongPassword();
+        keycloak.signInAsAdmin();
+        usersPage.visit();
+        usersPage.getUserDeleteButton(data.legacyUser.username).should('be.visible');
+        usersPage.deleteUserIfExists(data.legacyUser.username);
+    });
 });

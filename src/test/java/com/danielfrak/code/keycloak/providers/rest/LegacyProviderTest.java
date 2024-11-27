@@ -354,4 +354,16 @@ class LegacyProviderTest {
     void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
         assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel).collect(Collectors.toSet()));
     }
+
+    @Test
+    void addUserShouldReturnNull() {
+        UserModel result = legacyProvider.addUser(realmModel, "someUser");
+        assertNull(result);
+    }
+
+    @Test
+    void removeUserShouldReturnTrue() {
+        var result = legacyProvider.removeUser(realmModel, userModel);
+        assertTrue(result);
+    }
 }

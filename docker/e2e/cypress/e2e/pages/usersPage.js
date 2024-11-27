@@ -54,6 +54,18 @@ class UsersPage {
             }));
     }
 
+    getUserDeleteButton(userName) {
+        return this.findByName(userName).then(() =>
+            cy.get(USER_TABLE_SELECTOR).should('have.length.gte', 0).then(element => {
+                if (element.length < 1) {
+                    return;
+                }
+                cy.log(`Found ${element.length} items`);
+                this.elements.foundUserOptionsToggle().click();
+                return this.elements.foundUserDeleteButton();
+            }));
+    }
+
     clickDeleteInUserDropdown() {
         this.elements.foundUserOptionsToggle().click();
         this.elements.foundUserDeleteButton().click();
