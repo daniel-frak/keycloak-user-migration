@@ -6,11 +6,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -50,88 +46,117 @@ public class UserModelFactory {
             String[] keyValue = pair.split(":");
             newRoleMap.put(keyValue[0], keyValue[1]);
         }
+
         return newRoleMap;
     }
 
     public UserModel create(LegacyUser legacyUser, RealmModel realm) {
-        LOG.infof("Creating user model for: %s", legacyUser.getUsername());
+        LOG.infof("Creating user model for: %s", legacyUser.username());
 
-        UserModel userModel;
-        if (isEmpty(legacyUser.getId())) {
-            userModel = session.users().addUser(realm, legacyUser.getUsername());
-        } else {
-            userModel = session.users().addUser(
-                    realm,
-                    legacyUser.getId(),
-                    legacyUser.getUsername(),
-                    true,
-                    false
-            );
-        }
-
+        UserModel userModel = addUser(legacyUser, realm);
         validateUsernamesEqual(legacyUser, userModel);
-
-        userModel.setFederationLink(model.getId());
-        userModel.setEnabled(legacyUser.isEnabled());
-        userModel.setEmail(legacyUser.getEmail());
-        userModel.setEmailVerified(legacyUser.isEmailVerified());
-        userModel.setFirstName(legacyUser.getFirstName());
-        userModel.setLastName(legacyUser.getLastName());
-
-        if (legacyUser.getAttributes() != null) {
-            legacyUser.getAttributes()
-                    .forEach(userModel::setAttribute);
-        }
-
-        getRoleModels(legacyUser, realm)
-                .forEach(userModel::grantRole);
-
-        getGroupModels(legacyUser, realm)
-                .forEach(userModel::joinGroup);
-
-        if (legacyUser.getRequiredActions() != null) {
-            legacyUser.getRequiredActions()
-                .forEach(userModel::addRequiredAction);
-        }
-
-        if (legacyUser.getTotps() != null) {
-            legacyUser.getTotps().forEach(totp -> {
-                var otpModel = OTPCredentialModel.createTOTP(
-                    totp.getSecret(), 
-                    totp.getDigits(), 
-                    totp.getPeriod(), 
-                    totp.getAlgorithm(), 
-                    totp.getEncoding());
-                otpModel.setUserLabel(totp.getName());
-                userModel.credentialManager().createStoredCredential(otpModel);
-            });
-        }
+        migrateBasicAttributes(legacyUser, userModel);
+        migrateAdditionalAttributes(legacyUser, userModel);
+        migrateRoles(legacyUser, realm, userModel);
+        migrateGroups(legacyUser, realm, userModel);
+        migrateRequiredActions(legacyUser, userModel);
+        migrateTotp(legacyUser, userModel);
 
         return userModel;
     }
 
-    public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {
-        if (isEmpty(legacyUser.getId())) {
-            return false;
+    private UserModel addUser(LegacyUser legacyUser, RealmModel realm) {
+        UserModel userModel;
+        if (isEmpty(legacyUser.id())) {
+            userModel = addUserWithoutLegacyId(legacyUser, realm);
+        } else {
+            userModel = addUserWithLegacyId(legacyUser, realm);
         }
+        return userModel;
+    }
 
-        return session.users().getUserById(realm, legacyUser.getId()) != null;
+    private UserModel addUserWithoutLegacyId(LegacyUser legacyUser, RealmModel realm) {
+        UserModel userModel;
+        userModel = session.users().addUser(realm, legacyUser.username());
+        return userModel;
+    }
+
+    private UserModel addUserWithLegacyId(LegacyUser legacyUser, RealmModel realm) {
+        UserModel userModel;
+        boolean addDefaultRoles = true;
+        boolean dontAddDefaultRequiredActions = false;
+        userModel = session.users().addUser(
+                realm,
+                legacyUser.id(),
+                legacyUser.username(),
+                addDefaultRoles,
+                dontAddDefaultRequiredActions
+        );
+        return userModel;
     }
 
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
-        if (!userModel.getUsername().equals(legacyUser.getUsername())) {
+        if (!userModel.getUsername().equals(legacyUser.username())) {
             throw new IllegalStateException(String.format("Local and remote users differ: [%s != %s]",
                     userModel.getUsername(),
-                    legacyUser.getUsername()));
+                    legacyUser.username()));
+        }
+    }
+
+    private void migrateBasicAttributes(LegacyUser legacyUser, UserModel userModel) {
+        userModel.setFederationLink(model.getId());
+        userModel.setEnabled(legacyUser.isEnabled());
+        userModel.setEmail(legacyUser.email());
+        userModel.setEmailVerified(legacyUser.isEmailVerified());
+        userModel.setFirstName(legacyUser.firstName());
+        userModel.setLastName(legacyUser.lastName());
+    }
+
+    private void migrateAdditionalAttributes(LegacyUser legacyUser, UserModel userModel) {
+        if (legacyUser.attributes() != null) {
+            legacyUser.attributes()
+                    .forEach(userModel::setAttribute);
+        }
+    }
+
+    private void migrateRoles(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        getRoleModels(legacyUser, realm)
+                .forEach(userModel::grantRole);
+    }
+
+    private void migrateGroups(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        getGroupModels(legacyUser, realm)
+                .forEach(userModel::joinGroup);
+    }
+
+    private void migrateRequiredActions(LegacyUser legacyUser, UserModel userModel) {
+        if (legacyUser.requiredActions() != null) {
+            legacyUser.requiredActions()
+                    .forEach(userModel::addRequiredAction);
+        }
+    }
+
+    private void migrateTotp(LegacyUser legacyUser, UserModel userModel) {
+        if (legacyUser.totps() != null) {
+            legacyUser.totps().forEach(totp -> {
+                var otpModel = OTPCredentialModel.createTOTP(
+                        totp.secret(),
+                        totp.digits(),
+                        totp.period(),
+                        totp.algorithm(),
+                        totp.encoding());
+                otpModel.setUserLabel(totp.name());
+                userModel.credentialManager().createStoredCredential(otpModel);
+            });
         }
     }
 
     private Stream<RoleModel> getRoleModels(LegacyUser legacyUser, RealmModel realm) {
-        if (legacyUser.getRoles() == null) {
+        if (legacyUser.roles() == null) {
             return Stream.empty();
         }
-        return legacyUser.getRoles().stream()
-                .map(r -> getRoleModel(realm, r))
+        return legacyUser.roles().stream()
+                .map(legacyRoleName -> getMappedRoleModel(realm, legacyRoleName))
                 .filter(Optional::isPresent)
                 .map(Optional::get);
     }
@@ -142,25 +167,37 @@ public class UserModelFactory {
      * Migrated only if present in the map or config enables this.
      * @see ConfigurationProperties#MIGRATE_UNMAPPED_ROLES_PROPERTY
      */
-    private Optional<RoleModel> getRoleModel(RealmModel realm, String role) {
-        if (roleMap.containsKey(role)) {
-            role = roleMap.get(role);
+    private Optional<RoleModel> getMappedRoleModel(RealmModel realm, String roleName) {
+        return getMappedRoleName(roleName)
+                .filter(mappedRoleName -> !isEmpty(mappedRoleName))
+                .flatMap(mappedRoleName -> getRoleModel(realm, mappedRoleName));
+    }
+
+    private Optional<RoleModel> getRoleModel(RealmModel realm, String roleName) {
+        return Optional.ofNullable(realm.getRole(roleName))
+                .or(() -> getFirstFoundClientRoleModel(realm, roleName))
+                .or(() -> addRoleToRealm(realm, roleName));
+    }
+
+    private Optional<RoleModel> getFirstFoundClientRoleModel(RealmModel realm, String roleName) {
+        return realm.getClientsStream()
+                .map(clientModel -> clientModel.getRole(roleName))
+                .filter(Objects::nonNull)
+                .findFirst();
+    }
+
+    private Optional<RoleModel> addRoleToRealm(RealmModel realm, String roleName) {
+        LOG.debug(String.format("Added role %s to realm %s", roleName, realm.getName()));
+        return Optional.ofNullable(realm.addRole(roleName));
+    }
+
+    private Optional<String> getMappedRoleName(String roleName) {
+        if (roleMap.containsKey(roleName)) {
+            return Optional.ofNullable(roleMap.get(roleName));
         } else if (isConfigDisabled(MIGRATE_UNMAPPED_ROLES_PROPERTY)) {
             return Optional.empty();
         }
-        if (isEmpty(role)) {
-            return Optional.empty();
-        }
-        String finalRoleName = role;
-        return Optional.ofNullable(realm.getRole(role))
-                .or(() -> realm.getClientsStream()
-                        .map(clientModel -> clientModel.getRole(finalRoleName))
-                        .filter(Objects::nonNull)
-                        .findFirst())
-                .or(() -> {
-                    LOG.debug(String.format("Added role %s to realm %s", finalRoleName, realm.getName()));
-                    return Optional.ofNullable(realm.addRole(finalRoleName));
-                });
+        return Optional.ofNullable(roleName);
     }
 
     private boolean isConfigDisabled(String config) {
@@ -172,41 +209,54 @@ public class UserModelFactory {
     }
 
     private Stream<GroupModel> getGroupModels(LegacyUser legacyUser, RealmModel realm) {
-        if (legacyUser.getGroups() == null) {
+        if (legacyUser.groups() == null) {
             return Stream.empty();
         }
 
-        return legacyUser.getGroups().stream()
-                .map(group -> getGroupModel(realm, group))
+        return legacyUser.groups().stream()
+                .map(group -> getMappedGroupModel(realm, group))
                 .filter(Optional::isPresent)
                 .map(Optional::get);
     }
 
-    private Optional<GroupModel> getGroupModel(RealmModel realm, String groupName) {
+    private Optional<GroupModel> getMappedGroupModel(RealmModel realm, String groupName) {
+        return getMappedGroupName(groupName)
+                .filter(mappedGroupName -> !isEmpty(mappedGroupName))
+                .map(mappedGroupName -> getGroupModel(realm, mappedGroupName));
+    }
+
+    private Optional<String> getMappedGroupName(String groupName) {
         if (groupMap.containsKey(groupName)) {
-            groupName = groupMap.get(groupName);
+            return Optional.ofNullable(groupMap.get(groupName));
         } else if (isConfigDisabled(MIGRATE_UNMAPPED_GROUPS_PROPERTY)) {
             return Optional.empty();
         }
-        if (isEmpty(groupName)) {
-            return Optional.empty();
+        return Optional.ofNullable(groupName);
+    }
+
+    private GroupModel getGroupModel(RealmModel realm, String mappedGroupName) {
+        return realm.getGroupsStream()
+                .filter(g -> mappedGroupName.equalsIgnoreCase(g.getName())).findFirst()
+                .map(this::getExistingGroup)
+                .orElseGet(() -> createGroup(realm, mappedGroupName));
+    }
+
+    private GroupModel getExistingGroup(GroupModel g) {
+        LOG.infof("Found existing group %s with id %s", g.getName(), g.getId());
+        return g;
+    }
+
+    private GroupModel createGroup(RealmModel realm, String mappedGroupName) {
+        GroupModel newGroup = realm.createGroup(mappedGroupName);
+        LOG.infof("Created group %s with id %s", newGroup.getName(), newGroup.getId());
+        return newGroup;
+    }
+
+    public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {
+        if (isEmpty(legacyUser.id())) {
+            return false;
         }
 
-        final String effectiveGroupName = groupName;
-        Optional<GroupModel> group = realm.getGroupsStream()
-                .filter(g -> effectiveGroupName.equalsIgnoreCase(g.getName())).findFirst();
-
-        GroupModel realmGroup = group
-                .map(g -> {
-                    LOG.infof("Found existing group %s with id %s", g.getName(), g.getId());
-                    return g;
-                })
-                .orElseGet(() -> {
-                    GroupModel newGroup = realm.createGroup(effectiveGroupName);
-                    LOG.infof("Created group %s with id %s", newGroup.getName(), newGroup.getId());
-                    return newGroup;
-                });
-
-        return Optional.of(realmGroup);
+        return session.users().getUserById(realm, legacyUser.id()) != null;
     }
 }

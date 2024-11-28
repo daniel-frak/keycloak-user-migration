@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
+import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aMinimalLegacyUser;
 import static java.util.Collections.emptySet;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -68,7 +69,7 @@ class LegacyProviderTest {
     @Test
     void shouldGetUserByUsername() {
         final String username = "user";
-        final LegacyUser user = new LegacyUser();
+        final LegacyUser user = aMinimalLegacyUser();
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -93,7 +94,7 @@ class LegacyProviderTest {
     @Test
     void shouldGetUserByEmail() {
         final String email = "email";
-        final LegacyUser user = new LegacyUser();
+        final LegacyUser user = aMinimalLegacyUser();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -107,7 +108,7 @@ class LegacyProviderTest {
     @Test
     void shouldReturnNullIfUserWithDuplicateIdExists() {
         final String email = "email";
-        final LegacyUser user = new LegacyUser();
+        final LegacyUser user = aMinimalLegacyUser();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.isDuplicateUserId(user, realmModel))
@@ -352,7 +353,8 @@ class LegacyProviderTest {
 
     @Test
     void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
-        assertEquals(emptySet(), legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel).collect(Collectors.toSet()));
+        assertEquals(emptySet(),
+                legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel).collect(Collectors.toSet()));
     }
 
     @Test

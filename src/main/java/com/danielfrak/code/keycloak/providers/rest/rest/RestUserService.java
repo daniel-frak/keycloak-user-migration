@@ -51,7 +51,7 @@ public class RestUserService implements LegacyUserService {
     @Override
     public Optional<LegacyUser> findByEmail(String email) {
         return findLegacyUser(email)
-                .filter(u -> equalsCaseInsensitive(email, u.getEmail()));
+                .filter(u -> equalsCaseInsensitive(email, u.email()));
     }
 
     private boolean equalsCaseInsensitive(String a, String b) {
@@ -65,7 +65,7 @@ public class RestUserService implements LegacyUserService {
     @Override
     public Optional<LegacyUser> findByUsername(String username) {
         return findLegacyUser(username)
-                .filter(u -> equalsCaseInsensitive(username, u.getUsername()));
+                .filter(u -> equalsCaseInsensitive(username, u.username()));
     }
 
     private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
