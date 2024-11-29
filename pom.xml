@@ -85,6 +85,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/net.javacrumbs.json-unit/json-unit-assertj -->
+        <dependency>
+            <groupId>net.javacrumbs.json-unit</groupId>
+            <artifactId>json-unit-assertj</artifactId>
+            <version>4.0.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <!-- https://mvnrepository.com/artifact/org.junit.platform/junit-platform-engine -->
         <dependency>
             <groupId>org.junit.platform</groupId>

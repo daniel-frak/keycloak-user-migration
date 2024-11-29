@@ -1,5 +1,7 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 import java.util.Map;
 
@@ -12,8 +14,8 @@ public record LegacyUser(
         String email,
         String firstName,
         String lastName,
-        boolean isEnabled,
-        boolean isEmailVerified,
+        @JsonProperty("enabled") boolean isEnabled,
+        @JsonProperty("emailVerified") boolean isEmailVerified,
         Map<String, List<String>> attributes,
         List<String> roles,
         List<String> groups,

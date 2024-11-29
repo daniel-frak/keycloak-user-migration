@@ -1,30 +1,33 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
-import nl.jqno.equalsverifier.EqualsVerifier;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 
 class UserPasswordDtoTest {
 
     @Test
-    void shouldConstructWithPassword() {
-        var password = "somePassword";
-        var dto = new UserPasswordDto(password);
-        assertEquals(password, dto.getPassword());
+    void shouldMapToJson() throws JsonProcessingException {
+        var objectMapper = new ObjectMapper();
+        UserPasswordDto userPasswordDto = userPasswordDto();
+
+        String result = objectMapper.writeValueAsString(userPasswordDto);
+
+        String expectedJson = json();
+        assertThatJson(result).isEqualTo(expectedJson);
     }
 
-    @Test
-    void shouldSetAndGetPassword() {
-        var password = "somePassword";
-        var dto = new UserPasswordDto();
-        dto.setPassword(password);
-        assertEquals(password, dto.getPassword());
+    private UserPasswordDto userPasswordDto() {
+        return new UserPasswordDto("somePassword");
     }
 
-    @Test
-    void equalsContract() {
-        EqualsVerifier.simple().forClass(UserPasswordDto.class)
-                .verify();
+    private String json() {
+        return """
+                {
+                    "password": "somePassword"
+                }
+                """;
     }
 }
