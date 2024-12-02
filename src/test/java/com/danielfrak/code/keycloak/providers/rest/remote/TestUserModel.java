@@ -60,7 +60,7 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void setCreatedTimestamp(Long timestamp) {
-
+        // Do nothing
     }
 
     @Override

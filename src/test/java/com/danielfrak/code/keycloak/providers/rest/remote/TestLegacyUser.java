@@ -18,11 +18,11 @@ public class TestLegacyUser {
                 "Smith",
                 true,
                 true,
-                emptyMap(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 

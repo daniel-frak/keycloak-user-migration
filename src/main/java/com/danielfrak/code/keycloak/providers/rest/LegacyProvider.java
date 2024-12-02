@@ -27,7 +27,10 @@ import java.util.stream.Stream;
 /**
  * Provides legacy user migration functionality
  */
-@SuppressWarnings("java:S1200") // NO easy way to reduce the dependencies of this class
+@SuppressWarnings(
+        // No easy way to reduce the dependencies of this class:
+        "java:S1200"
+)
 public class LegacyProvider implements UserStorageProvider,
         UserLookupProvider,
         CredentialInputUpdater,
