@@ -93,31 +93,28 @@ class RestUserServiceTest {
     }
 
     @Test
-    void findByEmailShouldThrowWhenRuntimeExceptionOccurs() {
+    void findByEmailShouldReturnEmptyWhenRuntimeExceptionOccurs() {
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         var cause = new RuntimeException();
 
         when(httpClient.get(any()))
                 .thenThrow(cause);
 
-        var exception = assertThrows(RestUserProviderException.class,
-                () -> restUserService.findByEmail("someEmail"));
+        var result = restUserService.findByEmail("someEmail");
 
-        assertThat(exception.getCause()).isEqualTo(cause);
+        assertThat(result).isEmpty();
     }
 
     @Test
-    void findByEmailShouldThrowWhenIOExceptionOccurs() {
+    void findByEmailShouldReturnEmptyWhenIOExceptionOccurs() {
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         when(httpClient.get(any()))
                 .thenReturn(new HttpResponse(200, "malformedJson"));
 
-        var exception = assertThrows(RestUserProviderException.class,
-                () -> restUserService.findByEmail("someEmail"));
+        var result = restUserService.findByEmail("someEmail");
 
-        assertThat(exception.getCause().getClass())
-                .isSameAs(JsonParseException.class);
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -201,28 +198,28 @@ class RestUserServiceTest {
     }
 
     @Test
-    void findByUsernameShouldThrowWhenRuntimeExceptionOccurs() {
+    void findByUsernameShouldReturnEmptyWhenRuntimeExceptionOccurs() {
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
         var cause = new RuntimeException();
 
         when(httpClient.get(any()))
                 .thenThrow(cause);
 
-        assertThatThrownBy(() -> restUserService.findByUsername("someUsername"))
-                .isInstanceOf(RestUserProviderException.class)
-                .hasCause(cause);
+        var result = restUserService.findByUsername("someUsername");
+
+        assertThat(result).isEmpty();
     }
 
     @Test
-    void findByUsernameShouldThrowWhenIOExceptionOccurs() {
+    void findByUsernameShouldReturnEmptyWhenIOExceptionOccurs() {
         var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
 
         when(httpClient.get(any()))
                 .thenReturn(new HttpResponse(200, "malformedJson"));
 
-        assertThatThrownBy(() -> restUserService.findByUsername("someUsername"))
-                .isInstanceOf(RestUserProviderException.class)
-                .hasCauseInstanceOf(JsonParseException.class);
+        var result = restUserService.findByUsername("someUsername");
+
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -371,7 +368,7 @@ class RestUserServiceTest {
     }
 
     @Test
-    void isPasswordValidShouldThrowWhenIOExceptionOccurs() throws JsonProcessingException {
+    void isPasswordValidShouldReturnFalseWhenIOExceptionOccurs() throws JsonProcessingException {
         var mockObjectMapper = mock(ObjectMapper.class);
         var cause = mock(JsonProcessingException.class);
         var restUserService = new RestUserService(model, httpClient, mockObjectMapper);
@@ -379,9 +376,8 @@ class RestUserServiceTest {
         when(mockObjectMapper.writeValueAsString(any()))
                 .thenThrow(cause);
 
-        assertThatThrownBy(() -> restUserService.isPasswordValid(
-                "someUsername", "somePassword"))
-                .isInstanceOf(RestUserProviderException.class)
-                .hasCause(cause);
+        var isPasswordValid = restUserService.isPasswordValid(
+                "someUsername", "somePassword");
+        assertThat(isPasswordValid).isFalse();
     }
 }
