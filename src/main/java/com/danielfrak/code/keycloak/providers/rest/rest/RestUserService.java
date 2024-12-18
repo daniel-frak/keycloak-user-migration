@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
 import org.keycloak.common.util.Encode;
 import org.keycloak.component.ComponentModel;
+import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.util.Locale;
@@ -16,6 +17,7 @@ import java.util.Optional;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 
 public class RestUserService implements LegacyUserService {
+    private static final Logger Log = Logger.getLogger(RestUserService.class);
 
     private final String uri;
     private final HttpClient httpClient;
@@ -81,7 +83,9 @@ public class RestUserService implements LegacyUserService {
             var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
         } catch (RuntimeException|IOException e) {
-            throw new RestUserProviderException(e);
+            Log.errorf("Got a RuntimeException or IOException: when looking up user %s", usernameOrEmail);
+            Log.errorf("Exception message: %s", e.getMessage());
+            return Optional.empty();
         }
     }
 
@@ -97,7 +101,9 @@ public class RestUserService implements LegacyUserService {
             var response = httpClient.post(passwordValidationUri, json);
             return response.getCode() == HttpStatus.SC_OK;
         } catch (IOException e) {
-            throw new RestUserProviderException(e);
+            Log.errorf("Got an IOException: when validating password for user %s", username);
+            Log.errorf("Exception message: %s", e.getMessage());
+            return false;
         }
     }
 }
