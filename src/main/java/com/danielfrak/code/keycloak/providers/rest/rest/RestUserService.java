@@ -2,7 +2,6 @@ package com.danielfrak.code.keycloak.providers.rest.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
-import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderException;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
