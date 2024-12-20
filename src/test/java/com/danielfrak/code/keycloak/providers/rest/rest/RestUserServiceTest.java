@@ -1,6 +1,5 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
-import com.danielfrak.code.keycloak.providers.rest.exceptions.RestUserProviderException;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
