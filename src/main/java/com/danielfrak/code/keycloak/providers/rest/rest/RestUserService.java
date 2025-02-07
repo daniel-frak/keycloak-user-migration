@@ -70,6 +70,7 @@ public class RestUserService implements LegacyUserService {
     }
 
     private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
+        var unused = "This should be marked by Sonar";
         if (usernameOrEmail != null) {
             usernameOrEmail = Encode.urlEncode(usernameOrEmail);
         }
