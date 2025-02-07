@@ -54,6 +54,7 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean isValid(RealmModel realmModel, UserModel userModel, CredentialInput input) {
+            String test = "unused";
         if (!supportsCredentialType(input.getType())) {
             return false;
         }
