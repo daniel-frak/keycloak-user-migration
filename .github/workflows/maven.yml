@@ -1,4 +1,4 @@
-name: Build and analyze
+name: Build
 
 on:
   workflow_dispatch:
@@ -8,42 +8,35 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened ]
 
+env:
+  JAVA_VERSION: 21
+  JAVA_DISTRIBUTION: temurin
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          # Disabling shallow clone is recommended for improving relevancy of reporting
-          fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: maven
 
-      - name: Cache SonarCloud packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
-
-      - name: Build and analyze
+      - name: Build and test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -P code-coverage -P sonar-cloud --file pom.xml
+        # mvn install instead of verify for sonar-fork-analysis to work
+        run: mvn -B install -P code-coverage
 
-      - name: Archive plugin jar
+      - name: Prepare Sonar analysis
+        uses: ./.github/actions/sonar-fork-analysis
+
+      - name: Upload plugin jar
         uses: actions/upload-artifact@v4
         with:
           name: plugin-jar-file
@@ -54,12 +47,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          # Disabling shallow clone is recommended for improving relevancy of reporting
-          fetch-depth: 0
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Download a single artifact
+      - name: Download plugin jar
         uses: actions/download-artifact@v4
         with:
           name: plugin-jar-file

@@ -1,0 +1,149 @@
+# Based on https://github.com/EvaristeGalois11/sonar-fork-analysis/
+#
+# External Pull Request workflows can't access repository secrets,
+# which is necessary to use the SonarCloud token safely.
+# As a first step, this action uploads all files necessary for a SonarCloud analysis in the initial `build` workflow.
+# It can then be used in an additional `workflow_run` workflow (which runs in the context of the base repository)
+# to download those files and perform the analysis.
+
+name: 'Sonar Fork Analysis'
+description: 'Sonar scan external forks of your project'
+inputs:
+  java-version:
+    description: 'The Java version to set up. Takes a whole or semver Java version. See examples of supported syntax in actions/setup-java README file'
+  distribution:
+    description: 'Java distribution. See the list of supported distributions in actions/setup-java README file'
+  github-token:
+    description: 'The GitHub token used to authenticate with the GitHub API.'
+  sonar-token:
+    description: 'The Sonar token used to authenticate with the Sonar API.'
+  additional-folders:
+    description: 'Comma-separated list of additional folders to archive'
+    default: ''
+  additional-flags:
+    description: 'Additional flags for the Sonar analysis step'
+    default: ''
+branding:
+  icon: search
+  color: blue
+runs:
+  using: "composite"
+  steps:
+    ### PREPARE ANALYSIS ###
+    - name: 'Write down pull request info'
+      if: github.event_name != 'workflow_run'
+      shell: bash
+      run: |
+        echo ${{ github.event.pull_request.number }} >> pr-event.txt
+        echo ${{ github.event.pull_request.head.ref }} >> pr-event.txt
+        echo ${{ github.event.pull_request.base.ref }} >> pr-event.txt
+
+    - name: 'Package build output files'
+      if: github.event_name != 'workflow_run'
+      shell: bash
+      run: |
+        folders_to_archive=(*target)
+        additional_folders="${{ inputs.additional-folders }}"
+        if [ -n "$additional_folders" ]; then
+          for folder in $(echo $additional_folders | tr ',' ' '); do
+            folders_to_archive+=("$folder")
+          done
+        fi
+        echo "Folders selected to archive: ${folders_to_archive[@]}"
+        echo "The following paths will be archived:"
+        for folder in "${folders_to_archive[@]}"; do
+          find . -type d -path "./$folder" -exec tar -rf build_output.tar {} \+ -print
+        done
+        echo "Build output files are ready."
+
+    - name: 'Get groupId (to find project in ~/.m2/repository)'
+      if: github.event_name != 'workflow_run'
+      shell: bash
+      run: echo "group_id=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.groupId | tr . /)" >> "$GITHUB_ENV"
+
+    - name: 'Package ~/.m2/repository/{group_id}'
+      if: github.event_name != 'workflow_run'
+      shell: bash
+      run: |
+        pushd ~/.m2/repository
+        find -path "./${group_id}/*" -exec tar -rf m2_repository.tar {} \+
+        popd
+        mv ~/.m2/repository/m2_repository.tar .
+
+    - name: 'Upload Sonar artifact'
+      if: github.event_name != 'workflow_run'
+      uses: actions/upload-artifact@v4
+      with:
+        name: sonar-artifact
+        path: |
+          pr-event.txt
+          build_output.tar
+          m2_repository.tar
+        if-no-files-found: error
+        retention-days: 1
+
+    ### EXECUTE ANALYSIS ###
+    - name: 'Checkout project'
+      if: github.event_name == 'workflow_run'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ github.event.workflow_run.head_repository.full_name }}
+        ref: ${{ github.event.workflow_run.head_branch }}
+        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of Sonar analysis
+
+    - name: 'Set up Java'
+      if: github.event_name == 'workflow_run'
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: ${{ inputs.distribution }}
+        cache: maven
+
+    - name: 'Cache SonarCloud packages'
+      if: github.event_name == 'workflow_run'
+      uses: actions/cache@v4
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+
+    - name: 'Download sonar artifact'
+      if: github.event_name == 'workflow_run'
+      uses: actions/download-artifact@v4
+      with:
+        name: sonar-artifact
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ inputs.github-token }}
+        merge-multiple: true
+
+    - name: 'Extract build output files'
+      if: github.event_name == 'workflow_run'
+      shell: bash
+      run: tar -xf build_output.tar
+
+    - name: 'Extract ~/.m2/repository artifact'
+      if: github.event_name == 'workflow_run'
+      shell: bash
+      run: |
+        mkdir -p ~/.m2/repository
+        tar -xf m2_repository.tar -C ~/.m2/repository
+
+    - name: 'Read pull request info'
+      if: github.event_name == 'workflow_run'
+      shell: bash
+      run: |
+        echo "pr_number=$(sed '1q;d' pr-event.txt)" >> "$GITHUB_ENV"
+        echo "pr_head_ref=$(sed '2q;d' pr-event.txt)" >> "$GITHUB_ENV"
+        echo "pr_base_ref=$(sed '3q;d' pr-event.txt)" >> "$GITHUB_ENV"
+
+    - name: 'Sonar analysis - Maven'
+      if: github.event_name == 'workflow_run'
+      shell: bash
+      run: >
+        mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+        -Dsonar.token=${{ inputs.sonar-token }}
+        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.scm.revision=', github.event.workflow_run.head_sha) || '' }}
+        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.key=', env.pr_number) || '' }}
+        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.branch=', env.pr_head_ref) || '' }}
+        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.base=', env.pr_base_ref) || '' }}
+        ${{ inputs.additional-flags }}
