@@ -25,6 +25,8 @@ public class HttpClient {
     private static final String BEARER_FORMAT = "Bearer %s";
     private static final String BASIC_AUTH_FORMAT = "Basic %s";
     private static final String USERNAME_PASSWORD_FORMAT = "%s:%s";
+    private static final String MAYHEM_TOKEN_HEADER = "X-Mayhem-Token";
+    private static final String MAYHEM_AUTH_FORMAT = "token %s";
 
     private final HttpClientBuilder httpClientBuilder;
 
@@ -48,6 +50,13 @@ public class HttpClient {
     public void enableBearerTokenAuth(String token) {
         if (token != null && !token.isBlank()) {
             var authorizationHeader = new BasicHeader(HttpHeaders.AUTHORIZATION, String.format(BEARER_FORMAT, token));
+            httpClientBuilder.setDefaultHeaders(List.of(authorizationHeader));
+        }
+    }
+
+    public void enableMayhemTokenAuth(String token) {
+        if (token != null && !token.isBlank()) {
+            var authorizationHeader = new BasicHeader(MAYHEM_TOKEN_HEADER, String.format(MAYHEM_AUTH_FORMAT, token));
             httpClientBuilder.setDefaultHeaders(List.of(authorizationHeader));
         }
     }

@@ -28,6 +28,7 @@ public class RestUserService implements LegacyUserService {
 
         configureBasicAuth(model, httpClient);
         configureBearerTokenAuth(model, httpClient);
+        configureMayhemTokenAuth(model, httpClient);
     }
 
     private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
@@ -45,6 +46,14 @@ public class RestUserService implements LegacyUserService {
         if (tokenAuthEnabled) {
             String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
             httpClient.enableBearerTokenAuth(token);
+        }
+    }
+
+    private void configureMayhemTokenAuth(ComponentModel model, HttpClient httpClient) {
+        var mayhemTokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(MAYHEM_TOKEN_ENABLED_PROPERTY));
+        if (mayhemTokenAuthEnabled) {
+            String token = model.getConfig().getFirst(MAYHEM_TOKEN_PROPERTY);
+            httpClient.enableMayhemTokenAuth(token);
         }
     }
 

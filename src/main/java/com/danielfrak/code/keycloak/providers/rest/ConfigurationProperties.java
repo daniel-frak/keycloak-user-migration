@@ -15,6 +15,8 @@ public final class ConfigurationProperties {
     public static final String API_HTTP_BASIC_ENABLED_PROPERTY = "API_HTTP_BASIC_ENABLED";
     public static final String API_HTTP_BASIC_USERNAME_PROPERTY = "API_HTTP_BASIC_USERNAME";
     public static final String API_HTTP_BASIC_PASSWORD_PROPERTY = "API_HTTP_BASIC_PASSWORD";
+    public static final String MAYHEM_TOKEN_PROPERTY = "MAYHEM_TOKEN";
+    public static final String MAYHEM_TOKEN_ENABLED_PROPERTY = "MAYHEM_TOKEN_ENABLED";
     public static final String USE_USER_ID_FOR_CREDENTIAL_VERIFICATION = "USE_USER_ID_FOR_CREDENTIAL_VERIFICATION";
     public static final String ROLE_MAP_PROPERTY = "ROLE_MAP";
     public static final String GROUP_MAP_PROPERTY = "GROUP_MAP";
@@ -26,6 +28,14 @@ public final class ConfigurationProperties {
                     "Rest client URI (required)",
                     "URI of the legacy system endpoints",
                     STRING_TYPE, null),
+            new ProviderConfigProperty(MAYHEM_TOKEN_ENABLED_PROPERTY,
+                    "Rest client Mayhem token auth enabled",
+                    "Enables Mayhem token authentication for legacy user service",
+                    BOOLEAN_TYPE, false),
+            new ProviderConfigProperty(MAYHEM_TOKEN_PROPERTY,
+                    "Rest client Mayhem token",
+                    "Mayhem token",
+                    PASSWORD, null),
             new ProviderConfigProperty(API_TOKEN_ENABLED_PROPERTY,
                     "Rest client Bearer token auth enabled",
                     "Enables Bearer token authentication for legacy user service",
