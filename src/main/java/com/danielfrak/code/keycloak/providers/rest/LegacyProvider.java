@@ -152,6 +152,13 @@ public class LegacyProvider implements UserStorageProvider,
     }
 
     private UserModel getUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
+        String restrictedClient = model.getConfig().getFirst(ConfigurationProperties.VALID_FOR_CLIENT_PROPERTY);
+        String sessionClient = this.session.getContext().getClient().getClientId();
+
+        if (restrictedClient != null && !restrictedClient.equals(sessionClient)) {
+            return null;
+        }
+
         return user.get()
                 .filter(u -> {
                     // Make sure we're not trying to migrate users if they have changed their username

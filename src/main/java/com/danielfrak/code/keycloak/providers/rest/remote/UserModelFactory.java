@@ -163,14 +163,33 @@ public class UserModelFactory {
 
     /**
      * @return A {@link RoleModel} for this role in the realm.
-     * Created if not found in the realm or in any of the realm's clients.
+     * If restricted to a client it will be created in the client if not found there, else
+     * created in the realm if not found in the realm or in any of the realm's clients.
      * Migrated only if present in the map or config enables this.
      * @see ConfigurationProperties#MIGRATE_UNMAPPED_ROLES_PROPERTY
+     * @see ConfigurationProperties#VALID_FOR_CLIENT_PROPERTY
      */
     private Optional<RoleModel> getMappedRoleModel(RealmModel realm, String roleName) {
+        String validForClient = model.getConfig().getFirst(VALID_FOR_CLIENT_PROPERTY);
+        boolean restrictRoles = Boolean.parseBoolean(model.getConfig().getFirst(RESTRICT_ROLES_TO_CLIENT));
+
+        if (validForClient != null && restrictRoles) {
+            ClientModel currentClient = realm.getClientByClientId(validForClient);
+            if (currentClient != null) {
+                return getMappedRoleName(roleName)
+                        .filter(mappedRoleName -> !isEmpty(mappedRoleName))
+                        .flatMap(mappedRoleName -> getClientRoleModel(currentClient, roleName));
+            }
+        }
+
         return getMappedRoleName(roleName)
                 .filter(mappedRoleName -> !isEmpty(mappedRoleName))
                 .flatMap(mappedRoleName -> getRoleModel(realm, mappedRoleName));
+    }
+
+    private Optional<RoleModel> getClientRoleModel(ClientModel client, String roleName) {
+        return Optional.ofNullable(client.getRole(roleName))
+                .or(() -> addRoleToClient(client, roleName));
     }
 
     private Optional<RoleModel> getRoleModel(RealmModel realm, String roleName) {
@@ -186,8 +205,13 @@ public class UserModelFactory {
                 .findFirst();
     }
 
+    private Optional<RoleModel> addRoleToClient(ClientModel client, String roleName) {
+        LOG.info(String.format("Added role %s to client %s", roleName, client.getName()));
+        return Optional.ofNullable(client.addRole(roleName));
+    }
+
     private Optional<RoleModel> addRoleToRealm(RealmModel realm, String roleName) {
-        LOG.debug(String.format("Added role %s to realm %s", roleName, realm.getName()));
+        LOG.info(String.format("Added role %s to realm %s", roleName, realm.getName()));
         return Optional.ofNullable(realm.addRole(roleName));
     }
 

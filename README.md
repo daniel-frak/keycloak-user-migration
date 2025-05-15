@@ -272,6 +272,15 @@ legacy system for illustration purposes only.
 
 Additional configuration options are available for fine-tuning the migration.
 
+### Valid for Client ID
+
+Enter the Client ID that the migration should be valid for, or leave empty if valid for all clients.  
+The user federations are called in the defined order each time a user is not found in Keycloak, until one of
+them says that they have found the user. When migrating users from multiple legacy systems, where a user can exist
+in more than one, the credentials may then be validated against a different legacy system than the user was logging into.  
+This can also be used if only users that log in from a specific client should be migrated, preventing unnecessary
+requests to the legacy system for other clients.  
+
 ### Bearer Token Auth
 
 ![Bearer Token Auth](readme-images/config_bearer_token.png)
@@ -311,7 +320,14 @@ automatically map legacy roles to Keycloak roles, by specifying the mapping in t
 This switch can be toggled to decide whether roles which are not defined in the legacy role conversion map should be
 migrated anyway or simply ignored.
 
-### Group role conversion
+### Restrict to client roles
+
+If enabled, and 'Valid for Client ID' is set, only roles defined on that client will be used. If migration
+can create roles, they will be created on the client.  
+If disabled, or 'Valid for Client ID' is not set, roles in realm and all clients are used. If migration 
+can create roles, they will be created in the realm.
+
+### Legacy group conversion
 
 If group names in Keycloak do not perfectly match those in the legacy system, you can configure the provider to
 automatically map legacy groups to Keycloak groups, by specifying the mapping in the format `legacyGroup:keycloakGroup`.

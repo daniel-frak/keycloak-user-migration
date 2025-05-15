@@ -20,12 +20,24 @@ public final class ConfigurationProperties {
     public static final String GROUP_MAP_PROPERTY = "GROUP_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
     public static final String MIGRATE_UNMAPPED_GROUPS_PROPERTY = "MIGRATE_UNMAPPED_GROUPS";
+    public static final String VALID_FOR_CLIENT_PROPERTY = "VALID_FOR_CLIENT";
+    public static final String RESTRICT_ROLES_TO_CLIENT = "RESTRICT_ROLES_TO_CLIENT";
 
     private static final List<ProviderConfigProperty> PROPERTIES = List.of(
             new ProviderConfigProperty(URI_PROPERTY,
                     "Rest client URI (required)",
                     "URI of the legacy system endpoints",
                     STRING_TYPE, null),
+            new ProviderConfigProperty(VALID_FOR_CLIENT_PROPERTY,
+                    "Valid for Client ID",
+                    """
+                            The migration can be restricted to only migrate users logging in \
+                            using a specific client. Only roles defined on the client will be used. \
+                            New roles will be created on the client instead of in Realm Roles.
+                            Enter a Client ID, or leave blank if valid for all clients.
+                            """,
+                    STRING_TYPE,
+                    null),
             new ProviderConfigProperty(API_TOKEN_ENABLED_PROPERTY,
                     "Rest client Bearer token auth enabled",
                     "Enables Bearer token authentication for legacy user service",
@@ -48,7 +60,7 @@ public final class ConfigurationProperties {
                     PASSWORD, null),
             new ProviderConfigProperty(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION,
                     "Use user id for credential verification",
-                    "Use the id of the user instead of the username as the path" +
+                    "Use the id of the user instead of the username as the path " +
                     "parameter when making a credential verification request",
                     BOOLEAN_TYPE, false),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
@@ -59,6 +71,14 @@ public final class ConfigurationProperties {
                     "Migrate unmapped roles",
                     "Whether or not to migrate roles not found in the field above",
                     BOOLEAN_TYPE, true),
+            new ProviderConfigProperty(RESTRICT_ROLES_TO_CLIENT,
+                    "Restrict role actions to client",
+                    """
+                        If 'Valid Client ID' is set, this will restrict the use roles to those \
+                        defined on that client.
+                        New roles will be created on the client instead of in the realm.
+                    """,
+                    BOOLEAN_TYPE, false),
             new ProviderConfigProperty(GROUP_MAP_PROPERTY,
                     "Legacy group conversion",
                     "Group conversion in the format 'legacyGroup:newGroup'",
