@@ -98,6 +98,12 @@ The GET request will have to return user data as a JSON response in the form:
       "algorithm": "string",
       "encoding": "string"
     }
+  ],
+  "organizations": [
+     {
+        "orgName": "org-1",
+        "orgAlias": "org-1"
+     }
   ]
 }
 ```
@@ -167,7 +173,13 @@ response might look like this:
       "algorithm": "HmacSHA1",
       "encoding": "BASE32"
     }
-  ]
+  ],
+  "organizations": [
+    {
+      "orgName": "org-1",
+      "orgAlias": "org-1"
+    }
+   ]
 }
 ```
 
@@ -340,3 +352,14 @@ This module supports the migration of totp devices. The totp configuration block
 UTF-8 plaintext.
 For the utf8 bytes just set the `encoding` attribute to null.
 Possible `algorithm`s are: HmacSHA1, HmacSHA256, HmacSHA512
+
+## Organizations
+
+This module provides support for organizations. The organization feature is available in Keycloak 26 and above. However, it must be explicitly enabled in the realm settings to use this functionality.
+To configure organizations, you can use the following JSON block as an example
+```json
+[
+   {"orgName":  "org-1", "orgAlias":  "org-1"}
+]
+```
+If organization does not exist inside KeyCloak, This extension will create the organization first then it will assign the user.
