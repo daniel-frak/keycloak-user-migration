@@ -36,7 +36,8 @@ class LegacyUserTest {
                 List.of("group1"),
                 List.of("requiredAction1"),
                 List.of(new LegacyTotp("secret", "name", 1, 2, "someAlgorithm",
-                        "someEncoding"))
+                        "someEncoding")),
+                List.of(new LegacyOrganization("org-1", "org-1"))
         );
     }
 
@@ -72,6 +73,12 @@ class LegacyUserTest {
                       "period": 2,
                       "algorithm": "someAlgorithm",
                       "encoding": "someEncoding"
+                    }
+                  ],
+                  "organizations": [
+                    {
+                      "orgName": "org-1",
+                      "orgAlias": "org-1"
                     }
                   ]
                 }

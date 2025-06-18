@@ -20,6 +20,7 @@ public record LegacyUser(
         List<String> roles,
         List<String> groups,
         List<String> requiredActions,
-        List<LegacyTotp> totps
+        List<LegacyTotp> totps,
+        List<LegacyOrganization> organizations
 ) {
 }
