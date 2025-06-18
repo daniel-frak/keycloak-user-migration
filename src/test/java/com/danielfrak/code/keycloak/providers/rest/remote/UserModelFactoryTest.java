@@ -8,6 +8,7 @@ import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.organization.OrganizationProvider;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,6 +18,7 @@ import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.*;
+import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithOneOrg;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -40,6 +42,9 @@ class UserModelFactoryTest {
     private UserProvider userProvider;
 
     @Mock
+    private OrganizationProvider organizationProvider;
+
+    @Mock
     private RealmModel realm;
 
     @BeforeEach
@@ -51,6 +56,8 @@ class UserModelFactoryTest {
                 .thenReturn(MODEL_ID);
         lenient().when(session.users())
                 .thenReturn(userProvider);
+        lenient().when(session.getProvider(OrganizationProvider.class))
+                .thenReturn(organizationProvider);
     }
 
     @Test
@@ -521,5 +528,42 @@ class UserModelFactoryTest {
     private void mockNoExistingUserModelWithSameId(LegacyUser legacyUser) {
         when(userProvider.getUserById(realm, legacyUser.id()))
                 .thenReturn(null);
+    }
+
+    @Test
+    void shouldCreateUserWithExistingOrganization() {
+        final  LegacyUser legacyUser = aLegacyUserWithOneOrg();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        userModelFactory = constructUserModelFactory();
+
+        when(realm.isOrganizationsEnabled()).thenReturn(true);
+        OrganizationModel orgMock = mock(OrganizationModel.class);
+        when(organizationProvider.getByAlias(anyString())).thenReturn(orgMock);
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result).isNotNull();
+        verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
+    }
+
+    @Test
+    void shouldCreateUserWithNotExistingOrganization() {
+
+        final LegacyUser legacyUser = aLegacyUserWithOneOrg();
+        final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
+        OrganizationModel orgMock = mock(OrganizationModel.class);
+
+        when(realm.isOrganizationsEnabled()).thenReturn(true);
+        when(organizationProvider.getByAlias(legacyOrganization.orgAlias())).thenReturn(null);
+        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias())).thenReturn(orgMock);
+
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+
+        userModelFactory = constructUserModelFactory();
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result).isNotNull();
+        verify(organizationProvider, times(1)).create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
     }
 }

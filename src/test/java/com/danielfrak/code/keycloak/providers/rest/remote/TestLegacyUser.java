@@ -22,6 +22,7 @@ public class TestLegacyUser {
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }
@@ -36,6 +37,7 @@ public class TestLegacyUser {
                 true,
                 true,
                 emptyMap(),
+                emptyList(),
                 emptyList(),
                 emptyList(),
                 emptyList(),
@@ -56,6 +58,7 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
                 emptyList(),
+                emptyList(),
                 emptyList()
         );
     }
@@ -71,6 +74,7 @@ public class TestLegacyUser {
                 true,
                 emptyMap(),
                 Arrays.asList(null, ""),
+                emptyList(),
                 emptyList(),
                 emptyList(),
                 emptyList()
@@ -90,6 +94,7 @@ public class TestLegacyUser {
                 List.of("oldRole", "anotherRole"),
                 emptyList(),
                 emptyList(),
+                emptyList(),
                 emptyList()
         );
     }
@@ -106,6 +111,7 @@ public class TestLegacyUser {
                 emptyMap(),
                 emptyList(),
                 List.of("oldGroup", "anotherGroup"),
+                emptyList(),
                 emptyList(),
                 emptyList()
         );
@@ -124,6 +130,7 @@ public class TestLegacyUser {
                 emptyList(),
                 Arrays.asList(null, ""),
                 emptyList(),
+                emptyList(),
                 emptyList()
         );
     }
@@ -141,6 +148,7 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
                 List.of("CONFIGURE_TOTP", "UPDATE_PASSWORD"),
+                emptyList(),
                 emptyList()
         );
     }
@@ -161,11 +169,32 @@ public class TestLegacyUser {
                 List.of(
                         legacyTotp("Device 1", "SECRET_1"),
                         legacyTotp("Device 2", "SECRET_2")
-                )
+                ),
+                emptyList()
+        );
+    }
+
+    public static LegacyUser aLegacyUserWithOneOrg() {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                emptyMap(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                List.of(new LegacyOrganization("org-1", "org-1"))
         );
     }
 
     private static LegacyTotp legacyTotp(String name, String secret) {
         return new LegacyTotp(secret, name, 0, 0, null, null);
     }
+
+
 }

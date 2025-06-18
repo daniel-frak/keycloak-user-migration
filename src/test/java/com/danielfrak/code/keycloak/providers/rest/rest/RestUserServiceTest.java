@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
@@ -145,7 +146,8 @@ class RestUserServiceTest {
                 List.of("migrated_users"),
                 List.of("CONFIGURE_TOTP"),
                 List.of(new LegacyTotp("someSecret", "someName", 1, 2,
-                        "someAlgorithm", "someEncoding"))
+                        "someAlgorithm", "someEncoding")),
+                List.of(new LegacyOrganization("org-1", "org-1"))
         );
     }
 

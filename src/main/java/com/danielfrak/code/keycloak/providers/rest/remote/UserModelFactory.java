@@ -5,6 +5,7 @@ import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.organization.OrganizationProvider;
 
 import java.util.*;
 import java.util.stream.Stream;
@@ -61,6 +62,7 @@ public class UserModelFactory {
         migrateGroups(legacyUser, realm, userModel);
         migrateRequiredActions(legacyUser, userModel);
         migrateTotp(legacyUser, userModel);
+        migrateOrganizations(legacyUser, userModel, realm);
 
         return userModel;
     }
@@ -149,6 +151,23 @@ public class UserModelFactory {
                 userModel.credentialManager().createStoredCredential(otpModel);
             });
         }
+    }
+
+    private void migrateOrganizations(LegacyUser legacyUser, UserModel userModel, RealmModel realmModel) {
+        if(!realmModel.isOrganizationsEnabled()) {
+            LOG.infof("Organization feature is not active with realm %s", realmModel.getName());
+            return;
+        }
+
+        OrganizationProvider provider = session.getProvider(OrganizationProvider.class);
+        List<LegacyOrganization> userOrganization = legacyUser.organizations();
+        if(userOrganization == null || userOrganization.isEmpty()) {
+            return;
+        }
+
+        userOrganization.forEach(legacyOrg ->
+                provider.addManagedMember(getOrCreateOrganization(legacyOrg, provider), userModel)
+        );
     }
 
     private Stream<RoleModel> getRoleModels(LegacyUser legacyUser, RealmModel realm) {
@@ -258,5 +277,14 @@ public class UserModelFactory {
         }
 
         return session.users().getUserById(realm, legacyUser.id()) != null;
+    }
+
+    private OrganizationModel getOrCreateOrganization(LegacyOrganization legacyOrganization, OrganizationProvider provider) {
+        OrganizationModel byAlias = provider.getByAlias(legacyOrganization.orgAlias());
+        if(byAlias != null) {
+            return byAlias;
+        }
+
+        return provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
     }
 }
