@@ -51,7 +51,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download plugin jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: plugin-jar-file
           path: target
