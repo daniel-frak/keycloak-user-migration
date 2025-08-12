@@ -23,7 +23,7 @@ jobs:
     steps:
       # Must check out for custom same-repository actions to work
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Perform Sonar analysis
         uses: ./.github/actions/sonar-fork-analysis
