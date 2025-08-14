@@ -1,0 +1,48 @@
+version: 2.1
+
+setup: true
+
+executors:
+  maven-executor:
+    docker:
+      - image: cimg/openjdk:17.0.14
+
+# ATTENTION: Parameters declared in this section WILL overwrite values
+# for same parameters declared in `.circleci/generator-vars.yml` file.
+parameters:
+  cicd-orb-version:
+    type: string
+    default: "1"
+    description: "The alayacare/cicd orb version. Compatible with ORB version: 1"
+
+orbs:
+  cicd: alayacare/cicd@<<pipeline.parameters.cicd-orb-version>>
+  aws-cli: circleci/aws-cli@4.1
+
+jobs:
+  release:
+    executor: maven-executor
+    steps:
+      - checkout
+      - cicd/generate-codeartifact-token
+      - aws-cli/setup
+      - run:
+          name: Deploy
+          command: |
+            VERSION=$CIRCLE_TAG
+            echo "Version: $VERSION"
+            mvn versions:set -DnewVersion=$VERSION
+            mvn clean deploy -am --settings settings.xml
+
+workflows:
+  ci-workflow:
+    jobs:
+      - release:
+          context:
+              - aws-ecr
+          filters:
+            tags:
+              only: /^[0-9]+\.[0-9]+\.[0-9]+$/ # 1.0.0 Expected tag format
+            branches:
+              ignore: /^.*$/ # Exclude branches, meaning only tags will run
+
