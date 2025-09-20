@@ -10,7 +10,7 @@
     <properties>
         <java.version>21</java.version>
         <keycloak.version>26.3.0</keycloak.version>
-        <mockito.version>5.19.0</mockito.version>
+        <mockito.version>5.20.0</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.compiler.source>${java.version}</maven.compiler.source>
