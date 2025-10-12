@@ -147,7 +147,7 @@ class RestUserServiceTest {
                 List.of("CONFIGURE_TOTP"),
                 List.of(new LegacyTotp("someSecret", "someName", 1, 2,
                         "someAlgorithm", "someEncoding")),
-                List.of(new LegacyOrganization("org-1", "org-1"))
+                List.of(new LegacyOrganization("org-1", "org-1", List.of()))
         );
     }
 

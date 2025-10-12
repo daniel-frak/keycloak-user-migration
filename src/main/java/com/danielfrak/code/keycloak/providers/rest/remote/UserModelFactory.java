@@ -280,11 +280,23 @@ public class UserModelFactory {
     }
 
     private OrganizationModel getOrCreateOrganization(LegacyOrganization legacyOrganization, OrganizationProvider provider) {
-        OrganizationModel byAlias = provider.getByAlias(legacyOrganization.orgAlias());
-        if(byAlias != null) {
-            return byAlias;
+        OrganizationModel org = provider.getByAlias(legacyOrganization.orgAlias());
+        if(org == null) {
+            org = provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
         }
 
-        return provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        List<LegacyDomain> domains = legacyOrganization.domains();
+        if (domains != null && !domains.isEmpty()) {
+            org.setDomains(toDomainModels(domains));
+        }
+        return org;
+    }
+
+    private Set<OrganizationDomainModel> toDomainModels(List<LegacyDomain> domains) {
+        Set<OrganizationDomainModel> domainModels = new HashSet<>();
+        for (LegacyDomain domain : domains) {
+            domainModels.add(new OrganizationDomainModel(domain.name(), domain.verified()));
+        }
+        return domainModels;
     }
 }
