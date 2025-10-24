@@ -72,7 +72,7 @@ runs:
 
     - name: 'Upload Sonar artifact'
       if: github.event_name != 'workflow_run'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: sonar-artifact
         path: |
@@ -109,7 +109,7 @@ runs:
 
     - name: 'Download sonar artifact'
       if: github.event_name == 'workflow_run'
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: sonar-artifact
         run-id: ${{ github.event.workflow_run.id }}
