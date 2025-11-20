@@ -20,6 +20,7 @@ public final class ConfigurationProperties {
     public static final String GROUP_MAP_PROPERTY = "GROUP_MAP";
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
     public static final String MIGRATE_UNMAPPED_GROUPS_PROPERTY = "MIGRATE_UNMAPPED_GROUPS";
+    public static final String UPDATE_USER_ON_LOGIN = "UPDATE_USER_ON_LOGIN";
 
     private static final List<ProviderConfigProperty> PROPERTIES = List.of(
             new ProviderConfigProperty(URI_PROPERTY,
@@ -50,6 +51,10 @@ public final class ConfigurationProperties {
                     "Use user id for credential verification",
                     "Use the id of the user instead of the username as the path" +
                     "parameter when making a credential verification request",
+                    BOOLEAN_TYPE, false),
+            new ProviderConfigProperty(UPDATE_USER_ON_LOGIN,
+                    "Refresh user attributes on login",
+                    "When enabled, the provider re-fetches the legacy user data and updates attributes on every login.",
                     BOOLEAN_TYPE, false),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion",

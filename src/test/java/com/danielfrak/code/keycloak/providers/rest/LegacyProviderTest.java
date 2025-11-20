@@ -10,10 +10,7 @@ import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialModel;
-import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.RealmModel;
-import org.keycloak.models.SubjectCredentialManager;
-import org.keycloak.models.UserModel;
+import org.keycloak.models.*;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PolicyError;
@@ -26,8 +23,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
-import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aMinimalLegacyUser;
+import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithId;
 import static java.util.Collections.emptySet;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -53,6 +51,9 @@ class LegacyProviderTest {
     private UserModel userModel;
 
     @Mock
+    private UserProvider userProvider;
+
+    @Mock
     private ComponentModel model;
 
     @Mock
@@ -64,12 +65,16 @@ class LegacyProviderTest {
 
         lenient().when(session.getProvider(PasswordPolicyManagerProvider.class))
                 .thenReturn(passwordPolicyManagerProvider);
+        lenient().when(session.users())
+                .thenReturn(userProvider);
+        lenient().when(legacyUserService.findByUsername(anyString()))
+                .thenReturn(Optional.empty());
     }
 
     @Test
     void shouldGetUserByUsername() {
         final String username = "user";
-        final LegacyUser user = aMinimalLegacyUser();
+        final LegacyUser user = aLegacyUserWithId();
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -94,7 +99,7 @@ class LegacyProviderTest {
     @Test
     void shouldGetUserByEmail() {
         final String email = "email";
-        final LegacyUser user = aMinimalLegacyUser();
+        final LegacyUser user = aLegacyUserWithId();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -106,17 +111,56 @@ class LegacyProviderTest {
     }
 
     @Test
-    void shouldReturnNullIfUserWithDuplicateIdExists() {
+    void shouldUpdateExistingUserDataWhenFoundByUsername() {
+        final String username = "user";
+        final LegacyUser user = aLegacyUserWithId();
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userModel).setEmail(user.email());
+        verify(userModel).setFirstName(user.firstName());
+        verify(userModel).setLastName(user.lastName());
+        verify(userModel, never()).setFederationLink(any());
+        verify(userModelFactory, never()).create(any(), any());
+    }
+
+    @Test
+    void shouldReturnNullIfUserIdExistsButHasDifferentUsername() {
         final String email = "email";
-        final LegacyUser user = aMinimalLegacyUser();
+        final LegacyUser user = aLegacyUserWithId();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(null);
+        var existingUser = mock(UserModel.class);
+        when(existingUser.getUsername())
+                .thenReturn("different");
+        when(userProvider.getUserById(realmModel, user.id()))
+                .thenReturn(existingUser);
         when(userModelFactory.isDuplicateUserId(user, realmModel))
                 .thenReturn(true);
 
         var result = legacyProvider.getUserByEmail(realmModel, email);
 
         assertNull(result);
+        verify(userModelFactory, never()).create(any(), any());
+    }
+
+    @Test
+    void shouldSkipLegacyLookupWhenExistingLookupInProgress() {
+        final String username = "user";
+        when(session.getAttribute(anyString(), eq(Boolean.class)))
+                .thenReturn(Boolean.TRUE);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertNull(result);
+        verifyNoInteractions(legacyUserService);
     }
 
     @Test
@@ -149,6 +193,7 @@ class LegacyProviderTest {
 
         MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
         config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
         when(model.getConfig()).thenReturn(config);
 
         final String username = "user";
@@ -175,6 +220,7 @@ class LegacyProviderTest {
 
         MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
         config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
         when(model.getConfig()).thenReturn(config);
 
         final String username = "user";
@@ -194,6 +240,67 @@ class LegacyProviderTest {
 
         assertTrue(result);
         verify(userCredentialManager).updateCredential(input);
+    }
+
+    @Test
+    void isValidShouldRefreshUserAttributesWhenLegacyUserExists() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername())
+                .thenReturn(legacyUser.username());
+        when(userModel.credentialManager())
+                .thenReturn(userCredentialManager);
+        when(input.getChallengeResponse())
+                .thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
+                .thenReturn(true);
+        when(legacyUserService.findByUsername(legacyUser.username()))
+                .thenReturn(Optional.of(legacyUser));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModel).setEmail(legacyUser.email());
+        verify(userModel).setFirstName(legacyUser.firstName());
+    }
+
+    @Test
+    void shouldNotRefreshUserAttributesWhenRefreshDisabled() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername())
+                .thenReturn(legacyUser.username());
+        when(userModel.credentialManager())
+                .thenReturn(userCredentialManager);
+        when(input.getChallengeResponse())
+                .thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
+                .thenReturn(true);
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModel, never()).setEmail(any());
+        verify(userModel, never()).setFirstName(any());
+        verify(legacyUserService, never()).findByUsername(anyString());
     }
 
     @Test
@@ -304,45 +411,18 @@ class LegacyProviderTest {
     }
 
     @Test
-    void shouldRemoveFederationLinkWhenCredentialUpdates() {
+    void updateCredentialShouldLeaveFederationLinkUntouched() {
         var input = mock(CredentialInput.class);
-        when(userModel.getFederationLink())
-                .thenReturn("someId");
 
         assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
 
-        verify(userModel)
-                .setFederationLink(null);
-    }
-
-    @Test
-    void shouldNotRemoveFederationLinkWhenBlankAndCredentialUpdates() {
-        var input = mock(CredentialInput.class);
-        when(userModel.getFederationLink())
-                .thenReturn(" ");
-
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel, never())
-                .setFederationLink(null);
-    }
-
-    @Test
-    void shouldNotRemoveFederationLinkWhenNullAndCredentialUpdates() {
-        var input = mock(CredentialInput.class);
-        when(userModel.getFederationLink())
-                .thenReturn(null);
-
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel, never())
-                .setFederationLink(null);
+        verify(userModel, never()).setFederationLink(any());
     }
 
     @Test
     void disableCredentialTypeShouldDoNothing() {
         legacyProvider.disableCredentialType(realmModel, userModel, "someType");
-        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
+        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel);
     }
 
     @Test
