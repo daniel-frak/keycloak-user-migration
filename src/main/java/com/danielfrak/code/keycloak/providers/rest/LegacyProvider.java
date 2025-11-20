@@ -143,18 +143,23 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
-//        disable sever federation link why I want update data each login
-//        severFederationLink(user);
+        LOG.debugf("updateCredential called for user %s and type %s",
+                user == null ? "null" : user.getUsername(), input == null ? "null" : input.getType());
+        if (user != null && shouldSeverFederationLink()) {
+            severFederationLink(user);
+        } else {
+            LOG.debug("Skipping federation link removal.");
+        }
         return false;
     }
 
-//    private void severFederationLink(UserModel user) {
-//        LOG.info("Severing federation link for " + user.getUsername());
-//        String link = user.getFederationLink();
-//        if (link != null && !link.isBlank()) {
-//            user.setFederationLink(null);
-//        }
-//    }
+    private void severFederationLink(UserModel user) {
+        LOG.info("Severing federation link for " + user.getUsername());
+        String link = user.getFederationLink();
+        if (link != null && !link.isBlank()) {
+            user.setFederationLink(null);
+        }
+    }
 
     @Override
     public void disableCredentialType(RealmModel realm, UserModel user, String credentialType) {
@@ -266,8 +271,13 @@ public class LegacyProvider implements UserStorageProvider,
     }
 
     private boolean shouldRefreshUserOnLogin() {
-        String configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ON_LOGIN);
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ON_LOGIN);
         return Boolean.parseBoolean(configValue);
+    }
+
+    private boolean shouldSeverFederationLink() {
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.SEVER_FEDERATION_LINK);
+        return configValue == null || Boolean.parseBoolean(configValue);
     }
 
     @Override

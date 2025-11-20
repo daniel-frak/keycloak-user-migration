@@ -21,6 +21,7 @@ public final class ConfigurationProperties {
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
     public static final String MIGRATE_UNMAPPED_GROUPS_PROPERTY = "MIGRATE_UNMAPPED_GROUPS";
     public static final String UPDATE_USER_ON_LOGIN = "UPDATE_USER_ON_LOGIN";
+    public static final String SEVER_FEDERATION_LINK = "SEVER_FEDERATION_LINK";
 
     private static final List<ProviderConfigProperty> PROPERTIES = List.of(
             new ProviderConfigProperty(URI_PROPERTY,
@@ -54,8 +55,12 @@ public final class ConfigurationProperties {
                     BOOLEAN_TYPE, false),
             new ProviderConfigProperty(UPDATE_USER_ON_LOGIN,
                     "Refresh user attributes on login",
-                    "When enabled, the provider re-fetches the legacy user data and updates attributes on every login.",
+                    "Re-fetch legacy attributes on each login. Requires the user to remain federated—if the federation link is severed (setting below enabled), this option has no effect. Users whose links were already severed must be re-linked or re-imported for this to work.",
                     BOOLEAN_TYPE, false),
+            new ProviderConfigProperty(SEVER_FEDERATION_LINK,
+                    "Sever federation link after migration",
+                    "When enabled, the provider removes the federation link so future logins use local credentials only.",
+                    BOOLEAN_TYPE, true),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion",
                     "Role conversion in the format 'legacyRole:newRole'",

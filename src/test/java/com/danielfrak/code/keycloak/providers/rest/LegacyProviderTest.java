@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.SEVER_FEDERATION_LINK;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithId;
@@ -411,12 +412,29 @@ class LegacyProviderTest {
     }
 
     @Test
-    void updateCredentialShouldLeaveFederationLinkUntouched() {
+    void updateCredentialShouldSeverFederationLinkWhenEnabled() {
         var input = mock(CredentialInput.class);
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(SEVER_FEDERATION_LINK, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+        when(userModel.getFederationLink())
+                .thenReturn("someId");
 
         assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
 
-        verify(userModel, never()).setFederationLink(any());
+        verify(userModel).setFederationLink(null);
+    }
+
+    @Test
+    void updateCredentialShouldNotSeverFederationLinkWhenDisabled() {
+        var input = mock(CredentialInput.class);
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(SEVER_FEDERATION_LINK, List.of("false"));
+        when(model.getConfig()).thenReturn(config);
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel, never()).setFederationLink(null);
     }
 
     @Test
