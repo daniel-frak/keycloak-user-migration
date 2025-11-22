@@ -87,7 +87,7 @@ To check if the plugin works correctly after the upgrade:
 ## Quick guide to upgrading Java version
 
 When updating the version of Java used by the plugin, remember to update the following:
-* `MAVEN_IMAGE` and `OPENJDK_IMAGE` in [.env](docker/.env) (from https://hub.docker.com/_/maven/tags?page=&page_size=&ordering=&name=temurin, https://hub.docker.com/_/openjdk/tags?page=&page_size=&ordering=&name=jdk-slim)
+* `MAVEN_IMAGE` and `JDK_IMAGE` in [.env](docker/.env) (from https://hub.docker.com/_/eclipse-temurin/tags?name=minimal)
 * `Set up JDK` step in [maven.yml](.github/workflows/maven.yml) (from https://github.com/actions/setup-java)
 * `Set Up Java` step in [release.yml](.github/workflows/release.yml) (from https://github.com/actions/setup-java)
 
