@@ -188,7 +188,7 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
                 emptyList(),
-                List.of(new LegacyOrganization("org-1", "org-1"))
+                List.of(new LegacyOrganization("org-1", "org-1", List.of()))
         );
     }
 
