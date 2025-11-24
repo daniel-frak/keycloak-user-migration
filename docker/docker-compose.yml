@@ -33,7 +33,7 @@ services:
       dockerfile: Dockerfile
       args:
         - MAVEN_IMAGE=${MAVEN_IMAGE}
-        - OPENJDK_IMAGE=${OPENJDK_IMAGE}
+        - JDK_IMAGE=${JDK_IMAGE}
     ports:
       - "8080:8080"
     networks:
