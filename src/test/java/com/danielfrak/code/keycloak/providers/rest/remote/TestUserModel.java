@@ -105,7 +105,7 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void setSingleAttribute(String name, String value) {
-        throw new RuntimeException("Not implemented");
+        attributes.put(name, List.of(value));
     }
 
     @Override
@@ -115,17 +115,22 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void removeAttribute(String name) {
-        throw new RuntimeException("Not implemented");
+        attributes.remove(name);
     }
 
     @Override
     public String getFirstAttribute(String name) {
-        throw new RuntimeException("Not implemented");
+        return Optional.ofNullable(attributes.get(name))
+                .filter(values -> !values.isEmpty())
+                .map(List::getFirst)
+                .orElse(null);
     }
 
     @Override
     public Stream<String> getAttributeStream(String s) {
-        throw new RuntimeException("Not implemented");
+        return Optional.ofNullable(attributes.get(s))
+                .stream()
+                .flatMap(List::stream);
     }
 
     @Override
@@ -150,12 +155,12 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void leaveGroup(GroupModel group) {
-        throw new RuntimeException("Not implemented");
+        groups.remove(group);
     }
 
     @Override
     public boolean isMemberOf(GroupModel group) {
-        throw new RuntimeException("Not implemented");
+        return groups.contains(group);
     }
 
     @Override
@@ -241,6 +246,6 @@ public class TestUserModel implements UserModel {
 
     @Override
     public void deleteRoleMapping(RoleModel role) {
-        throw new RuntimeException("Not implemented");
+        roles.remove(role);
     }
 }
