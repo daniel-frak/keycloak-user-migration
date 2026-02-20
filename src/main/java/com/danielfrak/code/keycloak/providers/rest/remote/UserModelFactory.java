@@ -1,6 +1,7 @@
 package com.danielfrak.code.keycloak.providers.rest.remote;
 
 import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
+import com.danielfrak.code.keycloak.providers.rest.UserSyncMode;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
@@ -8,6 +9,11 @@ import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.organization.OrganizationProvider;
 
 import java.util.*;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -15,7 +21,6 @@ import static com.danielfrak.code.keycloak.providers.rest.ConfigurationPropertie
 public class UserModelFactory {
 
     private static final Logger LOG = Logger.getLogger(UserModelFactory.class);
-
     private final KeycloakSession session;
     private final ComponentModel model;
 
@@ -58,8 +63,8 @@ public class UserModelFactory {
         validateUsernamesEqual(legacyUser, userModel);
         migrateBasicAttributes(legacyUser, userModel);
         migrateAdditionalAttributes(legacyUser, userModel);
-        migrateRoles(legacyUser, realm, userModel);
-        migrateGroups(legacyUser, realm, userModel);
+        migrateRolesOnFirstLogin(legacyUser, realm, userModel);
+        migrateGroupsOnFirstLogin(legacyUser, realm, userModel);
         migrateRequiredActions(legacyUser, userModel);
         migrateTotp(legacyUser, userModel);
         migrateOrganizations(legacyUser, userModel, realm);
@@ -121,14 +126,70 @@ public class UserModelFactory {
         }
     }
 
-    private void migrateRoles(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+    private void migrateRolesOnFirstLogin(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        if (!roleSyncMode().shouldImportOnFirstLogin()) {
+            return;
+        }
         getRoleModels(legacyUser, realm)
+                .filter(this::isNotIgnoredRole)
                 .forEach(userModel::grantRole);
     }
 
-    private void migrateGroups(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+    private void migrateGroupsOnFirstLogin(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        if (!groupSyncMode().shouldImportOnFirstLogin()) {
+            return;
+        }
         getGroupModels(legacyUser, realm)
+                .filter(this::isNotIgnoredGroup)
                 .forEach(userModel::joinGroup);
+    }
+
+    public void synchronizeRoles(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        Set<RoleModel> desiredRoles = getRoleModels(legacyUser, realm)
+                .filter(this::isNotIgnoredRole)
+                .collect(Collectors.toSet());
+        Set<RoleModel> currentRoles = userModel.getRoleMappingsStream().collect(Collectors.toSet());
+
+        reconcile(
+                currentRoles,
+                desiredRoles,
+                this::roleKey,
+                this::isNotIgnoredRole,
+                userModel::deleteRoleMapping,
+                userModel::grantRole
+        );
+    }
+
+    public void synchronizeRolesAddOnly(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        Set<RoleModel> desiredRoles = getRoleModels(legacyUser, realm)
+                .filter(this::isNotIgnoredRole)
+                .collect(Collectors.toSet());
+        Set<RoleModel> currentRoles = userModel.getRoleMappingsStream().collect(Collectors.toSet());
+        addMissing(currentRoles, desiredRoles, this::roleKey, userModel::grantRole);
+    }
+
+    public void synchronizeGroups(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        Set<GroupModel> desiredGroups = getGroupModels(legacyUser, realm)
+                .filter(this::isNotIgnoredGroup)
+                .collect(Collectors.toSet());
+        Set<GroupModel> currentGroups = userModel.getGroupsStream().collect(Collectors.toSet());
+
+        reconcile(
+                currentGroups,
+                desiredGroups,
+                this::groupKey,
+                this::isNotIgnoredGroup,
+                userModel::leaveGroup,
+                userModel::joinGroup
+        );
+    }
+
+    public void synchronizeGroupsAddOnly(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
+        Set<GroupModel> desiredGroups = getGroupModels(legacyUser, realm)
+                .filter(this::isNotIgnoredGroup)
+                .collect(Collectors.toSet());
+        Set<GroupModel> currentGroups = userModel.getGroupsStream().collect(Collectors.toSet());
+        addMissing(currentGroups, desiredGroups, this::groupKey, userModel::joinGroup);
     }
 
     private void migrateRequiredActions(LegacyUser legacyUser, UserModel userModel) {
@@ -210,6 +271,13 @@ public class UserModelFactory {
         return Optional.ofNullable(realm.addRole(roleName));
     }
 
+    private String roleKey(RoleModel roleModel) {
+        if (roleModel.getId() != null && !roleModel.getId().isBlank()) {
+            return roleModel.getId();
+        }
+        return "name:" + roleModel.getName();
+    }
+
     private Optional<String> getMappedRoleName(String roleName) {
         if (roleMap.containsKey(roleName)) {
             return Optional.ofNullable(roleMap.get(roleName));
@@ -271,6 +339,63 @@ public class UserModelFactory {
         return newGroup;
     }
 
+    private String groupKey(GroupModel groupModel) {
+        if (groupModel.getId() != null && !groupModel.getId().isBlank()) {
+            return groupModel.getId();
+        }
+        return "name:" + groupModel.getName();
+    }
+
+    private UserSyncMode roleSyncMode() {
+        String value = model.getConfig().getFirst(UPDATE_USER_ROLES_ON_LOGIN);
+        return UserSyncMode.fromConfig(value, UserSyncMode.SYNC_FIRST_LOGIN);
+    }
+
+    private UserSyncMode groupSyncMode() {
+        String value = model.getConfig().getFirst(UPDATE_USER_GROUPS_ON_LOGIN);
+        return UserSyncMode.fromConfig(value, UserSyncMode.SYNC_FIRST_LOGIN);
+    }
+
+    private boolean isNotIgnoredRole(RoleModel roleModel) {
+        String roleName = roleModel.getName();
+        if (roleName == null || roleName.isBlank()) {
+            return true;
+        }
+        return ignoredRolePatterns().stream().noneMatch(pattern -> wildcardMatch(pattern, roleName));
+    }
+
+    private boolean isNotIgnoredGroup(GroupModel groupModel) {
+        String groupName = groupModel.getName();
+        if (groupName == null || groupName.isBlank()) {
+            return true;
+        }
+        return ignoredGroupPatterns().stream().noneMatch(pattern -> wildcardMatch(pattern, groupName));
+    }
+
+    private List<String> ignoredRolePatterns() {
+        List<String> configured = model.getConfig().getList(IGNORED_SYNC_ROLES_PROPERTY);
+        if (configured == null || configured.isEmpty()) {
+            return ConfigurationProperties.DEFAULT_IGNORED_SYNC_ROLES;
+        }
+        return configured;
+    }
+
+    private List<String> ignoredGroupPatterns() {
+        List<String> configured = model.getConfig().getList(IGNORED_SYNC_GROUPS_PROPERTY);
+        if (configured == null) {
+            return List.of();
+        }
+        return configured;
+    }
+
+    private boolean wildcardMatch(String pattern, String value) {
+        if (pattern == null || pattern.isBlank()) {
+            return false;
+        }
+        String regex = Pattern.quote(pattern.trim()).replace("*", "\\E.*\\Q");
+        return value.matches("^" + regex + "$");
+    }
+
     public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {
         if (isEmpty(legacyUser.id())) {
             return false;
@@ -287,4 +412,47 @@ public class UserModelFactory {
 
         return provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
     }
+
+    private <T> void reconcile(
+            Set<T> currentItems,
+            Set<T> desiredItems,
+            Function<T, String> keyMapper,
+            Predicate<T> removeAllowed,
+            Consumer<T> removeAction,
+            Consumer<T> addAction
+    ) {
+        Map<String, T> currentByKey = currentItems.stream()
+                .collect(Collectors.toMap(keyMapper, Function.identity(), (a, b) -> a));
+        Map<String, T> desiredByKey = desiredItems.stream()
+                .collect(Collectors.toMap(keyMapper, Function.identity(), (a, b) -> a));
+
+        currentByKey.keySet().stream()
+                .filter(key -> !desiredByKey.containsKey(key))
+                .map(currentByKey::get)
+                .filter(removeAllowed)
+                .forEach(removeAction);
+
+        desiredByKey.keySet().stream()
+                .filter(key -> !currentByKey.containsKey(key))
+                .map(desiredByKey::get)
+                .forEach(addAction);
+    }
+
+    private <T> void addMissing(
+            Set<T> currentItems,
+            Set<T> desiredItems,
+            Function<T, String> keyMapper,
+            Consumer<T> addAction
+    ) {
+        Map<String, T> currentByKey = currentItems.stream()
+                .collect(Collectors.toMap(keyMapper, Function.identity(), (a, b) -> a));
+        Map<String, T> desiredByKey = desiredItems.stream()
+                .collect(Collectors.toMap(keyMapper, Function.identity(), (a, b) -> a));
+
+        desiredByKey.keySet().stream()
+                .filter(key -> !currentByKey.containsKey(key))
+                .map(desiredByKey::get)
+                .forEach(addAction);
+    }
+
 }
