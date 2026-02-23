@@ -34,12 +34,16 @@ public class UserModelFactory {
      * legacyGroup:newGroup
      */
     private final Map<String, String> groupMap;
+    private final List<Pattern> ignoredRoleMatchPatterns;
+    private final List<Pattern> ignoredGroupMatchPatterns;
 
     public UserModelFactory(KeycloakSession session, ComponentModel model) {
         this.session = session;
         this.model = model;
         this.roleMap = legacyMap(model, ROLE_MAP_PROPERTY);
         this.groupMap = legacyMap(model, GROUP_MAP_PROPERTY);
+        this.ignoredRoleMatchPatterns = compileWildcardPatterns(ignoredRolePatterns());
+        this.ignoredGroupMatchPatterns = compileWildcardPatterns(ignoredGroupPatterns());
     }
 
     /**
@@ -361,7 +365,7 @@ public class UserModelFactory {
         if (roleName == null || roleName.isBlank()) {
             return true;
         }
-        return ignoredRolePatterns().stream().noneMatch(pattern -> wildcardMatch(pattern, roleName));
+        return ignoredRoleMatchPatterns.stream().noneMatch(pattern -> wildcardMatch(pattern, roleName));
     }
 
     private boolean isNotIgnoredGroup(GroupModel groupModel) {
@@ -369,7 +373,7 @@ public class UserModelFactory {
         if (groupName == null || groupName.isBlank()) {
             return true;
         }
-        return ignoredGroupPatterns().stream().noneMatch(pattern -> wildcardMatch(pattern, groupName));
+        return ignoredGroupMatchPatterns.stream().noneMatch(pattern -> wildcardMatch(pattern, groupName));
     }
 
     private List<String> ignoredRolePatterns() {
@@ -388,12 +392,22 @@ public class UserModelFactory {
         return configured;
     }
 
-    private boolean wildcardMatch(String pattern, String value) {
-        if (pattern == null || pattern.isBlank()) {
-            return false;
-        }
-        String regex = Pattern.quote(pattern.trim()).replace("*", "\\E.*\\Q");
-        return value.matches("^" + regex + "$");
+    private List<Pattern> compileWildcardPatterns(List<String> patterns) {
+        return patterns.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(pattern -> !pattern.isBlank())
+                .map(this::compileWildcardPattern)
+                .toList();
+    }
+
+    private Pattern compileWildcardPattern(String pattern) {
+        String regex = Pattern.quote(pattern).replace("*", "\\E.*\\Q");
+        return Pattern.compile("^" + regex + "$");
+    }
+
+    private boolean wildcardMatch(Pattern pattern, String value) {
+        return pattern.matcher(value).matches();
     }
 
     public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {
