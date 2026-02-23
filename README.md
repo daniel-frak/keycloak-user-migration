@@ -398,4 +398,4 @@ To configure organizations, you can use the following JSON block as an example
    {"orgName":  "org-1", "orgAlias":  "org-1"}
 ]
 ```
-If organization does not exist inside KeyCloak, This extension will create the organization first then it will assign the user.
+If the organization does not exist in Keycloak, this extension will first create the organization and then assign the user to it.
