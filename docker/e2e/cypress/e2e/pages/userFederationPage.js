@@ -24,17 +24,20 @@ class UserFederationPage {
     }
 
     visit() {
-        cy.intercept('/admin/realms/master/components*&type=org.keycloak.storage.UserStorageProvider*')
-            .as("getUserStorageProviders")
         cy.visit('/admin/master/console/#/master/user-federation');
-        cy.wait('@getUserStorageProviders');
+        cy.location('hash', {timeout: 30000}).should('include', '/user-federation');
+        cy.get('body', {timeout: 30000}).should($body => {
+            const hasProviderCard = $body.find(`[data-testid="${data.providerName}-card"]`).length > 0;
+            const hasExistingPluginCard =
+                $body.find('*[data-testid="keycloak-card-title"] a')
+                    .filter((index, el) => el.textContent.trim() === data.pluginName)
+                    .length > 0;
 
-        /*
-        The initial page will always claim there are no configured User Federation Providers,
-        and there is no way to check whether it has updated the DOM using the @getUserStorageProviders request.
-        Therefore, an artificial wait is introduced to make sure the DOM has updated.
-         */
-        cy.wait(5000);
+            expect(
+                hasProviderCard || hasExistingPluginCard,
+                'user federation page should render provider card or existing plugin card'
+            ).to.equal(true);
+        });
     }
 
     removePluginIfExists() {
