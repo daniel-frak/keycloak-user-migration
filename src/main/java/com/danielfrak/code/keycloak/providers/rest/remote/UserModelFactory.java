@@ -347,7 +347,8 @@ public class UserModelFactory {
         if (groupModel.getId() != null && !groupModel.getId().isBlank()) {
             return groupModel.getId();
         }
-        return "name:" + groupModel.getName();
+        String name = groupModel.getName();
+        return "name:" + (name != null ? name : "");
     }
 
     private UserSyncMode roleSyncMode() {
