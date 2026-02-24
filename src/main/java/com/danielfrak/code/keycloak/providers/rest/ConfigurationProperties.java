@@ -93,7 +93,8 @@ public final class ConfigurationProperties {
                     "Ignored roles during sync",
                     "Roles ignored by sync operations. Supports wildcard '*' (example: default-roles-*). " +
                     "Use this to skip importing specific legacy roles and to protect existing Keycloak roles " +
-                    "that are not managed by legacy from being removed during synchronization.",
+                    "that are not managed by legacy from being removed during synchronization. " +
+                    "If this field is empty, the default ignored roles are applied.",
                     MULTIVALUED_STRING_TYPE,
                     DEFAULT_IGNORED_SYNC_ROLES),
             new ProviderConfigProperty(SEVER_FEDERATION_LINK,
