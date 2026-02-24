@@ -403,8 +403,25 @@ public class UserModelFactory {
     }
 
     private Pattern compileWildcardPattern(String pattern) {
-        String regex = Pattern.quote(pattern).replace("*", "\\E.*\\Q");
-        return Pattern.compile("^" + regex + "$");
+        StringBuilder regex = new StringBuilder("^");
+        int literalStart = 0;
+
+        for (int i = 0; i < pattern.length(); i++) {
+            if (pattern.charAt(i) != '*') {
+                continue;
+            }
+            if (i > literalStart) {
+                regex.append(Pattern.quote(pattern.substring(literalStart, i)));
+            }
+            regex.append(".*");
+            literalStart = i + 1;
+        }
+
+        if (literalStart < pattern.length()) {
+            regex.append(Pattern.quote(pattern.substring(literalStart)));
+        }
+        regex.append("$");
+        return Pattern.compile(regex.toString());
     }
 
     private boolean wildcardMatch(Pattern pattern, String value) {

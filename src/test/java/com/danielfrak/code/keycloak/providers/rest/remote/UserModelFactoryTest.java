@@ -545,6 +545,30 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldTreatRegexMetaCharactersAsLiteralsInIgnoredRolePatterns() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("team.(ops)-*"));
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel mappedRole = mock(RoleModel.class);
+        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel missingRole = mock(RoleModel.class);
+        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        RoleModel untrackedRole = mock(RoleModel.class);
+        when(untrackedRole.getName()).thenReturn("team.(ops)-admin");
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, untrackedRole));
+
+        userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+
+        verify(userModel, never()).deleteRoleMapping(untrackedRole);
+    }
+
+    @Test
     void shouldNotImportIgnoredRolesOnFirstLogin() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
