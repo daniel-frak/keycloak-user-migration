@@ -545,6 +545,26 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldNotImportIgnoredRolesOnFirstLogin() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("another*"));
+        RoleModel importedRole = mock(RoleModel.class);
+        when(importedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel ignoredRole = mock(RoleModel.class);
+        when(ignoredRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(importedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(ignoredRole);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getRoleMappingsStream().toList())
+                .containsExactly(importedRole);
+    }
+
+    @Test
     void shouldNotImportGroupsOnFirstLoginWhenGroupSyncModeIsNoSync() {
         final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
         config.putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "NO_SYNC");
@@ -578,6 +598,26 @@ class UserModelFactoryTest {
         userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
 
         verify(userModel, never()).leaveGroup(untrackedGroup);
+    }
+
+    @Test
+    void shouldNotImportIgnoredGroupsOnFirstLogin() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        configureMigrationOfUnmappedGroups();
+        config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("another*"));
+
+        GroupModel importedGroup = mock(GroupModel.class);
+        when(importedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        GroupModel ignoredGroup = mock(GroupModel.class);
+        when(ignoredGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(realm.getGroupsStream()).then(i -> Stream.of(importedGroup, ignoredGroup));
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getGroupsStream().toList())
+                .containsExactly(importedGroup);
     }
 
     @Test
