@@ -311,6 +311,42 @@ If basic auth is enabled, the username and password will be sent in the authoriz
 Authorization: Basic base64encode(username:password)
 ```
 
+### Refresh user attributes on login
+
+When enabled (`UPDATE_USER_ON_LOGIN`), the provider re-fetches and updates user profile attributes (name, email,
+enabled flag, custom attributes) on every login.
+
+### Refresh user groups on login
+
+`UPDATE_USER_GROUPS_ON_LOGIN` supports the following values:
+
+- `SYNC_FIRST_LOGIN`: import groups only on first login (no updates on subsequent logins)
+- `SYNC_EVERY_LOGIN`: add and remove groups on each login to keep Keycloak fully in sync
+- `SYNC_EVERY_LOGIN_ONLY_ADD`: add missing groups on each login, never remove existing groups
+- `NO_SYNC`: do not import or sync groups; manage them manually in Keycloak
+
+`IGNORED_SYNC_GROUPS` can be used to ignore specific groups during synchronization (supports wildcard `*`). Ignored
+groups are never added or removed by the provider.
+
+### Refresh user roles on login
+
+`UPDATE_USER_ROLES_ON_LOGIN` supports the following values:
+
+- `SYNC_FIRST_LOGIN`: import roles only on first login (no updates on subsequent logins)
+- `SYNC_EVERY_LOGIN`: add and remove roles on each login to keep Keycloak fully in sync
+- `SYNC_EVERY_LOGIN_ONLY_ADD`: add missing roles on each login, never remove existing roles
+- `NO_SYNC`: do not import or sync roles; manage them manually in Keycloak
+
+`IGNORED_SYNC_ROLES` can be used to ignore specific roles during synchronization (supports wildcard `*`). Ignored
+roles are never added or removed by the provider.
+
+Default ignored roles:
+
+- `default-roles-*`
+- `realm-management`
+- `offline_access`
+- `uma_authorization`
+
 ### Legacy role conversion
 
 ![Conversion](readme-images/config_conversion.png)
@@ -362,4 +398,4 @@ To configure organizations, you can use the following JSON block as an example
    {"orgName":  "org-1", "orgAlias":  "org-1"}
 ]
 ```
-If organization does not exist inside KeyCloak, This extension will create the organization first then it will assign the user.
+If the organization does not exist in Keycloak, this extension will first create the organization and then assign the user to it.

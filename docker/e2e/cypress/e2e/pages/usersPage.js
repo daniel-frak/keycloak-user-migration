@@ -4,10 +4,12 @@ const EMPTY_SEARCH_RESULTS_SELECTOR = '[data-testid="empty-state"]';
 class UsersPage {
 
     elements = {
+        header: () => cy.get('h1'),
         searchUserInput: () => cy.get('input[placeholder="Search user"]'),
         userSearchResult: () =>
             cy.get(USER_TABLE_SELECTOR + ', ' + EMPTY_SEARCH_RESULTS_SELECTOR),
         foundUserTable: () => cy.get(USER_TABLE_SELECTOR),
+        firstUserSettingsLink: () => cy.get('table a[href*="/users/"][href*="/settings"]').first(),
         emptySearchResultsText: () => cy.get(EMPTY_SEARCH_RESULTS_SELECTOR),
         foundUserOptionsToggle: () => cy.get('table button'),
         foundUserDeleteButton: () => cy.get('.pf-v5-c-menu__list-item')
@@ -15,10 +17,10 @@ class UsersPage {
     }
 
     visit() {
-        cy.intercept('admin/realms/master/ui-ext/brute-force-user*')
-            .as("userList")
         cy.visit('/admin/master/console/#/master/users');
-        cy.wait('@userList');
+        cy.location('hash', {timeout: 30000}).should('include', '/users');
+        this.elements.header().should('be.visible');
+        this.elements.searchUserInput().should('be.visible');
     }
 
     goToUserDetails(userName) {
@@ -29,15 +31,21 @@ class UsersPage {
     findByName(userName) {
         this.elements.searchUserInput().clear({force: true});
         this.elements.searchUserInput().type(userName);
-        cy.intercept("/admin/realms/master/ui-ext/brute-force-user*")
-            .as("findUsers");
         this.elements.searchUserInput().type("{enter}");
-        return cy.wait("@findUsers")
-            .then(response => {
-                // Assert that the page was actually updated
-                return this.elements.userSearchResult().should('exist')
-                    .then(() => response.response?.body[0]?.id);
-            })
+        return this.elements.userSearchResult().should('exist')
+            .then(() => cy.get('body').then($body => {
+                const emptyStateExists = $body.find(EMPTY_SEARCH_RESULTS_SELECTOR).length > 0;
+                if (emptyStateExists) {
+                    return undefined;
+                }
+
+                return this.elements.firstUserSettingsLink()
+                    .invoke('attr', 'href')
+                    .then(href => {
+                        const match = href?.match(/\/users\/([^/]+)\/settings/);
+                        return match?.[1];
+                    });
+            }));
 
     }
 

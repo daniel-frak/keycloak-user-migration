@@ -24,7 +24,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.SEVER_FEDERATION_LINK;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithId;
 import static java.util.Collections.emptySet;
@@ -302,6 +304,108 @@ class LegacyProviderTest {
         verify(userModel, never()).setEmail(any());
         verify(userModel, never()).setFirstName(any());
         verify(legacyUserService, never()).findByUsername(anyString());
+    }
+
+    @Test
+    void isValidShouldRefreshUserGroupsWhenEnabled() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+        config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername()).thenReturn(legacyUser.username());
+        when(userModel.credentialManager()).thenReturn(userCredentialManager);
+        when(input.getChallengeResponse()).thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
+        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModelFactory).synchronizeGroups(legacyUser, realmModel, userModel);
+    }
+
+    @Test
+    void isValidShouldRefreshUserRolesWhenEnabled() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+        config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername()).thenReturn(legacyUser.username());
+        when(userModel.credentialManager()).thenReturn(userCredentialManager);
+        when(input.getChallengeResponse()).thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
+        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModelFactory).synchronizeRoles(legacyUser, realmModel, userModel);
+    }
+
+    @Test
+    void isValidShouldRefreshUserGroupsOnlyAddWhenEnabled() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+        config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername()).thenReturn(legacyUser.username());
+        when(userModel.credentialManager()).thenReturn(userCredentialManager);
+        when(input.getChallengeResponse()).thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
+        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModelFactory).synchronizeGroupsAddOnly(legacyUser, realmModel, userModel);
+        verify(userModelFactory, never()).synchronizeGroups(legacyUser, realmModel, userModel);
+    }
+
+    @Test
+    void isValidShouldRefreshUserRolesOnlyAddWhenEnabled() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+        config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername()).thenReturn(legacyUser.username());
+        when(userModel.credentialManager()).thenReturn(userCredentialManager);
+        when(input.getChallengeResponse()).thenReturn("password");
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
+        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userModelFactory).synchronizeRolesAddOnly(legacyUser, realmModel, userModel);
+        verify(userModelFactory, never()).synchronizeRoles(legacyUser, realmModel, userModel);
     }
 
     @Test

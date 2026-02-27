@@ -275,6 +275,55 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldSynchronizeRolesByAddingMissingAndRemovingStaleMappings() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        configureMigrationOfUnmappedRoles();
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel mappedRole = mock(RoleModel.class);
+        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel missingRole = mock(RoleModel.class);
+        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        RoleModel staleRole = mock(RoleModel.class);
+        when(staleRole.getName()).thenReturn("staleRole");
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, staleRole));
+
+        userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+
+        verify(userModel).grantRole(missingRole);
+        verify(userModel).deleteRoleMapping(staleRole);
+        verify(userModel, never()).deleteRoleMapping(mappedRole);
+    }
+
+    @Test
+    void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        configureMigrationOfUnmappedRoles();
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel mappedRole = mock(RoleModel.class);
+        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel missingRole = mock(RoleModel.class);
+        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        RoleModel staleRole = mock(RoleModel.class);
+        when(staleRole.getName()).thenReturn("staleRole");
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, staleRole));
+
+        userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+
+        verify(userModel).grantRole(missingRole);
+        verify(userModel, never()).deleteRoleMapping(any());
+    }
+
+    @Test
     void shouldMigrateMappedAndUnmappedClientRoles() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
@@ -409,6 +458,190 @@ class UserModelFactoryTest {
         UserModel result = userModelFactory.create(legacyUser, realm);
 
         assertThat(result.getGroupsStream().toList()).isEmpty();
+    }
+
+    @Test
+    void shouldSynchronizeGroupsByAddingMissingAndRemovingStaleMemberships() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        configureMigrationOfUnmappedGroups();
+        userModelFactory = constructUserModelFactory();
+
+        GroupModel mappedGroup = mock(GroupModel.class);
+        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        GroupModel missingGroup = mock(GroupModel.class);
+        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        GroupModel staleGroup = mock(GroupModel.class);
+        when(staleGroup.getName()).thenReturn("staleGroup");
+        when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, staleGroup));
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, staleGroup));
+
+        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+        verify(userModel).joinGroup(missingGroup);
+        verify(userModel).leaveGroup(staleGroup);
+        verify(userModel, never()).leaveGroup(mappedGroup);
+    }
+
+    @Test
+    void shouldSynchronizeGroupsByOnlyAddingMissingMemberships() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        configureMigrationOfUnmappedGroups();
+        userModelFactory = constructUserModelFactory();
+
+        GroupModel mappedGroup = mock(GroupModel.class);
+        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        GroupModel missingGroup = mock(GroupModel.class);
+        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        GroupModel staleGroup = mock(GroupModel.class);
+        when(staleGroup.getName()).thenReturn("staleGroup");
+        when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, staleGroup));
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, staleGroup));
+
+        userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
+
+        verify(userModel).joinGroup(missingGroup);
+        verify(userModel, never()).leaveGroup(any());
+    }
+
+    @Test
+    void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
+        configureMigrationOfUnmappedRoles();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getRoleMappingsStream().toList()).isEmpty();
+    }
+
+    @Test
+    void shouldNotRemoveIgnoredRolesDuringSynchronization() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("manage-*"));
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel mappedRole = mock(RoleModel.class);
+        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel missingRole = mock(RoleModel.class);
+        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        RoleModel untrackedRole = mock(RoleModel.class);
+        when(untrackedRole.getName()).thenReturn("manage-account");
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, untrackedRole));
+
+        userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+
+        verify(userModel, never()).deleteRoleMapping(untrackedRole);
+    }
+
+    @Test
+    void shouldTreatRegexMetaCharactersAsLiteralsInIgnoredRolePatterns() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("team.(ops)-*"));
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel mappedRole = mock(RoleModel.class);
+        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel missingRole = mock(RoleModel.class);
+        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        RoleModel untrackedRole = mock(RoleModel.class);
+        when(untrackedRole.getName()).thenReturn("team.(ops)-admin");
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, untrackedRole));
+
+        userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+
+        verify(userModel, never()).deleteRoleMapping(untrackedRole);
+    }
+
+    @Test
+    void shouldNotImportIgnoredRolesOnFirstLogin() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("another*"));
+        RoleModel importedRole = mock(RoleModel.class);
+        when(importedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        RoleModel ignoredRole = mock(RoleModel.class);
+        when(ignoredRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(importedRole);
+        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(ignoredRole);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getRoleMappingsStream().toList())
+                .containsExactly(importedRole);
+    }
+
+    @Test
+    void shouldNotImportGroupsOnFirstLoginWhenGroupSyncModeIsNoSync() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        config.putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "NO_SYNC");
+        configureMigrationOfUnmappedGroups();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getGroupsStream().toList()).isEmpty();
+    }
+
+    @Test
+    void shouldNotRemoveIgnoredGroupsDuringSynchronization() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        configureMigrationOfUnmappedGroups();
+        config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("manual-*"));
+        userModelFactory = constructUserModelFactory();
+
+        GroupModel mappedGroup = mock(GroupModel.class);
+        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        GroupModel missingGroup = mock(GroupModel.class);
+        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        GroupModel untrackedGroup = mock(GroupModel.class);
+        when(untrackedGroup.getName()).thenReturn("manual-group");
+        when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, untrackedGroup));
+
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, untrackedGroup));
+
+        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+        verify(userModel, never()).leaveGroup(untrackedGroup);
+    }
+
+    @Test
+    void shouldNotImportIgnoredGroupsOnFirstLogin() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        configureMigrationOfUnmappedGroups();
+        config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("another*"));
+
+        GroupModel importedGroup = mock(GroupModel.class);
+        when(importedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        GroupModel ignoredGroup = mock(GroupModel.class);
+        when(ignoredGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(realm.getGroupsStream()).then(i -> Stream.of(importedGroup, ignoredGroup));
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getGroupsStream().toList())
+                .containsExactly(importedGroup);
     }
 
     @Test
