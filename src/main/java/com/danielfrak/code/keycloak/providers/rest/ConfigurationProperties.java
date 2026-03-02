@@ -70,7 +70,9 @@ public final class ConfigurationProperties {
                     BOOLEAN_TYPE, false),
             new ProviderConfigProperty(UPDATE_USER_ON_LOGIN,
                     "Refresh user attributes on login",
-                    "Re-fetch legacy attributes on each login. Requires the user to remain federated—if the federation link is severed (setting below enabled), this option has no effect. Users whose links were already severed must be re-linked or re-imported for this to work.",
+                    "Re-fetch legacy attributes on each login. Requires the user to remain federated - if the " +
+                    "federation link is severed (setting below enabled), this option has no effect. Users whose " +
+                    "links were already severed must be re-linked or re-imported for this to work.",
                     BOOLEAN_TYPE, false),
             syncModeProperty(UPDATE_USER_GROUPS_ON_LOGIN,
                     "User groups sync mode",
@@ -103,7 +105,8 @@ public final class ConfigurationProperties {
                     DEFAULT_IGNORED_SYNC_ROLES),
             new ProviderConfigProperty(SEVER_FEDERATION_LINK,
                     "Sever federation link after migration",
-                    "When enabled, the provider removes the federation link so future logins use local credentials only.",
+                    "When enabled, the provider removes the federation link so future logins use local credentials " +
+                    "only.",
                     BOOLEAN_TYPE, true),
             new ProviderConfigProperty(ROLE_MAP_PROPERTY,
                     "Legacy role conversion",
