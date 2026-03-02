@@ -25,13 +25,6 @@ public enum UserSyncMode {
             return defaultValue;
         }
 
-        if ("true".equalsIgnoreCase(value.trim())) {
-            return SYNC_EVERY_LOGIN;
-        }
-        if ("false".equalsIgnoreCase(value.trim())) {
-            return SYNC_FIRST_LOGIN;
-        }
-
         try {
             return UserSyncMode.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException ex) {
