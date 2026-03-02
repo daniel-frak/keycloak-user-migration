@@ -18,7 +18,6 @@ import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.*;
-import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithOneOrg;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -281,16 +280,22 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         RoleModel mappedRole = mock(RoleModel.class);
-        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        when(mappedRole.getName())
+                .thenReturn(legacyUser.roles().getFirst());
         RoleModel missingRole = mock(RoleModel.class);
-        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(missingRole.getName())
+                .thenReturn(legacyUser.roles().get(1));
         RoleModel staleRole = mock(RoleModel.class);
-        when(staleRole.getName()).thenReturn("staleRole");
-        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
-        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+        when(staleRole.getName())
+                .thenReturn("staleRole");
+        when(realm.getRole(legacyUser.roles().getFirst()))
+                .thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1)))
+                .thenReturn(missingRole);
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, staleRole));
+        when(userModel.getRoleMappingsStream())
+                .thenReturn(Stream.of(mappedRole, staleRole));
 
         userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
 
@@ -306,16 +311,22 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         RoleModel mappedRole = mock(RoleModel.class);
-        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        when(mappedRole.getName())
+                .thenReturn(legacyUser.roles().getFirst());
         RoleModel missingRole = mock(RoleModel.class);
-        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(missingRole.getName())
+                .thenReturn(legacyUser.roles().get(1));
         RoleModel staleRole = mock(RoleModel.class);
-        when(staleRole.getName()).thenReturn("staleRole");
-        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
-        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+        when(staleRole.getName())
+                .thenReturn("staleRole");
+        when(realm.getRole(legacyUser.roles().getFirst()))
+                .thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1)))
+                .thenReturn(missingRole);
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, staleRole));
+        when(userModel.getRoleMappingsStream())
+                .thenReturn(Stream.of(mappedRole, staleRole));
 
         userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
 
@@ -392,7 +403,8 @@ class UserModelFactoryTest {
 
     private GroupModel mockGroupCreationInRealm(String groupName) {
         final GroupModel newGroupModel = mock(GroupModel.class);
-        when(realm.createGroup(groupName)).thenReturn(newGroupModel);
+        when(realm.createGroup(groupName))
+                .thenReturn(newGroupModel);
 
         return newGroupModel;
     }
@@ -467,15 +479,19 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         GroupModel mappedGroup = mock(GroupModel.class);
-        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        when(mappedGroup.getName())
+                .thenReturn(legacyUser.groups().getFirst());
         GroupModel missingGroup = mock(GroupModel.class);
-        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(missingGroup.getName())
+                .thenReturn(legacyUser.groups().get(1));
         GroupModel staleGroup = mock(GroupModel.class);
-        when(staleGroup.getName()).thenReturn("staleGroup");
+        when(staleGroup.getName())
+                .thenReturn("staleGroup");
         when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, staleGroup));
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, staleGroup));
+        when(userModel.getGroupsStream())
+                .thenReturn(Stream.of(mappedGroup, staleGroup));
 
         userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
 
@@ -491,15 +507,19 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         GroupModel mappedGroup = mock(GroupModel.class);
-        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        when(mappedGroup.getName())
+                .thenReturn(legacyUser.groups().getFirst());
         GroupModel missingGroup = mock(GroupModel.class);
-        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(missingGroup.getName())
+                .thenReturn(legacyUser.groups().get(1));
         GroupModel staleGroup = mock(GroupModel.class);
-        when(staleGroup.getName()).thenReturn("staleGroup");
+        when(staleGroup.getName())
+                .thenReturn("staleGroup");
         when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, staleGroup));
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, staleGroup));
+        when(userModel.getGroupsStream())
+                .thenReturn(Stream.of(mappedGroup, staleGroup));
 
         userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
 
@@ -528,16 +548,22 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         RoleModel mappedRole = mock(RoleModel.class);
-        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        when(mappedRole.getName())
+                .thenReturn(legacyUser.roles().getFirst());
         RoleModel missingRole = mock(RoleModel.class);
-        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(missingRole.getName())
+                .thenReturn(legacyUser.roles().get(1));
         RoleModel untrackedRole = mock(RoleModel.class);
-        when(untrackedRole.getName()).thenReturn("manage-account");
-        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
-        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+        when(untrackedRole.getName())
+                .thenReturn("manage-account");
+        when(realm.getRole(legacyUser.roles().getFirst()))
+                .thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1)))
+                .thenReturn(missingRole);
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, untrackedRole));
+        when(userModel.getRoleMappingsStream())
+                .thenReturn(Stream.of(mappedRole, untrackedRole));
 
         userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
 
@@ -552,16 +578,22 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         RoleModel mappedRole = mock(RoleModel.class);
-        when(mappedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        when(mappedRole.getName())
+                .thenReturn(legacyUser.roles().getFirst());
         RoleModel missingRole = mock(RoleModel.class);
-        when(missingRole.getName()).thenReturn(legacyUser.roles().get(1));
+        when(missingRole.getName())
+                .thenReturn(legacyUser.roles().get(1));
         RoleModel untrackedRole = mock(RoleModel.class);
-        when(untrackedRole.getName()).thenReturn("team.(ops)-admin");
-        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(mappedRole);
-        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(missingRole);
+        when(untrackedRole.getName())
+                .thenReturn("team.(ops)-admin");
+        when(realm.getRole(legacyUser.roles().getFirst()))
+                .thenReturn(mappedRole);
+        when(realm.getRole(legacyUser.roles().get(1)))
+                .thenReturn(missingRole);
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getRoleMappingsStream()).thenReturn(Stream.of(mappedRole, untrackedRole));
+        when(userModel.getRoleMappingsStream())
+                .thenReturn(Stream.of(mappedRole, untrackedRole));
 
         userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
 
@@ -575,11 +607,15 @@ class UserModelFactoryTest {
         configureMigrationOfUnmappedRoles();
         config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("another*"));
         RoleModel importedRole = mock(RoleModel.class);
-        when(importedRole.getName()).thenReturn(legacyUser.roles().getFirst());
+        when(importedRole.getName())
+                .thenReturn(legacyUser.roles().getFirst());
         RoleModel ignoredRole = mock(RoleModel.class);
-        when(ignoredRole.getName()).thenReturn(legacyUser.roles().get(1));
-        when(realm.getRole(legacyUser.roles().getFirst())).thenReturn(importedRole);
-        when(realm.getRole(legacyUser.roles().get(1))).thenReturn(ignoredRole);
+        when(ignoredRole.getName())
+                .thenReturn(legacyUser.roles().get(1));
+        when(realm.getRole(legacyUser.roles().getFirst()))
+                .thenReturn(importedRole);
+        when(realm.getRole(legacyUser.roles().get(1)))
+                .thenReturn(ignoredRole);
         userModelFactory = constructUserModelFactory();
 
         UserModel result = userModelFactory.create(legacyUser, realm);
@@ -609,15 +645,19 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
 
         GroupModel mappedGroup = mock(GroupModel.class);
-        when(mappedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        when(mappedGroup.getName())
+                .thenReturn(legacyUser.groups().getFirst());
         GroupModel missingGroup = mock(GroupModel.class);
-        when(missingGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(missingGroup.getName())
+                .thenReturn(legacyUser.groups().get(1));
         GroupModel untrackedGroup = mock(GroupModel.class);
-        when(untrackedGroup.getName()).thenReturn("manual-group");
+        when(untrackedGroup.getName())
+                .thenReturn("manual-group");
         when(realm.getGroupsStream()).then(i -> Stream.of(mappedGroup, missingGroup, untrackedGroup));
 
         UserModel userModel = mock(UserModel.class);
-        when(userModel.getGroupsStream()).thenReturn(Stream.of(mappedGroup, untrackedGroup));
+        when(userModel.getGroupsStream())
+                .thenReturn(Stream.of(mappedGroup, untrackedGroup));
 
         userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
 
@@ -632,9 +672,11 @@ class UserModelFactoryTest {
         config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("another*"));
 
         GroupModel importedGroup = mock(GroupModel.class);
-        when(importedGroup.getName()).thenReturn(legacyUser.groups().getFirst());
+        when(importedGroup.getName())
+                .thenReturn(legacyUser.groups().getFirst());
         GroupModel ignoredGroup = mock(GroupModel.class);
-        when(ignoredGroup.getName()).thenReturn(legacyUser.groups().get(1));
+        when(ignoredGroup.getName())
+                .thenReturn(legacyUser.groups().get(1));
         when(realm.getGroupsStream()).then(i -> Stream.of(importedGroup, ignoredGroup));
         userModelFactory = constructUserModelFactory();
 
@@ -765,13 +807,15 @@ class UserModelFactoryTest {
 
     @Test
     void shouldCreateUserWithExistingOrganization() {
-        final  LegacyUser legacyUser = aLegacyUserWithOneOrg();
+        final LegacyUser legacyUser = aLegacyUserWithOneOrg();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
-        when(realm.isOrganizationsEnabled()).thenReturn(true);
+        when(realm.isOrganizationsEnabled())
+                .thenReturn(true);
         OrganizationModel orgMock = mock(OrganizationModel.class);
-        when(organizationProvider.getByAlias(anyString())).thenReturn(orgMock);
+        when(organizationProvider.getByAlias(anyString()))
+                .thenReturn(orgMock);
 
         UserModel result = userModelFactory.create(legacyUser, realm);
 
@@ -786,9 +830,12 @@ class UserModelFactoryTest {
         final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
         OrganizationModel orgMock = mock(OrganizationModel.class);
 
-        when(realm.isOrganizationsEnabled()).thenReturn(true);
-        when(organizationProvider.getByAlias(legacyOrganization.orgAlias())).thenReturn(null);
-        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias())).thenReturn(orgMock);
+        when(realm.isOrganizationsEnabled())
+                .thenReturn(true);
+        when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
+                .thenReturn(null);
+        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                .thenReturn(orgMock);
 
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
 
