@@ -340,13 +340,6 @@ groups are never added or removed by the provider.
 `IGNORED_SYNC_ROLES` can be used to ignore specific roles during synchronization (supports wildcard `*`). Ignored
 roles are never added or removed by the provider.
 
-Default ignored roles:
-
-- `default-roles-*`
-- `realm-management`
-- `offline_access`
-- `uma_authorization`
-
 ### Legacy role conversion
 
 ![Conversion](readme-images/config_conversion.png)
