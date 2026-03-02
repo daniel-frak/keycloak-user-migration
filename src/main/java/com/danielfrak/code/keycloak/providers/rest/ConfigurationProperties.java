@@ -27,6 +27,10 @@ public final class ConfigurationProperties {
     public static final String IGNORED_SYNC_GROUPS_PROPERTY = "IGNORED_SYNC_GROUPS";
     public static final String IGNORED_SYNC_ROLES_PROPERTY = "IGNORED_SYNC_ROLES";
     public static final String SEVER_FEDERATION_LINK = "SEVER_FEDERATION_LINK";
+    // Ignore Keycloak built-in roles by default so sync-on-login does not remove them when they are not returned by
+    // the legacy API (for example in SYNC_EVERY_LOGIN mode). This protects roles that are managed locally by Keycloak:
+    // `default-roles-*` (auto-assigned defaults), `realm-management` (administrative roles),
+    // `offline_access` and `uma_authorization` (built-in realm/protocol roles).
     public static final List<String> DEFAULT_IGNORED_SYNC_ROLES = List.of(
             "default-roles-*",
             "realm-management",
