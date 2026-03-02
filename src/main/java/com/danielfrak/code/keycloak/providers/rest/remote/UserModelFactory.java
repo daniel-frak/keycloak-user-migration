@@ -46,6 +46,37 @@ public class UserModelFactory {
         this.ignoredGroupMatchPatterns = compileWildcardPatterns(ignoredGroupPatterns());
     }
 
+    private List<Pattern> compileWildcardPatterns(List<String> patterns) {
+        return patterns.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(pattern -> !pattern.isBlank())
+                .map(this::compileWildcardPattern)
+                .toList();
+    }
+
+    private Pattern compileWildcardPattern(String pattern) {
+        StringBuilder regex = new StringBuilder("^");
+        int literalStart = 0;
+
+        for (int i = 0; i < pattern.length(); i++) {
+            if (pattern.charAt(i) != '*') {
+                continue;
+            }
+            if (i > literalStart) {
+                regex.append(Pattern.quote(pattern.substring(literalStart, i)));
+            }
+            regex.append(".*");
+            literalStart = i + 1;
+        }
+
+        if (literalStart < pattern.length()) {
+            regex.append(Pattern.quote(pattern.substring(literalStart)));
+        }
+        regex.append("$");
+        return Pattern.compile(regex.toString());
+    }
+
     /**
      * Returns a map of legacy props to new one
      */
@@ -391,37 +422,6 @@ public class UserModelFactory {
             return List.of();
         }
         return configured;
-    }
-
-    private List<Pattern> compileWildcardPatterns(List<String> patterns) {
-        return patterns.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(pattern -> !pattern.isBlank())
-                .map(this::compileWildcardPattern)
-                .toList();
-    }
-
-    private Pattern compileWildcardPattern(String pattern) {
-        StringBuilder regex = new StringBuilder("^");
-        int literalStart = 0;
-
-        for (int i = 0; i < pattern.length(); i++) {
-            if (pattern.charAt(i) != '*') {
-                continue;
-            }
-            if (i > literalStart) {
-                regex.append(Pattern.quote(pattern.substring(literalStart, i)));
-            }
-            regex.append(".*");
-            literalStart = i + 1;
-        }
-
-        if (literalStart < pattern.length()) {
-            regex.append(Pattern.quote(pattern.substring(literalStart)));
-        }
-        regex.append("$");
-        return Pattern.compile(regex.toString());
     }
 
     private boolean wildcardMatch(Pattern pattern, String value) {
