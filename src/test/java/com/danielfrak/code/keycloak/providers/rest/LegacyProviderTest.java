@@ -169,6 +169,68 @@ class LegacyProviderTest {
     }
 
     @Test
+    void shouldCreateUserWhenLegacyIdIsBlankAndNoLocalUserExists() {
+        final String username = "user";
+        final LegacyUser user = new LegacyUser(
+                " ",
+                username,
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(null);
+        when(userModelFactory.create(user, realmModel))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userProvider, never()).getUserById(any(), any());
+    }
+
+    @Test
+    void shouldCreateUserWhenLegacyIdIsNullAndNoLocalUserExists() {
+        final String username = "user";
+        final LegacyUser user = new LegacyUser(
+                null,
+                username,
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(null);
+        when(userModelFactory.create(user, realmModel))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userProvider, never()).getUserById(any(), any());
+    }
+
+    @Test
     void shouldReturnNullIfUserIdExistsButHasDifferentUsername() {
         final String email = "email";
         final LegacyUser user = aLegacyUserWithId();
@@ -222,6 +284,22 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertFalse(result);
+    }
+
+    @Test
+    void isValidShouldReturnFalseOnWrongCredentialTypeEvenWhenUserIsNull() {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(CredentialModel.KERBEROS);
+
+        var result = legacyProvider.isValid(realmModel, null, input);
+
+        assertFalse(result);
+    }
+
+    @Test
+    void isValidShouldThrowGivenNullInput() {
+        assertThrows(NullPointerException.class, () -> legacyProvider.isValid(realmModel, userModel, null));
     }
 
     @Test
@@ -372,6 +450,35 @@ class LegacyProviderTest {
         verify(userModel, never()).setEmail(any());
         verify(userModel, never()).setFirstName(any());
         verify(legacyUserService, never()).findByUsername(anyString());
+    }
+
+    @Test
+    void shouldUpdateExistingUserWithoutAttributesWhenLegacyPayloadHasNullAttributes() {
+        final String username = "user";
+        final LegacyUser user = new LegacyUser(
+                null,
+                username,
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                null,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userModel, never()).setAttribute(anyString(), anyList());
     }
 
     @Test
@@ -617,6 +724,17 @@ class LegacyProviderTest {
     }
 
     @Test
+    void updateCredentialShouldAcceptNullInputAndStillSeverWhenEnabledByDefault() {
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        when(model.getConfig()).thenReturn(config);
+        when(userModel.getFederationLink()).thenReturn("some-id");
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, null));
+
+        verify(userModel).setFederationLink(null);
+    }
+
+    @Test
     void updateCredentialShouldNotClearBlankFederationLink() {
         var input = mock(CredentialInput.class);
         MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
@@ -624,6 +742,19 @@ class LegacyProviderTest {
         when(model.getConfig()).thenReturn(config);
         when(userModel.getFederationLink())
                 .thenReturn("  ");
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel, never()).setFederationLink(null);
+    }
+
+    @Test
+    void updateCredentialShouldNotClearNullFederationLink() {
+        var input = mock(CredentialInput.class);
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(SEVER_FEDERATION_LINK, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+        when(userModel.getFederationLink()).thenReturn(null);
 
         assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
 
@@ -657,6 +788,12 @@ class LegacyProviderTest {
     @Test
     void removeUserShouldReturnTrue() {
         var result = legacyProvider.removeUser(realmModel, userModel);
+        assertTrue(result);
+    }
+
+    @Test
+    void removeUserShouldReturnTrueForNullUser() {
+        var result = legacyProvider.removeUser(realmModel, null);
         assertTrue(result);
     }
 }
