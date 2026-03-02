@@ -133,6 +133,42 @@ class LegacyProviderTest {
     }
 
     @Test
+    void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithSameUsername() {
+        final String username = "user";
+        final LegacyUser user = aLegacyUserWithId();
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(null);
+        when(userProvider.getUserById(realmModel, user.id()))
+                .thenReturn(userModel);
+        when(userModel.getUsername())
+                .thenReturn(user.username());
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userModel).setEmail(user.email());
+        verify(userModelFactory, never()).create(any(), any());
+    }
+
+    @Test
+    void shouldCreateUserWhenUserProviderIsUnavailable() {
+        final String username = "user";
+        final LegacyUser user = aLegacyUserWithId();
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(user));
+        when(session.users())
+                .thenReturn(null);
+        when(userModelFactory.create(user, realmModel))
+                .thenReturn(userModel);
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+    }
+
+    @Test
     void shouldReturnNullIfUserIdExistsButHasDifferentUsername() {
         final String email = "email";
         final LegacyUser user = aLegacyUserWithId();
@@ -274,6 +310,38 @@ class LegacyProviderTest {
         assertTrue(result);
         verify(userModel).setEmail(legacyUser.email());
         verify(userModel).setFirstName(legacyUser.firstName());
+    }
+
+    @Test
+    void isValidShouldContinueAuthenticationWhenRefreshThrowsException() {
+        var userCredentialManager = mock(SubjectCredentialManager.class);
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(PasswordCredentialModel.TYPE);
+
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+
+        final LegacyUser legacyUser = aLegacyUserWithId();
+        when(userModel.getUsername())
+                .thenReturn(legacyUser.username());
+        when(userModel.credentialManager())
+                .thenReturn(userCredentialManager);
+        when(input.getChallengeResponse())
+                .thenReturn("password");
+        when(legacyUserService.findByUsername(legacyUser.username()))
+                .thenReturn(Optional.of(legacyUser));
+        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
+                .thenReturn(true);
+        doThrow(new RuntimeException("boom"))
+                .when(userModel).setEnabled(anyBoolean());
+
+        var result = legacyProvider.isValid(realmModel, userModel, input);
+
+        assertTrue(result);
+        verify(userCredentialManager).updateCredential(input);
     }
 
     @Test
@@ -535,6 +603,27 @@ class LegacyProviderTest {
         MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
         config.put(SEVER_FEDERATION_LINK, List.of("false"));
         when(model.getConfig()).thenReturn(config);
+
+        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+
+        verify(userModel, never()).setFederationLink(null);
+    }
+
+    @Test
+    void updateCredentialShouldNotAttemptSeverWhenUserIsNull() {
+        var input = mock(CredentialInput.class);
+
+        assertFalse(legacyProvider.updateCredential(realmModel, null, input));
+    }
+
+    @Test
+    void updateCredentialShouldNotClearBlankFederationLink() {
+        var input = mock(CredentialInput.class);
+        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        config.put(SEVER_FEDERATION_LINK, List.of("true"));
+        when(model.getConfig()).thenReturn(config);
+        when(userModel.getFederationLink())
+                .thenReturn("  ");
 
         assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
 

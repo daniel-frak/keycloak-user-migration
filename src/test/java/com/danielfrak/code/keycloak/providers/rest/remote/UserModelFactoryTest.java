@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -336,6 +337,28 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldSynchronizeRolesUsingRoleIdAsIdentityKey() {
+        final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role"));
+        configureMigrationOfUnmappedRoles();
+        userModelFactory = constructUserModelFactory();
+
+        RoleModel desiredRole = asRoleModel("legacy-role");
+        when(desiredRole.getId())
+                .thenReturn("role-id-1");
+        existInRealm(desiredRole);
+
+        RoleModel currentRole = mock(RoleModel.class);
+        when(currentRole.getId())
+                .thenReturn("role-id-1");
+        UserModel userModel = userModelWithRoles(currentRole);
+
+        userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+
+        verify(userModel, never()).grantRole(any());
+        verify(userModel, never()).deleteRoleMapping(any());
+    }
+
+    @Test
     void shouldMigrateMappedAndUnmappedClientRoles() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
@@ -534,6 +557,63 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldSynchronizeGroupsUsingGroupIdAsIdentityKey() {
+        final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
+        configureMigrationOfUnmappedGroups();
+        userModelFactory = constructUserModelFactory();
+
+        GroupModel desiredGroup = asGroupModel("legacy-group");
+        when(desiredGroup.getId())
+                .thenReturn("group-id-1");
+        existingGroupsInRealm(desiredGroup);
+
+        GroupModel currentGroup = mock(GroupModel.class);
+        when(currentGroup.getId())
+                .thenReturn("group-id-1");
+        UserModel userModel = userModelWithGroups(currentGroup);
+
+        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+        verify(userModel, never()).joinGroup(any());
+        verify(userModel, never()).leaveGroup(any());
+    }
+
+    @Test
+    void shouldHandleConfiguredIgnoredRolePatternsContainingNullAndBlankEntries() {
+        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        configureMigrationOfUnmappedRoles();
+        config.put(IGNORED_SYNC_ROLES_PROPERTY, java.util.Arrays.asList(null, "  ", "old*"));
+        RoleModel ignoredRole = asRoleModel(legacyUser.roles().getFirst());
+        RoleModel importedRole = asRoleModel(legacyUser.roles().get(1));
+        existInRealm(ignoredRole, importedRole);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result.getRoleMappingsStream().toList())
+                .containsExactly(importedRole);
+    }
+
+    @Test
+    void shouldRemoveCurrentGroupWithNullNameWhenAbsentFromLegacy() {
+        final LegacyUser legacyUser = aLegacyUserWithGroups(List.of());
+        configureMigrationOfUnmappedGroups();
+        userModelFactory = constructUserModelFactory();
+
+        GroupModel currentGroup = mock(GroupModel.class);
+        when(currentGroup.getId())
+                .thenReturn(null);
+        when(currentGroup.getName())
+                .thenReturn(null);
+        UserModel userModel = userModelWithGroups(currentGroup);
+
+        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+        verify(userModel).leaveGroup(currentGroup);
+    }
+
+    @Test
     void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
@@ -723,6 +803,42 @@ class UserModelFactoryTest {
         return result.credentialManager()
                 .getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE)
                 .toList();
+    }
+
+    private LegacyUser aLegacyUserWithRoles(List<String> roles) {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                Map.of(),
+                roles,
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private LegacyUser aLegacyUserWithGroups(List<String> groups) {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                Map.of(),
+                List.of(),
+                groups,
+                List.of(),
+                List.of(),
+                List.of()
+        );
     }
 
     @Test
