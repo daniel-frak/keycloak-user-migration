@@ -83,13 +83,25 @@ runs:
         retention-days: 1
 
     ### EXECUTE ANALYSIS ###
+
+    # We must first checkout the base repository, then fetch the PR head from the PR repository.
+    # Otherwise, if we just fetch the head repository, the analysis won't work for master->master PRs.
+    # See: https://github.com/daniel-frak/keycloak-user-migration/issues/411
     - name: 'Checkout project'
       if: github.event_name == 'workflow_run'
       uses: actions/checkout@v6
       with:
-        repository: ${{ github.event.workflow_run.head_repository.full_name }}
-        ref: ${{ github.event.workflow_run.head_branch }}
-        fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of Sonar analysis
+        repository: ${{ github.event.workflow_run.base_repository.full_name }}
+        ref: ${{ env.pr_base_ref }}
+        fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis
+
+    - name: 'Fetch PR head'
+      if: github.event_name == 'workflow_run'
+      shell: bash
+      run: |
+        git remote add fork https://github.com/${{ github.event.workflow_run.head_repository.full_name }}.git
+        git fetch fork ${{ github.event.workflow_run.head_branch }}:tmp_sonar_pr_branch
+        git checkout tmp_sonar_pr_branch
 
     - name: 'Set up Java'
       if: github.event_name == 'workflow_run'
@@ -144,6 +156,6 @@ runs:
         -Dsonar.token=${{ inputs.sonar-token }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.scm.revision=', github.event.workflow_run.head_sha) || '' }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.key=', env.pr_number) || '' }}
-        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.branch=', env.pr_head_ref) || '' }}
+        ${{ github.event.workflow_run.event == 'pull_request' && '-Dsonar.pullrequest.branch=tmp_sonar_pr_branch' || '' }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.base=', env.pr_base_ref) || '' }}
         ${{ inputs.additional-flags }}
