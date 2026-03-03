@@ -82,7 +82,9 @@ public class LegacyProvider implements UserStorageProvider,
     private String getUserIdentifier(UserModel userModel) {
         var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION);
         var useUserId = Boolean.parseBoolean(userIdConfig);
-        return useUserId ? userModel.getId() : userModel.getUsername();
+        return useUserId
+                ? userModel.getId()
+                : userModel.getUsername();
     }
 
     private boolean passwordDoesNotBreakPolicy(RealmModel realmModel, UserModel userModel, String password) {
