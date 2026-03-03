@@ -62,7 +62,7 @@ public class LegacyProvider implements UserStorageProvider,
             return false;
         }
 
-        refreshUserFromLegacy(userModel);
+        refreshUserFromLegacy(realmModel, userModel);
 
         var userIdentifier = getUserIdentifier(userModel);
 
@@ -108,9 +108,11 @@ public class LegacyProvider implements UserStorageProvider,
                 .noneMatch(s -> s.contains(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
     }
 
-    private void refreshUserFromLegacy(UserModel userModel) {
-        if (!shouldRefreshUserOnLogin()) {
-            LOG.debug("Skipping legacy refresh because refresh-on-login is disabled.");
+    private void refreshUserFromLegacy(RealmModel realmModel, UserModel userModel) {
+        if (!shouldRefreshAttributesOnLogin() &&
+            !groupSyncMode().shouldSyncOnLogin() &&
+            !roleSyncMode().shouldSyncOnLogin()) {
+            LOG.debug("Skipping legacy refresh because all refresh-on-login options are disabled.");
             return;
         }
 
@@ -119,8 +121,16 @@ public class LegacyProvider implements UserStorageProvider,
         legacyUserService.findByUsername(username)
                 .ifPresentOrElse(
                         legacyUser -> {
-                            LOG.debugf("Legacy user %s found. Applying latest attributes.", username);
-                            updateUserData(userModel, legacyUser);
+                            LOG.debugf("Legacy user %s found. Applying latest data.", username);
+                            try {
+                                if (shouldRefreshAttributesOnLogin()) {
+                                    updateUserData(userModel, legacyUser);
+                                }
+                                updateUserGroups(userModel, legacyUser, realmModel);
+                                updateUserRoles(userModel, legacyUser, realmModel);
+                            } catch (RuntimeException ex) {
+                                LOG.errorf(ex, "Failed to refresh legacy data for user %s. Continuing login.", username);
+                            }
                         },
                         () -> LOG.debugf("Legacy user %s not found during refresh.", username)
                 );
@@ -250,6 +260,34 @@ public class LegacyProvider implements UserStorageProvider,
         }
     }
 
+    private void updateUserGroups(UserModel userModel, LegacyUser legacyUser, RealmModel realmModel) {
+        UserSyncMode syncMode = groupSyncMode();
+        if (!syncMode.shouldSyncOnLogin()) {
+            return;
+        }
+
+        LOG.debugf("Synchronizing groups for user %s", legacyUser.username());
+        if (syncMode.shouldRemoveMissingOnLogin()) {
+            userModelFactory.synchronizeGroups(legacyUser, realmModel, userModel);
+        } else {
+            userModelFactory.synchronizeGroupsAddOnly(legacyUser, realmModel, userModel);
+        }
+    }
+
+    private void updateUserRoles(UserModel userModel, LegacyUser legacyUser, RealmModel realmModel) {
+        UserSyncMode syncMode = roleSyncMode();
+        if (!syncMode.shouldSyncOnLogin()) {
+            return;
+        }
+
+        LOG.debugf("Synchronizing roles for user %s", legacyUser.username());
+        if (syncMode.shouldRemoveMissingOnLogin()) {
+            userModelFactory.synchronizeRoles(legacyUser, realmModel, userModel);
+        } else {
+            userModelFactory.synchronizeRolesAddOnly(legacyUser, realmModel, userModel);
+        }
+    }
+
     private UserModel createUserFromLegacyData(RealmModel realm, LegacyUser legacyUser) {
         boolean duplicate = userModelFactory.isDuplicateUserId(legacyUser, realm);
         if (duplicate) {
@@ -270,9 +308,19 @@ public class LegacyProvider implements UserStorageProvider,
         return Boolean.TRUE.equals(inProgress);
     }
 
-    private boolean shouldRefreshUserOnLogin() {
+    private boolean shouldRefreshAttributesOnLogin() {
         var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ON_LOGIN);
         return Boolean.parseBoolean(configValue);
+    }
+
+    private UserSyncMode groupSyncMode() {
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN);
+        return UserSyncMode.fromConfig(configValue, UserSyncMode.SYNC_FIRST_LOGIN);
+    }
+
+    private UserSyncMode roleSyncMode() {
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN);
+        return UserSyncMode.fromConfig(configValue, UserSyncMode.SYNC_FIRST_LOGIN);
     }
 
     private boolean shouldSeverFederationLink() {
