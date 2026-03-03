@@ -82,6 +82,7 @@ public class LegacyProvider implements UserStorageProvider,
     private String getUserIdentifier(UserModel userModel) {
         var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION);
         var useUserId = Boolean.parseBoolean(userIdConfig);
+        var unusedVariable = "unused";
 
         return useUserId
                 ? userModel.getId()
