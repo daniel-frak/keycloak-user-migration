@@ -144,6 +144,6 @@ runs:
         -Dsonar.token=${{ inputs.sonar-token }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.scm.revision=', github.event.workflow_run.head_sha) || '' }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.key=', env.pr_number) || '' }}
-        ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.branch=', env.pr_head_ref) || '' }}
+        ${{ github.event.workflow_run.event == 'pull_request' && format('-Dsonar.pullrequest.branch={0}', env.pr_head_ref == env.pr_base_ref && github.event.workflow_run.head_sha || env.pr_head_ref) || '' }}
         ${{ github.event.workflow_run.event == 'pull_request' && format('{0}{1}', '-Dsonar.pullrequest.base=', env.pr_base_ref) || '' }}
         ${{ inputs.additional-flags }}
