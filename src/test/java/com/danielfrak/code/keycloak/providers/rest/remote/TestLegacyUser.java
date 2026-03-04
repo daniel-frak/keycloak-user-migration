@@ -9,7 +9,7 @@ import static java.util.Collections.emptyMap;
 
 public class TestLegacyUser {
 
-    public static LegacyUser aMinimalLegacyUser() {
+    public static LegacyUser minimal() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -27,7 +27,25 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithId() {
+    public static LegacyUser withBlankId() {
+        return new LegacyUser(
+                "\n",
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public static LegacyUser withId() {
         return new LegacyUser(
                 "someLegacyUserId",
                 "someUserName",
@@ -45,7 +63,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithOneAttribute() {
+    public static LegacyUser withOneAttribute() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -63,7 +81,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithNullAndEmptyRoles() {
+    public static LegacyUser withNullAndEmptyRoles() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -81,7 +99,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithTwoRoles() {
+    public static LegacyUser withTwoRoles() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -99,7 +117,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithTwoGroups() {
+    public static LegacyUser withTwoGroups() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -117,7 +135,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithNullAndEmptyGroups() {
+    public static LegacyUser withNullAndEmptyGroups() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -135,7 +153,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithTwoRequiredActions() {
+    public static LegacyUser withTwoRequiredActions() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -153,7 +171,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithTwoTotps() {
+    public static LegacyUser withTwoTotps() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -174,7 +192,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithOneOrg() {
+    public static LegacyUser withOneOrganization() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -231,6 +249,4 @@ public class TestLegacyUser {
     private static LegacyTotp legacyTotp(String name, String secret) {
         return new LegacyTotp(secret, name, 0, 0, null, null);
     }
-
-
 }

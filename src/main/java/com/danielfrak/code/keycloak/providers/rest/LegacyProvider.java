@@ -2,7 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
-import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
+import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
 import org.jboss.logging.Logger;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
@@ -56,8 +56,7 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean isValid(RealmModel realmModel, UserModel userModel, CredentialInput input) {
-        LOG.debugf("isValid called for user %s with credential type %s",
-                userModel == null ? "null" : userModel.getUsername(), input == null ? "null" : input.getType());
+        LOG.debugf("isValid called for user %s with credential type %s", getUserName(userModel), getType(input));
         if (!supportsCredentialType(input.getType())) {
             return false;
         }
@@ -79,6 +78,18 @@ public class LegacyProvider implements UserStorageProvider,
         return true;
     }
 
+    private String getType(CredentialInput input) {
+        return Optional.ofNullable(input)
+                .map(CredentialInput::getType)
+                .orElse(null);
+    }
+
+    private String getUserName(UserModel userModel) {
+        return Optional.ofNullable(userModel)
+                .map(UserModel::getUsername)
+                .orElse(null);
+    }
+
     private String getUserIdentifier(UserModel userModel) {
         var userIdConfig = model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION);
         var useUserId = Boolean.parseBoolean(userIdConfig);
@@ -97,7 +108,7 @@ public class LegacyProvider implements UserStorageProvider,
     private void addUpdatePasswordAction(UserModel userModel, String userIdentifier) {
         if (updatePasswordActionMissing(userModel)) {
             LOG.infof("Could not use legacy password for user %s due to password policy." +
-                      " Adding UPDATE_PASSWORD action.",
+                            " Adding UPDATE_PASSWORD action.",
                     userIdentifier);
             userModel.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
@@ -110,8 +121,8 @@ public class LegacyProvider implements UserStorageProvider,
 
     private void refreshUserFromLegacy(RealmModel realmModel, UserModel userModel) {
         if (!shouldRefreshAttributesOnLogin() &&
-            !groupSyncMode().shouldSyncOnLogin() &&
-            !roleSyncMode().shouldSyncOnLogin()) {
+                !groupSyncMode().shouldSyncOnLogin() &&
+                !roleSyncMode().shouldSyncOnLogin()) {
             LOG.debug("Skipping legacy refresh because all refresh-on-login options are disabled.");
             return;
         }
@@ -120,20 +131,23 @@ public class LegacyProvider implements UserStorageProvider,
         LOG.debugf("Refreshing user data from legacy store for %s", username);
         legacyUserService.findByUsername(username)
                 .ifPresentOrElse(
-                        legacyUser -> {
-                            LOG.debugf("Legacy user %s found. Applying latest data.", username);
-                            try {
-                                if (shouldRefreshAttributesOnLogin()) {
-                                    updateUserData(userModel, legacyUser);
-                                }
-                                updateUserGroups(userModel, legacyUser, realmModel);
-                                updateUserRoles(userModel, legacyUser, realmModel);
-                            } catch (RuntimeException ex) {
-                                LOG.errorf(ex, "Failed to refresh legacy data for user %s. Continuing login.", username);
-                            }
-                        },
+                        legacyUser -> refreshUserFromLegacy(realmModel, userModel, legacyUser, username),
                         () -> LOG.debugf("Legacy user %s not found during refresh.", username)
                 );
+    }
+
+    private void refreshUserFromLegacy(
+            RealmModel realmModel, UserModel userModel, LegacyUser legacyUser, String username) {
+        LOG.debugf("Legacy user %s found. Applying latest data.", username);
+        try {
+            if (shouldRefreshAttributesOnLogin()) {
+                updateUserData(userModel, legacyUser);
+            }
+            updateUserGroups(userModel, legacyUser, realmModel);
+            updateUserRoles(userModel, legacyUser, realmModel);
+        } catch (RuntimeException ex) {
+            LOG.errorf(ex, "Failed to refresh legacy data for user %s. Continuing login.", username);
+        }
     }
 
     @Override
@@ -153,8 +167,7 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean updateCredential(RealmModel realm, UserModel user, CredentialInput input) {
-        LOG.debugf("updateCredential called for user %s and type %s",
-                user == null ? "null" : user.getUsername(), input == null ? "null" : input.getType());
+        LOG.debugf("updateCredential called for user %s and type %s", getUserName(user), getType(input));
         if (user != null && shouldSeverFederationLink()) {
             severFederationLink(user);
         } else {
@@ -189,61 +202,78 @@ public class LegacyProvider implements UserStorageProvider,
     @Override
     public UserModel getUserByUsername(RealmModel realmModel, String username) {
         LOG.debugf("getUserByUsername called for username %s", username);
-        return getUserModel(realmModel, username, () -> legacyUserService.findByUsername(username));
+        return getAndUpdateUserModel(realmModel, username, () -> legacyUserService.findByUsername(username));
     }
 
-    private UserModel getUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
+    private UserModel getAndUpdateUserModel(RealmModel realm, String username, Supplier<Optional<LegacyUser>> user) {
         LOG.debug("Getting legacy user for username " + username);
         if (existingUserLookupInProgress()) {
             LOG.debugf("Skipping legacy lookup for username %s to avoid recursion", username);
             return null;
         }
 
-        return user.get()
-                .map(legacyUser -> findExistingUser(realm, legacyUser)
-                        .map(existingUser -> {
-                            LOG.debugf("Found existing user %s in Keycloak. Updating from legacy payload.", existingUser.getUsername());
-                            updateUserData(existingUser, legacyUser);
-                            return existingUser;
-                        })
-                        .orElseGet(() -> createUserFromLegacyData(realm, legacyUser)))
-                .orElseGet(() -> {
-                    LOG.warnf("User not found in external repository: %s", username);
-                    return null;
-                });
+        Optional<LegacyUser> maybeLegacyUser = user.get();
+        if (maybeLegacyUser.isEmpty()) {
+            LOG.warnf("User not found in external repository: %s", username);
+            return null;
+        }
+        LegacyUser legacyUser = maybeLegacyUser.get();
+
+        Optional<UserModel> maybeExistingUser = findExistingUser(realm, legacyUser);
+        if (maybeExistingUser.isEmpty()) {
+            return createUserFromLegacyData(realm, legacyUser);
+        }
+
+        var existingUser = maybeExistingUser.get();
+        updateExistingUser(existingUser, legacyUser);
+        return existingUser;
+    }
+
+    private void updateExistingUser(UserModel existingUser, LegacyUser legacyUser) {
+        LOG.debugf("Found existing user %s in Keycloak. Updating from legacy payload.",
+                existingUser.getUsername());
+        updateUserData(existingUser, legacyUser);
     }
 
     private Optional<UserModel> findExistingUser(RealmModel realm, LegacyUser legacyUser) {
         session.setAttribute(EXISTING_USER_LOOKUP_ATTR, Boolean.TRUE);
         try {
             UserProvider userProvider = session.users();
-            if (userProvider == null) {
-                return Optional.empty();
-            }
 
-            UserModel existingUser = userProvider.getUserByUsername(realm, legacyUser.username());
-            if (existingUser != null) {
-                LOG.debugf("Located existing user %s by username in local storage.", legacyUser.username());
-                return Optional.of(existingUser);
-            }
-
-            String legacyId = legacyUser.id();
-            if (isBlank(legacyId)) {
-                LOG.debugf("Legacy user %s does not expose an id. Skipping lookup by id.", legacyUser.username());
-                return Optional.empty();
-            }
-
-            UserModel existingById = userProvider.getUserById(realm, legacyId);
-            if (existingById != null && legacyUser.username().equals(existingById.getUsername())) {
-                LOG.debugf("Located existing user %s by legacy id %s.", legacyUser.username(), legacyId);
-                return Optional.of(existingById);
-            }
-
-            LOG.debugf("No existing user %s located in local storage.", legacyUser.username());
-            return Optional.empty();
+            return getUserModel(realm, legacyUser, userProvider)
+                    .or(() -> findByIdAndUsername(realm, legacyUser, userProvider))
+                    .or(() -> {
+                        LOG.debugf("No existing user %s located in local storage.", legacyUser.username());
+                        return Optional.empty();
+                    });
         } finally {
             session.removeAttribute(EXISTING_USER_LOOKUP_ATTR);
         }
+    }
+
+    private Optional<UserModel> getUserModel(RealmModel realm, LegacyUser legacyUser, UserProvider userProvider) {
+        UserModel userModel = userProvider.getUserByUsername(realm, legacyUser.username());
+        if (userModel == null) {
+            LOG.debugf("Located existing user %s by username in local storage.", legacyUser.username());
+        }
+
+        return Optional.ofNullable(userModel);
+    }
+
+    private Optional<UserModel> findByIdAndUsername(RealmModel realm, LegacyUser legacyUser,
+                                                    UserProvider userProvider) {
+        String legacyId = legacyUser.id();
+        if (isBlank(legacyId)) {
+            LOG.debugf("Legacy user %s does not expose an id. Skipping lookup by id.", legacyUser.username());
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(userProvider.getUserById(realm, legacyId))
+                .filter(user -> legacyUser.username().equals(user.getUsername()))
+                .map(user -> {
+                    LOG.debugf("Located existing user %s by legacy id %s.", legacyUser.username(), legacyId);
+                    return user;
+                });
     }
 
     private void updateUserData(UserModel userModel, LegacyUser legacyUser) {
@@ -331,7 +361,7 @@ public class LegacyProvider implements UserStorageProvider,
     @Override
     public UserModel getUserByEmail(RealmModel realmModel, String email) {
         LOG.debugf("getUserByEmail called for email %s", email);
-        return getUserModel(realmModel, email, () -> legacyUserService.findByEmail(email));
+        return getAndUpdateUserModel(realmModel, email, () -> legacyUserService.findByEmail(email));
     }
 
     @Override
@@ -342,7 +372,7 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean removeUser(RealmModel realmModel, UserModel userModel) {
-        LOG.debugf("removeUser called for user %s", userModel == null ? "null" : userModel.getUsername());
+        LOG.debugf("removeUser called for user %s", getUserName(userModel));
         return true;
     }
 }

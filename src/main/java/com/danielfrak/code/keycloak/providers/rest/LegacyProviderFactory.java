@@ -1,6 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
-import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
+import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.*;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.danielfrak.code.keycloak.providers.rest.rest.RestUserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +24,12 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
 
     @Override
     public LegacyProvider create(KeycloakSession session, ComponentModel model) {
-        var userModelFactory = new UserModelFactory(session, model);
+        var legacyMappingParser = new LegacyMappingParser();
+        var wildcardPatternFactory = new WildcardPatternFactory();
+        var userModelFactory = new UserModelFactory(session, model,
+                new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory),
+                new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory)
+        );
         var httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
         var restService = new RestUserService(model, httpClient, new ObjectMapper());
         return new LegacyProvider(session, restService, userModelFactory, model);

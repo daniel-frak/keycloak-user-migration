@@ -1,5 +1,6 @@
-package com.danielfrak.code.keycloak.providers.rest.remote;
+package com.danielfrak.code.keycloak.providers.rest.remote.usermodel;
 
+import com.danielfrak.code.keycloak.providers.rest.remote.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +18,6 @@ import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
-import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
@@ -46,6 +46,9 @@ class UserModelFactoryTest {
     @Mock
     private RealmModel realm;
 
+    private WildcardPatternFactory wildcardPatternFactory;
+    private LegacyMappingParser legacyMappingParser;
+
     @BeforeEach
     void setUp() {
         config = new MultivaluedHashMap<>();
@@ -57,11 +60,14 @@ class UserModelFactoryTest {
                 .thenReturn(userProvider);
         lenient().when(session.getProvider(OrganizationProvider.class))
                 .thenReturn(organizationProvider);
+
+        wildcardPatternFactory = new WildcardPatternFactory();
+        legacyMappingParser = new LegacyMappingParser();
     }
 
     @Test
     void shouldCreateMinimalUser() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -80,12 +86,25 @@ class UserModelFactoryTest {
     }
 
     private UserModelFactory constructUserModelFactory() {
-        return new UserModelFactory(session, model);
+        var roleMigrationService = new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory);
+        var groupMigrationService = new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory);
+        return new UserModelFactory(session, model, roleMigrationService, groupMigrationService);
+    }
+
+    @Test
+    void shouldCreateMinimalUserGivenLegacyUserIdIsBlank() {
+        final LegacyUser legacyUser = TestLegacyUser.withBlankId();
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+        userModelFactory = constructUserModelFactory();
+
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result).isNotNull();
     }
 
     @Test
     void shouldThrowExceptionGivenUserModelCreatedWithUsernameDifferentThanLegacy() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         mockUserModelCreatedWithWrongUsernameWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -100,7 +119,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateBasicAttributes() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -120,7 +139,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateLegacyUserId() {
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = TestLegacyUser.withId();
         mockSuccessfulUserModelCreationWithIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -139,7 +158,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedRolesAndIgnoreUnmappedRoles() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureNoMigrationOfUnmappedRoles();
         final String newRoleName = configureMappingForFirstRole(legacyUser);
@@ -180,7 +199,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedRolesAndUnmappedRoles() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         String mappedRoleName = configureMappingForFirstRole(legacyUser);
@@ -203,7 +222,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedClientRolesAndIgnoreUnmappedClientRoles() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureNoMigrationOfUnmappedRoles();
         final var newRole = configureMappingForFirstRole(legacyUser);
@@ -241,7 +260,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldAssignExistingRoleToUser() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureNoMigrationOfUnmappedRoles();
         String mappedRoleName = configureMappingForFirstRole(legacyUser);
@@ -288,7 +307,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateUserWithNullAndEmptyRoles() {
-        final LegacyUser legacyUser = aLegacyUserWithNullAndEmptyRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withNullAndEmptyRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         userModelFactory = constructUserModelFactory();
@@ -300,7 +319,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSynchronizeRolesByAddingMissingAndRemovingStaleMappings() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         configureMigrationOfUnmappedRoles();
         userModelFactory = constructUserModelFactory();
 
@@ -319,7 +338,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         configureMigrationOfUnmappedRoles();
         userModelFactory = constructUserModelFactory();
 
@@ -424,7 +443,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedAndUnmappedClientRoles() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         final String mappedRoleName = configureMappingForFirstRole(legacyUser);
@@ -447,7 +466,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotMigrateClientRoleIfNotFound() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         configureMappingForFirstRole(legacyUser);
@@ -463,7 +482,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedGroupsAndIgnoreUnmappedGroups() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureNoMigrationOfUnmappedGroups();
         final String newGroup = configureMappingForFirstGroup(legacyUser);
@@ -503,7 +522,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateMappedAndUnmappedGroups() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedGroups();
         String mappedGroupName = configureMappingForFirstGroup(legacyUser);
@@ -525,7 +544,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldAddUserToExistingGroup() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureNoMigrationOfUnmappedGroups();
         final String mappedGroupName = configureMappingForFirstGroup(legacyUser);
@@ -573,7 +592,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateUserWithNullAndEmptyGroups() {
-        final LegacyUser legacyUser = aLegacyUserWithNullAndEmptyGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withNullAndEmptyGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedGroups();
         userModelFactory = constructUserModelFactory();
@@ -585,7 +604,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSynchronizeGroupsByAddingMissingAndRemovingStaleMemberships() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         configureMigrationOfUnmappedGroups();
         userModelFactory = constructUserModelFactory();
 
@@ -604,7 +623,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSynchronizeGroupsByOnlyAddingMissingMemberships() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         configureMigrationOfUnmappedGroups();
         userModelFactory = constructUserModelFactory();
 
@@ -691,7 +710,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldHandleConfiguredIgnoredRolePatternsContainingNullAndBlankEntries() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         config.put(IGNORED_SYNC_ROLES_PROPERTY, java.util.Arrays.asList(null, "  ", "old*"));
@@ -753,9 +772,14 @@ class UserModelFactoryTest {
         when(configWithNullIgnoredLists.getFirst(UPDATE_USER_ROLES_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
         when(configWithNullIgnoredLists.getFirst(UPDATE_USER_GROUPS_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
         when(modelWithNullIgnoredLists.getId()).thenReturn(MODEL_ID);
-        UserModelFactory factory = new UserModelFactory(session, modelWithNullIgnoredLists);
+        var roleMigrationService = new RoleMigrationService(modelWithNullIgnoredLists,
+                legacyMappingParser, wildcardPatternFactory);
+        var groupMigrationService = new GroupMigrationService(modelWithNullIgnoredLists,
+                legacyMappingParser, wildcardPatternFactory);
+        var factory = new UserModelFactory(session, modelWithNullIgnoredLists,
+                roleMigrationService, groupMigrationService);
 
-        LegacyUser legacyUser = new LegacyUser(
+        var legacyUser = new LegacyUser(
                 null,
                 "someUserName",
                 "user@email.com",
@@ -782,12 +806,11 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSkipOrganizationMigrationWhenFeatureEnabledButLegacyOrganizationsAreEmpty() {
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = TestLegacyUser.withId();
         mockSuccessfulUserModelCreationWithIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
         when(realm.isOrganizationsEnabled()).thenReturn(true);
         OrganizationProvider provider = mock(OrganizationProvider.class);
-        when(session.getProvider(OrganizationProvider.class)).thenReturn(provider);
 
         UserModel result = userModelFactory.create(legacyUser, realm);
 
@@ -797,12 +820,11 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSkipOrganizationMigrationWhenFeatureEnabledButLegacyOrganizationsAreNull() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
         when(realm.isOrganizationsEnabled()).thenReturn(true);
         OrganizationProvider provider = mock(OrganizationProvider.class);
-        when(session.getProvider(OrganizationProvider.class)).thenReturn(provider);
 
         UserModel result = userModelFactory.create(legacyUser, realm);
 
@@ -812,7 +834,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
         configureMigrationOfUnmappedRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
@@ -825,7 +847,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotRemoveIgnoredRolesDuringSynchronization() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         configureMigrationOfUnmappedRoles();
         config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("manage-*"));
         userModelFactory = constructUserModelFactory();
@@ -843,7 +865,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldTreatRegexMetaCharactersAsLiteralsInIgnoredRolePatterns() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         configureMigrationOfUnmappedRoles();
         config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("team.(ops)-*"));
         userModelFactory = constructUserModelFactory();
@@ -861,7 +883,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotImportIgnoredRolesOnFirstLogin() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedRoles();
         config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("another*"));
@@ -878,7 +900,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotImportGroupsOnFirstLoginWhenGroupSyncModeIsNoSync() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         config.putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "NO_SYNC");
         configureMigrationOfUnmappedGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
@@ -891,7 +913,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotRemoveIgnoredGroupsDuringSynchronization() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         configureMigrationOfUnmappedGroups();
         config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("manual-*"));
         userModelFactory = constructUserModelFactory();
@@ -909,7 +931,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldNotImportIgnoredGroupsOnFirstLogin() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoGroups();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         configureMigrationOfUnmappedGroups();
         config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("another*"));
@@ -927,7 +949,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateAdditionalAttributes() {
-        final LegacyUser legacyUser = aLegacyUserWithOneAttribute();
+        final LegacyUser legacyUser = TestLegacyUser.withOneAttribute();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -939,7 +961,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldSetFederationLink() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -950,7 +972,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateRequiredActions() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoRequiredActions();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoRequiredActions();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -962,7 +984,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldMigrateTotp() {
-        final LegacyUser legacyUser = aLegacyUserWithTwoTotps();
+        final LegacyUser legacyUser = TestLegacyUser.withTwoTotps();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         final LegacyTotp legacyTotp1 = legacyUser.totps().getFirst();
         final LegacyTotp legacyTotp2 = legacyUser.totps().get(1);
@@ -1040,7 +1062,7 @@ class UserModelFactoryTest {
 
     @Test
     void isDuplicateUserIdShouldReturnFalseGivenNotMigratingUserId() {
-        final LegacyUser legacyUser = aMinimalLegacyUser();
+        final LegacyUser legacyUser = TestLegacyUser.minimal();
         userModelFactory = constructUserModelFactory();
 
         var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
@@ -1050,7 +1072,7 @@ class UserModelFactoryTest {
 
     @Test
     void isDuplicateUserIdShouldReturnTrueGivenMigratingIdAndItAlreadyExists() {
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = TestLegacyUser.withId();
         mockUserModelWithSameIdAlreadyExists(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -1066,7 +1088,7 @@ class UserModelFactoryTest {
 
     @Test
     void isDuplicateUserIdShouldReturnFalseGivenMigratingIdAndItDoesntExist() {
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = TestLegacyUser.withId();
         mockNoExistingUserModelWithSameId(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -1082,7 +1104,7 @@ class UserModelFactoryTest {
 
     @Test
     void shouldCreateUserWithExistingOrganization() {
-        final LegacyUser legacyUser = aLegacyUserWithOneOrg();
+        final LegacyUser legacyUser = TestLegacyUser.withOneOrganization();
         mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
         userModelFactory = constructUserModelFactory();
 
@@ -1101,7 +1123,7 @@ class UserModelFactoryTest {
     @Test
     void shouldCreateUserWithNotExistingOrganization() {
 
-        final LegacyUser legacyUser = aLegacyUserWithOneOrg();
+        final LegacyUser legacyUser = TestLegacyUser.withOneOrganization();
         final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
         OrganizationModel orgMock = mock(OrganizationModel.class);
 
