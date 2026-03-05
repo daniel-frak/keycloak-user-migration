@@ -427,7 +427,15 @@ public class UserModelFactory {
             return byAlias;
         }
 
-        return provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        OrganizationModel organizationModel = provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        List<LegacyOrganizationDomain> domains = legacyOrganization.domains();
+        if(domains == null || domains.isEmpty()) {
+            return organizationModel;
+        }
+        Set<OrganizationDomainModel> domainModelSet = domains.stream().map(d -> new OrganizationDomainModel(d.domainName(), d.isVerified()))
+                .collect(Collectors.toSet());
+        organizationModel.setDomains(domainModelSet);
+        return organizationModel;
     }
 
     private <T> void reconcile(

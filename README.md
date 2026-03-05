@@ -100,10 +100,16 @@ The GET request will have to return user data as a JSON response in the form:
     }
   ],
   "organizations": [
-     {
-        "orgName": "org-1",
-        "orgAlias": "org-1"
-     }
+    {
+      "orgName": "org-1",
+      "orgAlias": "org-1",
+      "domains": [
+        {
+          "domainName": "org-1.local",
+          "isVerified": true
+        }
+      ]
+    }
   ]
 }
 ```
@@ -388,7 +394,16 @@ This module provides support for organizations. The organization feature is avai
 To configure organizations, you can use the following JSON block as an example
 ```json
 [
-   {"orgName":  "org-1", "orgAlias":  "org-1"}
+  {
+    "orgName": "org-1",
+    "orgAlias": "org-1",
+    "domains": [
+      {
+        "domainName": "org-1.local",
+        "isVerified": true
+      }
+    ]
+  }
 ]
 ```
 If the organization does not exist in Keycloak, this extension will first create the organization and then assign the user to it.

@@ -37,7 +37,7 @@ class LegacyUserTest {
                 List.of("requiredAction1"),
                 List.of(new LegacyTotp("secret", "name", 1, 2, "someAlgorithm",
                         "someEncoding")),
-                List.of(new LegacyOrganization("org-1", "org-1"))
+                List.of(new LegacyOrganization("org-1", "org-1", List.of(new LegacyOrganizationDomain("org-1.local", true))))
         );
     }
 
@@ -78,7 +78,10 @@ class LegacyUserTest {
                   "organizations": [
                     {
                       "orgName": "org-1",
-                      "orgAlias": "org-1"
+                      "orgAlias": "org-1",
+                      "domains": [
+                        {"domainName": "org-1.local", "isVerified": true}
+                      ]
                     }
                   ]
                 }
