@@ -432,7 +432,9 @@ public class UserModelFactory {
         if(domains == null || domains.isEmpty()) {
             return organizationModel;
         }
-        Set<OrganizationDomainModel> domainModelSet = domains.stream().map(d -> new OrganizationDomainModel(d.domainName(), d.isVerified()))
+        Set<OrganizationDomainModel> domainModelSet = domains
+                .stream()
+                .map(d -> new OrganizationDomainModel(d.domainName(), d.isVerified()))
                 .collect(Collectors.toSet());
         organizationModel.setDomains(domainModelSet);
         return organizationModel;

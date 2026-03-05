@@ -192,6 +192,24 @@ public class TestLegacyUser {
         );
     }
 
+    public static LegacyUser aLegacyUserWithOneOrgButWithoutDomains() {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                emptyMap(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                List.of(new LegacyOrganization("org-1", "org-1", List.of()))
+        );
+    }
+
     private static LegacyTotp legacyTotp(String name, String secret) {
         return new LegacyTotp(secret, name, 0, 0, null, null);
     }

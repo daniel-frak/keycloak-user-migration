@@ -9,12 +9,11 @@ import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.organization.OrganizationProvider;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -812,6 +811,11 @@ class UserModelFactoryTest {
     }
 
     @Test
+    void shouldDoOrganizationMigrationWhenWhenAvailable() {
+        final  LegacyUser legacyUser = aMinimalLegacyUser();
+    }
+
+    @Test
     void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
@@ -1118,8 +1122,39 @@ class UserModelFactoryTest {
         userModelFactory = constructUserModelFactory();
         UserModel result = userModelFactory.create(legacyUser, realm);
 
+        ArgumentCaptor<Set<OrganizationDomainModel>> captor = ArgumentCaptor.forClass(Set.class);
+
         assertThat(result).isNotNull();
         verify(organizationProvider, times(1)).create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
         verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
+        verify(orgMock).setDomains(captor.capture());
+        Set<OrganizationDomainModel> organizationDomainModelSet = captor.getValue();
+        assertThat(organizationDomainModelSet.stream().findFirst().get().getName())
+                .isEqualTo(legacyUser.organizations().get(0).domains().get(0).domainName());
+    }
+
+    @Test
+    void shouldCreateUserWithNotExistingOrganizationButWithoutDomain() {
+
+        final LegacyUser legacyUser = aLegacyUserWithOneOrgButWithoutDomains();
+        final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
+        OrganizationModel orgMock = mock(OrganizationModel.class);
+
+        when(realm.isOrganizationsEnabled())
+                .thenReturn(true);
+        when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
+                .thenReturn(null);
+        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                .thenReturn(orgMock);
+
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+
+        userModelFactory = constructUserModelFactory();
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result).isNotNull();
+        verify(organizationProvider, times(1)).create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
+        verify(orgMock, never()).setDomains(anySet());
     }
 }
