@@ -3,11 +3,11 @@ package com.danielfrak.code.keycloak.providers.rest.remote.usermodel;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import static java.util.Collections.emptySet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -85,8 +85,22 @@ class ReconcileTest {
     }
 
     @Test
+    void shouldThrowExceptionIfCurrentItemIsNull() {
+        Reconcile.TerminalStep terminalStep = Reconcile.from(null)
+                .towards(emptySet())
+                .byKey(i -> "")
+                .oneWay()
+                .addWith(item -> {
+                });
+
+        assertThatThrownBy(terminalStep::apply)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Missing current items.");
+    }
+
+    @Test
     void shouldThrowExceptionIfDesiredItemIsNull() {
-        Reconcile.TerminalStep terminalStep = Reconcile.from(Collections.emptySet())
+        Reconcile.TerminalStep terminalStep = Reconcile.from(emptySet())
                 .towards(null)
                 .byKey(i -> "")
                 .oneWay()
@@ -100,8 +114,8 @@ class ReconcileTest {
 
     @Test
     void shouldThrowExceptionIfKeyMapperIsNull() {
-        Reconcile.TerminalStep terminalStep = Reconcile.from(Collections.emptySet())
-                .towards(Collections.emptySet())
+        Reconcile.TerminalStep terminalStep = Reconcile.from(emptySet())
+                .towards(emptySet())
                 .byKey(null)
                 .oneWay()
                 .addWith(item -> {
@@ -114,8 +128,8 @@ class ReconcileTest {
 
     @Test
     void shouldThrowExceptionIfAddActionIsNull() {
-        Reconcile.TerminalStep terminalStep = Reconcile.from(Collections.emptySet())
-                .towards(Collections.emptySet())
+        Reconcile.TerminalStep terminalStep = Reconcile.from(emptySet())
+                .towards(emptySet())
                 .byKey(i -> "")
                 .oneWay()
                 .addWith(null);

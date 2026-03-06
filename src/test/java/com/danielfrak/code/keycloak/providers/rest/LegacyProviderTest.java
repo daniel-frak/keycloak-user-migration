@@ -64,7 +64,13 @@ class LegacyProviderTest {
 
     @BeforeEach
     void setUp() {
-        legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory, model);
+        var migrationConfiguration = new MigrationConfiguration(model);
+        var localUserLookup = new LocalUserLookup(session);
+        var userMigrationService = new UserMigrationService(
+                legacyUserService, localUserLookup, userModelFactory, migrationConfiguration);
+        var credentialValidationService =
+                new CredentialValidationService(session, legacyUserService, migrationConfiguration);
+        legacyProvider = new LegacyProvider(userMigrationService, credentialValidationService, migrationConfiguration);
 
         lenient().when(session.getProvider(PasswordPolicyManagerProvider.class))
                 .thenReturn(passwordPolicyManagerProvider);
@@ -116,39 +122,36 @@ class LegacyProviderTest {
     @Test
     void shouldUpdateExistingUserDataWhenFoundByUsername() {
         final String username = "user";
-        final LegacyUser user = withId();
+        final LegacyUser legacyUser = withId();
         when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(Optional.of(legacyUser));
+        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
                 .thenReturn(userModel);
 
         var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertEquals(userModel, result);
-        verify(userModel).setEmail(user.email());
-        verify(userModel).setFirstName(user.firstName());
-        verify(userModel).setLastName(user.lastName());
-        verify(userModel, never()).setFederationLink(any());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
         verify(userModelFactory, never()).create(any(), any());
     }
 
     @Test
     void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithSameUsername() {
         final String username = "user";
-        final LegacyUser user = withId();
+        final LegacyUser legacyUser = withId();
         when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(Optional.of(legacyUser));
+        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
                 .thenReturn(null);
-        when(userProvider.getUserById(realmModel, user.id()))
+        when(userProvider.getUserById(realmModel, legacyUser.id()))
                 .thenReturn(userModel);
         when(userModel.getUsername())
-                .thenReturn(user.username());
+                .thenReturn(legacyUser.username());
 
         var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertEquals(userModel, result);
-        verify(userModel).setEmail(user.email());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
         verify(userModelFactory, never()).create(any(), any());
     }
 
@@ -370,8 +373,7 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userModel).setEmail(legacyUser.email());
-        verify(userModel).setFirstName(legacyUser.firstName());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
     }
 
     @Test
@@ -398,7 +400,7 @@ class LegacyProviderTest {
         when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
                 .thenReturn(true);
         doThrow(new RuntimeException("boom"))
-                .when(userModel).setEnabled(anyBoolean());
+                .when(userModelFactory).updateUserAttributes(any(), any());
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
@@ -431,38 +433,8 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userModel, never()).setEmail(any());
-        verify(userModel, never()).setFirstName(any());
+        verify(userModelFactory, never()).updateUserAttributes(any(), any());
         verify(legacyUserService, never()).findByUsername(anyString());
-    }
-
-    @Test
-    void shouldUpdateExistingUserWithoutAttributesWhenLegacyPayloadHasNullAttributes() {
-        final String username = "user";
-        final LegacyUser user = new LegacyUser(
-                null,
-                username,
-                "user@email.com",
-                "John",
-                "Smith",
-                true,
-                true,
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userModel, never()).setAttribute(anyString(), anyList());
     }
 
     @Test

@@ -8,7 +8,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class Reconcile {
+public final class Reconcile {
+
+    private Reconcile() {
+    }
 
     public static <T> CurrentStep<T> from(Set<T> currentItems) {
         return new DslBuilder<>(currentItems);
@@ -78,12 +81,16 @@ public class Reconcile {
         private Consumer<T> addAction;
 
         private DslBuilder(Set<T> currentItems) {
-            this.currentItems = new HashSet<>(currentItems);
+            this.currentItems = currentItems != null
+                    ? new HashSet<>(currentItems)
+                    : null;
         }
 
         @Override
         public DesiredStep<T> towards(Set<T> desiredItems) {
-            this.desiredItems = new HashSet<>(desiredItems);
+            this.desiredItems = desiredItems != null
+                    ? new HashSet<>(desiredItems)
+                    : null;
             return this;
         }
 
@@ -125,6 +132,9 @@ public class Reconcile {
 
         @Override
         public void apply() {
+            if (currentItems == null) {
+                throw new IllegalStateException("Missing current items.");
+            }
             if (desiredItems == null) {
                 throw new IllegalStateException("Missing desired items.");
             }

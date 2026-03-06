@@ -1,11 +1,9 @@
 package com.danielfrak.code.keycloak.providers.rest.remote.usermodel;
 
-import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
-import com.danielfrak.code.keycloak.providers.rest.UserSyncMode;
+import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import org.jboss.logging.Logger;
-import org.keycloak.component.ComponentModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.organization.OrganizationProvider;
@@ -19,15 +17,16 @@ public class UserModelFactory {
     private static final Logger LOG = Logger.getLogger(UserModelFactory.class);
 
     private final KeycloakSession session;
-    private final ComponentModel model;
+    private final MigrationConfiguration config;
     private final RoleMigrationService roleMigrationService;
     private final GroupMigrationService groupMigrationService;
 
-    public UserModelFactory(KeycloakSession session, ComponentModel model,
+    public UserModelFactory(KeycloakSession session,
+                            MigrationConfiguration config,
                             RoleMigrationService roleMigrationService,
                             GroupMigrationService groupMigrationService) {
         this.session = session;
-        this.model = model;
+        this.config = config;
         this.roleMigrationService = roleMigrationService;
         this.groupMigrationService = groupMigrationService;
     }
@@ -38,7 +37,6 @@ public class UserModelFactory {
         UserModel userModel = addUser(legacyUser, realm);
         validateUsernamesEqual(legacyUser, userModel);
         migrateBasicAttributes(legacyUser, userModel);
-        migrateAdditionalAttributes(legacyUser, userModel);
         migrateRolesOnFirstLogin(legacyUser, realm, userModel);
         migrateGroupsOnFirstLogin(legacyUser, realm, userModel);
         migrateRequiredActions(legacyUser, userModel);
@@ -86,24 +84,26 @@ public class UserModelFactory {
         }
     }
 
-    private void migrateBasicAttributes(LegacyUser legacyUser, UserModel userModel) {
-        userModel.setFederationLink(model.getId());
+    public void updateUserAttributes(LegacyUser legacyUser, UserModel userModel) {
         userModel.setEnabled(legacyUser.isEnabled());
         userModel.setEmail(legacyUser.email());
         userModel.setEmailVerified(legacyUser.isEmailVerified());
         userModel.setFirstName(legacyUser.firstName());
         userModel.setLastName(legacyUser.lastName());
-    }
 
-    private void migrateAdditionalAttributes(LegacyUser legacyUser, UserModel userModel) {
         if (legacyUser.attributes() != null) {
             legacyUser.attributes()
                     .forEach(userModel::setAttribute);
         }
     }
 
+    private void migrateBasicAttributes(LegacyUser legacyUser, UserModel userModel) {
+        userModel.setFederationLink(config.getModelId());
+        updateUserAttributes(legacyUser, userModel);
+    }
+
     private void migrateRolesOnFirstLogin(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
-        if (!roleSyncMode().shouldImportOnFirstLogin()) {
+        if (!config.getRoleSyncMode().shouldImportOnFirstLogin()) {
             return;
         }
         roleMigrationService.getOrMigrateRoleModels(legacyUser, realm)
@@ -112,7 +112,7 @@ public class UserModelFactory {
     }
 
     private void migrateGroupsOnFirstLogin(LegacyUser legacyUser, RealmModel realm, UserModel userModel) {
-        if (!groupSyncMode().shouldImportOnFirstLogin()) {
+        if (!config.getGroupSyncMode().shouldImportOnFirstLogin()) {
             return;
         }
         groupMigrationService.getOrMigrateGroupModels(legacyUser, realm)
@@ -234,16 +234,6 @@ public class UserModelFactory {
         }
         String name = groupModel.getName();
         return "name:" + (name != null ? name : "");
-    }
-
-    private UserSyncMode roleSyncMode() {
-        String value = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN);
-        return UserSyncMode.fromConfig(value, UserSyncMode.SYNC_FIRST_LOGIN);
-    }
-
-    private UserSyncMode groupSyncMode() {
-        String value = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN);
-        return UserSyncMode.fromConfig(value, UserSyncMode.SYNC_FIRST_LOGIN);
     }
 
     public boolean isDuplicateUserId(LegacyUser legacyUser, RealmModel realm) {

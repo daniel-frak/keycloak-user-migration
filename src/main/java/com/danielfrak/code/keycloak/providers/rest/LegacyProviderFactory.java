@@ -26,13 +26,21 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
     public LegacyProvider create(KeycloakSession session, ComponentModel model) {
         var legacyMappingParser = new LegacyMappingParser();
         var wildcardPatternFactory = new WildcardPatternFactory();
-        var userModelFactory = new UserModelFactory(session, model,
+        var config = new MigrationConfiguration(model);
+        var userModelFactory = new UserModelFactory(
+                session,
+                config,
                 new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory),
                 new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory)
         );
         var httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
         var restService = new RestUserService(model, httpClient, new ObjectMapper());
-        return new LegacyProvider(session, restService, userModelFactory, model);
+
+        var localUserLookup = new LocalUserLookup(session);
+        var userMigrationService = new UserMigrationService(restService, localUserLookup, userModelFactory, config);
+        var credentialValidationService = new CredentialValidationService(session, restService, config);
+
+        return new LegacyProvider(userMigrationService, credentialValidationService, config);
     }
 
     @Override
