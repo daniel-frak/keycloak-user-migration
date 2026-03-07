@@ -811,11 +811,6 @@ class UserModelFactoryTest {
     }
 
     @Test
-    void shouldDoOrganizationMigrationWhenWhenAvailable() {
-        final  LegacyUser legacyUser = aMinimalLegacyUser();
-    }
-
-    @Test
     void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
         final LegacyUser legacyUser = aLegacyUserWithTwoRoles();
         config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
@@ -1137,6 +1132,31 @@ class UserModelFactoryTest {
     void shouldCreateUserWithNotExistingOrganizationButWithoutDomain() {
 
         final LegacyUser legacyUser = aLegacyUserWithOneOrgButWithoutDomains();
+        final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
+        OrganizationModel orgMock = mock(OrganizationModel.class);
+
+        when(realm.isOrganizationsEnabled())
+                .thenReturn(true);
+        when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
+                .thenReturn(null);
+        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                .thenReturn(orgMock);
+
+        mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+
+        userModelFactory = constructUserModelFactory();
+        UserModel result = userModelFactory.create(legacyUser, realm);
+
+        assertThat(result).isNotNull();
+        verify(organizationProvider, times(1)).create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
+        verify(orgMock, never()).setDomains(anySet());
+    }
+
+    @Test
+    void shouldCreateUserWithNotExistingOrganizationButWithNullDomain() {
+
+        final LegacyUser legacyUser = aLegacyUserWithOneOrgButWithNullDomains();
         final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
         OrganizationModel orgMock = mock(OrganizationModel.class);
 

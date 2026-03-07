@@ -427,7 +427,9 @@ public class UserModelFactory {
             return byAlias;
         }
 
-        OrganizationModel organizationModel = provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        OrganizationModel organizationModel = provider.create(
+                legacyOrganization.orgName(), legacyOrganization.orgAlias()
+        );
         List<LegacyOrganizationDomain> domains = legacyOrganization.domains();
         if(domains == null || domains.isEmpty()) {
             return organizationModel;
