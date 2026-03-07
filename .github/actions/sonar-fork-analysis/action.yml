@@ -32,11 +32,17 @@ runs:
     ### PREPARE ANALYSIS ###
     - name: 'Write down pull request info'
       if: github.event_name != 'workflow_run'
+      env:
+        # Untrusted (user-controlled) data must go through environment variables to prevent script injection.
+        # See: https://rules.sonarsource.com/githubactions/type/Vulnerability/RSPEC-7630/
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
       shell: bash
       run: |
-        echo ${{ github.event.pull_request.number }} >> pr-event.txt
-        echo ${{ github.event.pull_request.head.ref }} >> pr-event.txt
-        echo ${{ github.event.pull_request.base.ref }} >> pr-event.txt
+        echo $PR_NUMBER >> pr-event.txt
+        echo $PR_HEAD_REF >> pr-event.txt
+        echo $PR_BASE_REF >> pr-event.txt
 
     - name: 'Package build output files'
       if: github.event_name != 'workflow_run'

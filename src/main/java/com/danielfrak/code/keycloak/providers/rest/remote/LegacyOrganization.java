@@ -8,5 +8,4 @@ public record LegacyOrganization(
         List<LegacyOrganizationDomain> domains
 )
 {
-
 }

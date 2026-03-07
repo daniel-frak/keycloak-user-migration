@@ -2,7 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest;
 
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
-import com.danielfrak.code.keycloak.providers.rest.remote.UserModelFactory;
+import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +28,7 @@ import static com.danielfrak.code.keycloak.providers.rest.ConfigurationPropertie
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
-import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.aLegacyUserWithId;
+import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.withId;
 import static java.util.Collections.emptySet;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -64,7 +64,13 @@ class LegacyProviderTest {
 
     @BeforeEach
     void setUp() {
-        legacyProvider = new LegacyProvider(session, legacyUserService, userModelFactory, model);
+        var migrationConfiguration = new MigrationConfiguration(model);
+        var localUserLookup = new LocalUserLookup(session);
+        var userMigrationService = new UserMigrationService(
+                legacyUserService, localUserLookup, userModelFactory, migrationConfiguration);
+        var credentialValidationService =
+                new CredentialValidationService(session, legacyUserService, migrationConfiguration);
+        legacyProvider = new LegacyProvider(userMigrationService, credentialValidationService, migrationConfiguration);
 
         lenient().when(session.getProvider(PasswordPolicyManagerProvider.class))
                 .thenReturn(passwordPolicyManagerProvider);
@@ -77,7 +83,7 @@ class LegacyProviderTest {
     @Test
     void shouldGetUserByUsername() {
         final String username = "user";
-        final LegacyUser user = aLegacyUserWithId();
+        final LegacyUser user = withId();
         when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -102,7 +108,7 @@ class LegacyProviderTest {
     @Test
     void shouldGetUserByEmail() {
         final String email = "email";
-        final LegacyUser user = aLegacyUserWithId();
+        final LegacyUser user = withId();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userModelFactory.create(user, realmModel))
@@ -116,56 +122,37 @@ class LegacyProviderTest {
     @Test
     void shouldUpdateExistingUserDataWhenFoundByUsername() {
         final String username = "user";
-        final LegacyUser user = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(Optional.of(legacyUser));
+        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
                 .thenReturn(userModel);
 
         var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertEquals(userModel, result);
-        verify(userModel).setEmail(user.email());
-        verify(userModel).setFirstName(user.firstName());
-        verify(userModel).setLastName(user.lastName());
-        verify(userModel, never()).setFederationLink(any());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
         verify(userModelFactory, never()).create(any(), any());
     }
 
     @Test
     void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithSameUsername() {
         final String username = "user";
-        final LegacyUser user = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
+                .thenReturn(Optional.of(legacyUser));
+        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
                 .thenReturn(null);
-        when(userProvider.getUserById(realmModel, user.id()))
+        when(userProvider.getUserById(realmModel, legacyUser.id()))
                 .thenReturn(userModel);
         when(userModel.getUsername())
-                .thenReturn(user.username());
+                .thenReturn(legacyUser.username());
 
         var result = legacyProvider.getUserByUsername(realmModel, username);
 
         assertEquals(userModel, result);
-        verify(userModel).setEmail(user.email());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
         verify(userModelFactory, never()).create(any(), any());
-    }
-
-    @Test
-    void shouldCreateUserWhenUserProviderIsUnavailable() {
-        final String username = "user";
-        final LegacyUser user = aLegacyUserWithId();
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(session.users())
-                .thenReturn(null);
-        when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
     }
 
     @Test
@@ -233,7 +220,7 @@ class LegacyProviderTest {
     @Test
     void shouldReturnNullIfUserIdExistsButHasDifferentUsername() {
         final String email = "email";
-        final LegacyUser user = aLegacyUserWithId();
+        final LegacyUser user = withId();
         when(legacyUserService.findByEmail(email))
                 .thenReturn(Optional.of(user));
         when(userProvider.getUserByUsername(realmModel, user.username()))
@@ -371,7 +358,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername())
                 .thenReturn(legacyUser.username());
         when(userModel.credentialManager())
@@ -386,8 +373,7 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userModel).setEmail(legacyUser.email());
-        verify(userModel).setFirstName(legacyUser.firstName());
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
     }
 
     @Test
@@ -402,7 +388,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername())
                 .thenReturn(legacyUser.username());
         when(userModel.credentialManager())
@@ -414,7 +400,7 @@ class LegacyProviderTest {
         when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
                 .thenReturn(true);
         doThrow(new RuntimeException("boom"))
-                .when(userModel).setEnabled(anyBoolean());
+                .when(userModelFactory).updateUserAttributes(any(), any());
 
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
@@ -434,7 +420,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername())
                 .thenReturn(legacyUser.username());
         when(userModel.credentialManager())
@@ -447,38 +433,8 @@ class LegacyProviderTest {
         var result = legacyProvider.isValid(realmModel, userModel, input);
 
         assertTrue(result);
-        verify(userModel, never()).setEmail(any());
-        verify(userModel, never()).setFirstName(any());
+        verify(userModelFactory, never()).updateUserAttributes(any(), any());
         verify(legacyUserService, never()).findByUsername(anyString());
-    }
-
-    @Test
-    void shouldUpdateExistingUserWithoutAttributesWhenLegacyPayloadHasNullAttributes() {
-        final String username = "user";
-        final LegacyUser user = new LegacyUser(
-                null,
-                username,
-                "user@email.com",
-                "John",
-                "Smith",
-                true,
-                true,
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userModel, never()).setAttribute(anyString(), anyList());
     }
 
     @Test
@@ -493,7 +449,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername()).thenReturn(legacyUser.username());
         when(userModel.credentialManager()).thenReturn(userCredentialManager);
         when(input.getChallengeResponse()).thenReturn("password");
@@ -518,7 +474,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername()).thenReturn(legacyUser.username());
         when(userModel.credentialManager()).thenReturn(userCredentialManager);
         when(input.getChallengeResponse()).thenReturn("password");
@@ -543,7 +499,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername()).thenReturn(legacyUser.username());
         when(userModel.credentialManager()).thenReturn(userCredentialManager);
         when(input.getChallengeResponse()).thenReturn("password");
@@ -569,7 +525,7 @@ class LegacyProviderTest {
         config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
         when(model.getConfig()).thenReturn(config);
 
-        final LegacyUser legacyUser = aLegacyUserWithId();
+        final LegacyUser legacyUser = withId();
         when(userModel.getUsername()).thenReturn(legacyUser.username());
         when(userModel.credentialManager()).thenReturn(userCredentialManager);
         when(input.getChallengeResponse()).thenReturn("password");
