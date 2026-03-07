@@ -12,12 +12,14 @@ import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.organization.OrganizationProvider;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -666,6 +668,7 @@ class UserModelFactoryTest {
             verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
         }
 
+        @SuppressWarnings("OptionalGetWithoutIsPresent")
         @Test
         void shouldCreateUserWithNotExistingOrganization() {
 
@@ -685,9 +688,72 @@ class UserModelFactoryTest {
             userModelFactory = constructUserModelFactory();
             UserModel result = userModelFactory.create(legacyUser, realm);
 
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Set<OrganizationDomainModel>> captor = ArgumentCaptor.forClass(Set.class);
+
             assertThat(result).isNotNull();
             verify(organizationProvider, times(1)).create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
             verify(organizationProvider, times(1)).addManagedMember(orgMock, result);
+            verify(orgMock).setDomains(captor.capture());
+            Set<OrganizationDomainModel> organizationDomainModelSet = captor.getValue();
+            assertThat(organizationDomainModelSet.stream().findFirst().get().getName())
+                    .isEqualTo(legacyUser.organizations().getFirst().domains().getFirst().domainName());
+        }
+
+        @Test
+        void shouldCreateUserWithNotExistingOrganizationButWithoutDomain() {
+
+            final LegacyUser legacyUser = TestLegacyUser.withOneOrganizationWithoutDomains();
+            final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
+            OrganizationModel orgMock = mock(OrganizationModel.class);
+
+            when(realm.isOrganizationsEnabled())
+                    .thenReturn(true);
+            when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
+                    .thenReturn(null);
+            when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                    .thenReturn(orgMock);
+
+            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+
+            userModelFactory = constructUserModelFactory();
+            UserModel result = userModelFactory.create(legacyUser, realm);
+
+            assertThat(result).isNotNull();
+            verify(organizationProvider, times(1))
+                    .create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+            verify(organizationProvider, times(1))
+                    .addManagedMember(orgMock, result);
+            verify(orgMock, never())
+                    .setDomains(anySet());
+        }
+
+        @Test
+        void shouldCreateUserWithNotExistingOrganizationButWithNullDomain() {
+
+            final LegacyUser legacyUser = TestLegacyUser.withOneOrganizationWithNullDomains();
+            final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
+            OrganizationModel orgMock = mock(OrganizationModel.class);
+
+            when(realm.isOrganizationsEnabled())
+                    .thenReturn(true);
+            when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
+                    .thenReturn(null);
+            when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                    .thenReturn(orgMock);
+
+            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+
+            userModelFactory = constructUserModelFactory();
+            UserModel result = userModelFactory.create(legacyUser, realm);
+
+            assertThat(result).isNotNull();
+            verify(organizationProvider, times(1))
+                    .create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+            verify(organizationProvider, times(1))
+                    .addManagedMember(orgMock, result);
+            verify(orgMock, never())
+                    .setDomains(anySet());
         }
 
         @SuppressWarnings("unchecked")
@@ -733,8 +799,10 @@ class UserModelFactoryTest {
 
             UserModel result = factory.create(legacyUser, realm);
 
-            assertThat(result.getRoleMappingsStream().toList()).isEmpty();
-            assertThat(result.getGroupsStream().toList()).containsExactly(manualGroup);
+            assertThat(result.getRoleMappingsStream().toList())
+                    .isEmpty();
+            assertThat(result.getGroupsStream().toList())
+                    .containsExactly(manualGroup);
         }
     }
 

@@ -21,9 +21,9 @@ https://codesoapbox.dev/keycloak-user-migration
 *(`SNAPSHOT` means that the version is not yet released)*
 
 | Keycloak Version | Version/Commit                                                                                                                                     |
-|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------
-| 26.X             | [6.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/6.0.0)                                                                                                                                           |
-| 25.X             | [5.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/5.0.0)                                                                 
+|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| 26.X             | [6.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/6.0.0)                                                                 |
+| 25.X             | [5.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/5.0.0)                                                                 |
 | 24.X             | [4.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/4.0.0)                                                                 |
 | 23.X             | [3.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/3.0.0)                                                                 |
 | 22.X             | [2.0.0](https://github.com/daniel-frak/keycloak-user-migration/releases/tag/2.0.0)                                                                 |
@@ -59,7 +59,8 @@ verification request. This option is useful if your legacy system allows users t
 be used when the legacy user ids are migrated to Keycloak.
 
 An example implementation of the REST endpoints is available in the `./docker/legacy-system-example` folder
-(see: [UserMigrationController](docker/legacy-system-example/src/main/java/dev/codesoapbox/legacysystemexample/authentication/presentation/controllers/UserMigrationController.java)
+(
+see: [UserMigrationController](docker/legacy-system-example/src/main/java/dev/codesoapbox/legacysystemexample/authentication/presentation/controllers/UserMigrationController.java)
 class).
 
 ### GET
@@ -185,7 +186,7 @@ response might look like this:
       "orgName": "org-1",
       "orgAlias": "org-1"
     }
-   ]
+  ]
 }
 ```
 
@@ -390,8 +391,10 @@ Possible `algorithm`s are: HmacSHA1, HmacSHA256, HmacSHA512
 
 ## Organizations
 
-This module provides support for organizations. The organization feature is available in Keycloak 26 and above. However, it must be explicitly enabled in the realm settings to use this functionality.
+This module provides support for organizations. The organization feature is available in Keycloak 26 and above. However,
+it must be explicitly enabled in the realm settings to use this functionality.
 To configure organizations, you can use the following JSON block as an example
+
 ```json
 [
   {
@@ -406,4 +409,6 @@ To configure organizations, you can use the following JSON block as an example
   }
 ]
 ```
-If the organization does not exist in Keycloak, this extension will first create the organization and then assign the user to it.
+
+If the organization does not exist in Keycloak, this extension will first create the organization and then assign the
+user to it.

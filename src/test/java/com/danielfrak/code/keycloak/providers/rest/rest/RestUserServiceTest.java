@@ -143,9 +143,28 @@ class RestUserServiceTest {
                 List.of("admin"),
                 List.of("migrated_users"),
                 List.of("CONFIGURE_TOTP"),
-                List.of(new LegacyTotp("someSecret", "someName", 1, 2,
-                        "someAlgorithm", "someEncoding")),
-                List.of(new LegacyOrganization("org-1", "org-1", List.of(new LegacyOrganizationDomain("org-1.local", true))))
+                List.of(
+                        new LegacyTotp(
+                                "someSecret",
+                                "someName",
+                                1,
+                                2,
+                                "someAlgorithm",
+                                "someEncoding"
+                        )
+                ),
+                List.of(
+                        new LegacyOrganization(
+                                "org-1",
+                                "org-1",
+                                List.of(
+                                        new LegacyOrganizationDomain(
+                                                "org-1.local",
+                                                true
+                                        )
+                                )
+                        )
+                )
         );
     }
 

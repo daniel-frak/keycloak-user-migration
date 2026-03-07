@@ -2,6 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest.remote.usermodel;
 
 import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
+import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganizationDomain;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import org.jboss.logging.Logger;
 import org.keycloak.models.*;
@@ -251,6 +252,19 @@ public class UserModelFactory {
             return byAlias;
         }
 
-        return provider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias());
+        OrganizationModel organizationModel = provider.create(
+                legacyOrganization.orgName(), legacyOrganization.orgAlias()
+        );
+        List<LegacyOrganizationDomain> domains = legacyOrganization.domains();
+        if(domains == null || domains.isEmpty()) {
+            return organizationModel;
+        }
+        Set<OrganizationDomainModel> domainModelSet = domains
+                .stream()
+                .map(d -> new OrganizationDomainModel(d.domainName(), d.isVerified()))
+                .collect(Collectors.toSet());
+        organizationModel.setDomains(domainModelSet);
+
+        return organizationModel;
     }
 }

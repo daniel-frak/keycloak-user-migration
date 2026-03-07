@@ -192,6 +192,10 @@ public class TestLegacyUser {
         );
     }
 
+    private static LegacyTotp legacyTotp(String name, String secret) {
+        return new LegacyTotp(secret, name, 0, 0, null, null);
+    }
+
     public static LegacyUser withOneOrganization() {
         return new LegacyUser(
                 null,
@@ -206,11 +210,12 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
                 emptyList(),
+
                 List.of(new LegacyOrganization("org-1", "org-1", List.of(new LegacyOrganizationDomain("org-1.local", true))))
         );
     }
 
-    public static LegacyUser aLegacyUserWithOneOrgButWithoutDomains() {
+    public static LegacyUser withOneOrganizationWithoutDomains() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -228,7 +233,7 @@ public class TestLegacyUser {
         );
     }
 
-    public static LegacyUser aLegacyUserWithOneOrgButWithNullDomains() {
+    public static LegacyUser withOneOrganizationWithNullDomains() {
         return new LegacyUser(
                 null,
                 "someUserName",
@@ -244,9 +249,5 @@ public class TestLegacyUser {
                 emptyList(),
                 List.of(new LegacyOrganization("org-1", "org-1", null))
         );
-    }
-
-    private static LegacyTotp legacyTotp(String name, String secret) {
-        return new LegacyTotp(secret, name, 0, 0, null, null);
     }
 }
