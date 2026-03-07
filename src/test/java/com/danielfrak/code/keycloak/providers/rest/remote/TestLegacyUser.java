@@ -188,7 +188,43 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
                 emptyList(),
-                List.of(new LegacyOrganization("org-1", "org-1"))
+                List.of(new LegacyOrganization("org-1", "org-1", List.of(new LegacyOrganizationDomain("org-1.local", true))))
+        );
+    }
+
+    public static LegacyUser aLegacyUserWithOneOrgButWithoutDomains() {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                emptyMap(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                List.of(new LegacyOrganization("org-1", "org-1", List.of()))
+        );
+    }
+
+    public static LegacyUser aLegacyUserWithOneOrgButWithNullDomains() {
+        return new LegacyUser(
+                null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                emptyMap(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                List.of(new LegacyOrganization("org-1", "org-1", null))
         );
     }
 
