@@ -635,9 +635,15 @@ class LegacyProviderTest {
     }
 
     @Test
-    void isConfiguredForShouldAlwaysReturnFalse() {
+    void isConfiguredForShouldReturnTrueForSupportedCredentialType() {
+        assertTrue(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
+                PasswordCredentialModel.TYPE));
+    }
+
+    @Test
+    void isConfiguredForShouldReturnFalseForUnsupportedCredentialType() {
         assertFalse(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
-                "someString"));
+                "someUnsupportedType"));
     }
 
     @Test

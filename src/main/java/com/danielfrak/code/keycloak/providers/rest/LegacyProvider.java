@@ -54,7 +54,7 @@ public class LegacyProvider implements UserStorageProvider,
 
     @Override
     public boolean isConfiguredFor(RealmModel realmModel, UserModel userModel, String s) {
-        return false;
+        return supportsCredentialType(s);
     }
 
     @Override
