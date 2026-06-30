@@ -31,7 +31,7 @@ public class LocalUserLookup {
             UserProvider userProvider = session.users();
 
             return getUserByUsername(realm, legacyUser, userProvider)
-                    .or(() -> findByIdAndUsername(realm, legacyUser, userProvider))
+                    .or(() -> findById(realm, legacyUser, userProvider))
                     .or(() -> {
                         LOG.debugf("No existing user %s located in local storage.", legacyUser.username());
                         return Optional.empty();
@@ -50,8 +50,8 @@ public class LocalUserLookup {
         return Optional.ofNullable(userModel);
     }
 
-    private Optional<UserModel> findByIdAndUsername(RealmModel realm, LegacyUser legacyUser,
-                                                    UserProvider userProvider) {
+    private Optional<UserModel> findById(RealmModel realm, LegacyUser legacyUser,
+                                         UserProvider userProvider) {
         String legacyId = legacyUser.id();
         if (legacyId == null || legacyId.isBlank()) {
             LOG.debugf("Legacy user %s does not expose an id. Skipping lookup by id.", legacyUser.username());
@@ -59,9 +59,8 @@ public class LocalUserLookup {
         }
 
         return Optional.ofNullable(userProvider.getUserById(realm, legacyId))
-                .filter(user -> legacyUser.username().equals(user.getUsername()))
                 .map(user -> {
-                    LOG.debugf("Located existing user %s by legacy id %s.", legacyUser.username(), legacyId);
+                    LOG.debugf("Located existing user by legacy id %s.", legacyId);
                     return user;
                 });
     }
