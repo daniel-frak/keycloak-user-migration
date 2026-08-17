@@ -218,7 +218,7 @@ class LegacyProviderTest {
     }
 
     @Test
-    void shouldReturnNullIfUserIdExistsButHasDifferentUsername() {
+    void shouldReturnExistingUserAndUpdateAttributesWhenUserIdExistsButHasDifferentUsername() {
         final String email = "email";
         final LegacyUser user = withId();
         when(legacyUserService.findByEmail(email))
@@ -230,12 +230,11 @@ class LegacyProviderTest {
                 .thenReturn("different");
         when(userProvider.getUserById(realmModel, user.id()))
                 .thenReturn(existingUser);
-        when(userModelFactory.isDuplicateUserId(user, realmModel))
-                .thenReturn(true);
 
         var result = legacyProvider.getUserByEmail(realmModel, email);
 
-        assertNull(result);
+        assertNotNull(result);
+        verify(userModelFactory).updateUserAttributes(user, existingUser);
         verify(userModelFactory, never()).create(any(), any());
     }
 

@@ -1243,6 +1243,30 @@ class UserModelFactoryTest {
     class UpdateUserAttributes {
 
         @Test
+        void shouldUpdateUsernameOnExistingUser() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "newUsername",
+                    "email@example.com",
+                    "First",
+                    "Last",
+                    true, true,
+                    Map.of(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("oldUsername");
+
+            userModelFactory = constructUserModelFactory();
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getUsername()).isEqualTo("newUsername");
+        }
+
+        @Test
         void shouldUpdateBasicAttributesOnExistingUser() {
             var legacyUser = new LegacyUser(
                     null,
