@@ -95,7 +95,7 @@ runs:
     # See: https://github.com/daniel-frak/keycloak-user-migration/issues/411
     - name: 'Checkout project'
       if: github.event_name == 'workflow_run'
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         repository: ${{ github.event.workflow_run.base_repository.full_name }}
         ref: ${{ env.pr_base_ref }}
@@ -111,7 +111,7 @@ runs:
 
     - name: 'Set up Java'
       if: github.event_name == 'workflow_run'
-      uses: actions/setup-java@v5
+      uses: actions/setup-java@v6
       with:
         java-version: ${{ inputs.java-version }}
         distribution: ${{ inputs.distribution }}
@@ -119,7 +119,7 @@ runs:
 
     - name: 'Cache SonarCloud packages'
       if: github.event_name == 'workflow_run'
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ~/.sonar/cache
         key: ${{ runner.os }}-sonar

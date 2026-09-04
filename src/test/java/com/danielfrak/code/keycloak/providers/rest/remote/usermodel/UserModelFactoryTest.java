@@ -169,6 +169,18 @@ class UserModelFactoryTest {
         }
 
         @Test
+        void shouldNotThrowWhenKeycloakLowercasesTheUsername() {
+            final LegacyUser legacyUser = TestLegacyUser.minimal();
+            when(userProvider.addUser(realm, legacyUser.username()))
+                    .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
+            userModelFactory = constructUserModelFactory();
+
+            UserModel result = userModelFactory.create(legacyUser, realm);
+
+            assertThat(result).isNotNull();
+        }
+
+        @Test
         void shouldMigrateBasicAttributes() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
             mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);

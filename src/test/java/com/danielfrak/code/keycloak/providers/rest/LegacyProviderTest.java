@@ -156,6 +156,26 @@ class LegacyProviderTest {
     }
 
     @Test
+    void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithUsernameDifferingOnlyInCase() {
+        final String username = "user";
+        final LegacyUser legacyUser = withId();
+        when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(legacyUser));
+        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
+                .thenReturn(null);
+        when(userProvider.getUserById(realmModel, legacyUser.id()))
+                .thenReturn(userModel);
+        when(userModel.getUsername())
+                .thenReturn(legacyUser.username().toLowerCase());
+
+        var result = legacyProvider.getUserByUsername(realmModel, username);
+
+        assertEquals(userModel, result);
+        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
+        verify(userModelFactory, never()).create(any(), any());
+    }
+
+    @Test
     void shouldCreateUserWhenLegacyIdIsBlankAndNoLocalUserExists() {
         final String username = "user";
         final LegacyUser user = new LegacyUser(
