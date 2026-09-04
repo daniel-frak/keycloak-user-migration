@@ -59,7 +59,7 @@ public class LocalUserLookup {
         }
 
         return Optional.ofNullable(userProvider.getUserById(realm, legacyId))
-                .filter(user -> legacyUser.username().equals(user.getUsername()))
+                .filter(user -> legacyUser.username().equalsIgnoreCase(user.getUsername()))
                 .map(user -> {
                     LOG.debugf("Located existing user %s by legacy id %s.", legacyUser.username(), legacyId);
                     return user;
