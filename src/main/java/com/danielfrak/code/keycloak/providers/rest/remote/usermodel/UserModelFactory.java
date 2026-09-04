@@ -86,6 +86,7 @@ public class UserModelFactory {
     }
 
     public void updateUserAttributes(LegacyUser legacyUser, UserModel userModel) {
+        userModel.setUsername(legacyUser.username());
         userModel.setEnabled(legacyUser.isEnabled());
         userModel.setEmail(legacyUser.email());
         userModel.setEmailVerified(legacyUser.isEmailVerified());
