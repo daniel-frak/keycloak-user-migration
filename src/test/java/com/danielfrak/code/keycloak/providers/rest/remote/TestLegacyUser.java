@@ -9,6 +9,25 @@ import static java.util.Collections.emptyMap;
 
 public class TestLegacyUser {
 
+    public static LegacyUser withDefaultRequiredActions(boolean addDefaultRequiredActions, boolean withId) {
+        return new LegacyUser(
+                withId ? "someLegacyUserId" : null,
+                "someUserName",
+                "user@email.com",
+                "John",
+                "Smith",
+                true,
+                true,
+                emptyMap(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                addDefaultRequiredActions
+        );
+    }
+
     public static LegacyUser minimal() {
         return new LegacyUser(
                 null,

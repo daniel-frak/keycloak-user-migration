@@ -120,7 +120,8 @@ class UserModelFactoryTest {
     }
 
     private void mockSuccessfulUserModelCreationWithoutIdMigration(LegacyUser legacyUser) {
-        when(userProvider.addUser(realm, legacyUser.username()))
+        when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                legacyUser.shouldAddDefaultRequiredActions()))
                 .thenReturn(matchingUserModel(legacyUser));
     }
 
@@ -164,14 +165,16 @@ class UserModelFactoryTest {
         }
 
         private void mockUserModelCreatedWithWrongUsernameWithoutIdMigration(LegacyUser legacyUser) {
-            when(userProvider.addUser(realm, legacyUser.username()))
+            when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                    legacyUser.shouldAddDefaultRequiredActions()))
                     .thenReturn(new TestUserModel("wrong_username"));
         }
 
         @Test
         void shouldNotThrowWhenKeycloakLowercasesTheUsername() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            when(userProvider.addUser(realm, legacyUser.username()))
+            when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                    legacyUser.shouldAddDefaultRequiredActions()))
                     .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
             userModelFactory = constructUserModelFactory();
 
@@ -213,10 +216,31 @@ class UserModelFactoryTest {
 
         private void mockSuccessfulUserModelCreationWithIdMigration(LegacyUser legacyUser) {
             final boolean addDefaultRoles = true;
-            final boolean dontAddDefaultRequiredActions = false;
             when(userProvider.addUser(realm, legacyUser.id(), legacyUser.username(),
-                    addDefaultRoles, dontAddDefaultRequiredActions))
+                    addDefaultRoles, legacyUser.shouldAddDefaultRequiredActions()))
                     .thenReturn(matchingUserModel(legacyUser));
+        }
+
+        @Test
+        void shouldDisableDefaultRequiredActionsWithoutLegacyUserId() {
+            LegacyUser legacyUser = TestLegacyUser.withDefaultRequiredActions(false, false);
+            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelFactory = constructUserModelFactory();
+
+            userModelFactory.create(legacyUser, realm);
+
+            verify(userProvider).addUser(realm, null, legacyUser.username(), true, false);
+        }
+
+        @Test
+        void shouldEnableDefaultRequiredActionsWithLegacyUserId() {
+            LegacyUser legacyUser = TestLegacyUser.withDefaultRequiredActions(true, true);
+            mockSuccessfulUserModelCreationWithIdMigration(legacyUser);
+            userModelFactory = constructUserModelFactory();
+
+            userModelFactory.create(legacyUser, realm);
+
+            verify(userProvider).addUser(realm, legacyUser.id(), legacyUser.username(), true, true);
         }
 
         @Test
