@@ -48,33 +48,15 @@ public class UserModelFactory {
     }
 
     private UserModel addUser(LegacyUser legacyUser, RealmModel realm) {
-        UserModel userModel;
-        if (isEmpty(legacyUser.id())) {
-            userModel = addUserWithoutLegacyId(legacyUser, realm);
-        } else {
-            userModel = addUserWithLegacyId(legacyUser, realm);
-        }
-        return userModel;
-    }
-
-    private UserModel addUserWithoutLegacyId(LegacyUser legacyUser, RealmModel realm) {
-        UserModel userModel;
-        userModel = session.users().addUser(realm, legacyUser.username());
-        return userModel;
-    }
-
-    private UserModel addUserWithLegacyId(LegacyUser legacyUser, RealmModel realm) {
-        UserModel userModel;
+        String id = isEmpty(legacyUser.id()) ? null : legacyUser.id();
         boolean addDefaultRoles = true;
-        boolean dontAddDefaultRequiredActions = false;
-        userModel = session.users().addUser(
+        return session.users().addUser(
                 realm,
-                legacyUser.id(),
+                id,
                 legacyUser.username(),
                 addDefaultRoles,
-                dontAddDefaultRequiredActions
+                legacyUser.shouldAddDefaultRequiredActions()
         );
-        return userModel;
     }
 
     private void validateUsernamesEqual(LegacyUser legacyUser, UserModel userModel) {
