@@ -90,6 +90,7 @@ The GET request will have to return user data as a JSON response in the form:
   "requiredActions": [
     "requiredActions"
   ],
+  "addDefaultRequiredActions": "boolean",
   "totps": [
     {
       "name": "string",
@@ -119,6 +120,9 @@ Any HTTP status other than `200` will be interpreted as the user not having been
 
 The `id` attribute in the above response is optional. If it's not set then Keycloak will generate a new user id
 automatically.
+
+The `addDefaultRequiredActions` attribute is optional and defaults to `true`. Set it to `false` to migrate only the
+required actions returned in `requiredActions`, without adding the realm's default required actions.
 
 ### POST
 
@@ -171,6 +175,7 @@ response might look like this:
     "UPDATE_PROFILE",
     "update_user_locale"
   ],
+  "addDefaultRequiredActions": false,
   "totps": [
     {
       "name": "Totp Device 1",
@@ -275,8 +280,8 @@ to activate the user in Keycloak:
 
 ![Migration with required action](readme-images/user-migrated-with-required-action.png)
 
-Setting `requiredActions`, `groups`, `attributes` or `roles` is completely optional and is included in the example
-legacy system for illustration purposes only.
+Setting `requiredActions`, `addDefaultRequiredActions`, `groups`, `attributes` or `roles` is completely optional and is
+included in the example legacy system for illustration purposes only.
 
 4. The example user is successfully migrated. Log in again as admin
    ([http://localhost:8024/admin/](http://localhost:8024/admin/)) and navigate to `Users` to verify the

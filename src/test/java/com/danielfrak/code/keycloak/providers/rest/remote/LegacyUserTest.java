@@ -8,18 +8,38 @@ import java.util.List;
 import java.util.Map;
 
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class LegacyUserTest {
 
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
     void shouldMapToJson() throws JsonProcessingException {
-        var objectMapper = new ObjectMapper();
         LegacyUser legacyUser = legacyUser();
 
         String result = objectMapper.writeValueAsString(legacyUser);
 
         String expectedJson = json();
         assertThatJson(result).isEqualTo(expectedJson);
+    }
+
+    @Test
+    void shouldAddDefaultRequiredActionsWhenSettingIsOmitted() throws JsonProcessingException {
+        LegacyUser legacyUser = objectMapper.readValue("""
+                {"username":"someUsername"}
+                """, LegacyUser.class);
+
+        assertThat(legacyUser.shouldAddDefaultRequiredActions()).isTrue();
+    }
+
+    @Test
+    void shouldUseConfiguredDefaultRequiredActionsSetting() throws JsonProcessingException {
+        LegacyUser legacyUser = objectMapper.readValue("""
+                {"username":"someUsername","addDefaultRequiredActions":false}
+                """, LegacyUser.class);
+
+        assertThat(legacyUser.shouldAddDefaultRequiredActions()).isFalse();
     }
 
     private LegacyUser legacyUser() {
