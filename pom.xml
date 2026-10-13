@@ -9,7 +9,7 @@
     <version>6.2.6-SNAPSHOT</version>
     <properties>
         <java.version>21</java.version>
-        <keycloak.version>26.8.0</keycloak.version>
+        <keycloak.version>26.8.1</keycloak.version>
         <mockito.version>5.24.0</mockito.version>
 
         <maven.compiler.target>${java.version}</maven.compiler.target>
