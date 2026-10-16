@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN;
 import static org.keycloak.provider.ProviderConfigProperty.BOOLEAN_TYPE;
 
@@ -22,6 +23,6 @@ class ConfigurationPropertiesTest {
                 .findFirst().orElseThrow();
 
         assertEquals(BOOLEAN_TYPE, property.getType());
-        assertEquals(false, property.getDefaultValue());
+        assertFalse((Boolean) property.getDefaultValue());
     }
 }

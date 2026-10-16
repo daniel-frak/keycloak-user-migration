@@ -21,6 +21,10 @@ import java.util.stream.Collectors;
 public class UserModelFactory {
 
     private static final Logger LOG = Logger.getLogger(UserModelFactory.class);
+    private static final int TOTP_DIGITS_SHORT = 6;
+    private static final int TOTP_DIGITS_LONG = 8;
+    private static final List<String> TOTP_ALGORITHMS = List.of("HmacSHA1", "HmacSHA256", "HmacSHA512");
+    private static final String BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz234567";
 
     private final KeycloakSession session;
     private final MigrationConfiguration config;
@@ -216,35 +220,65 @@ public class UserModelFactory {
     }
 
     private OTPCredentialModel validatedTotpCredential(LegacyTotp totp) {
-        if (totp == null || totp.secret() == null || totp.secret().isBlank()
-                || (totp.digits() != 6 && totp.digits() != 8) || totp.period() <= 0
-                || totp.algorithm() == null
-                || !List.of("HmacSHA1", "HmacSHA256", "HmacSHA512").contains(totp.algorithm())) {
+        if (totp == null || isEmpty(totp.secret())) {
             throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
         }
-        if (totp.encoding() != null) {
-            if (!"BASE32".equalsIgnoreCase(totp.encoding())) {
-                throw new IllegalArgumentException("Unsupported legacy TOTP secret encoding.");
-            }
-            // Keycloak's Base32 decoder is permissive and includes padding in its output length.
-            var secret = totp.secret().replaceFirst("=+$", "");
-            if (secret.length() < 2 || !secret.matches("[A-Za-z2-7]+")
-                    || !Base32.encode(Base32.decode(secret)).equalsIgnoreCase(secret)) {
-                throw new IllegalArgumentException("Invalid legacy Base32 TOTP secret.");
-            }
-            totp = new LegacyTotp(secret, totp.name(), totp.digits(), totp.period(), totp.algorithm(), "BASE32");
+        validateTotpParameters(totp);
+        if (totp.encoding() == null) {
+            return toTotpCredential(totp);
         }
-        return toTotpCredential(totp);
+        if (!"BASE32".equalsIgnoreCase(totp.encoding())) {
+            throw new IllegalArgumentException("Unsupported legacy TOTP secret encoding.");
+        }
+        var secret = validatedBase32Secret(totp.secret());
+        return toTotpCredential(new LegacyTotp(
+                secret, totp.name(), totp.digits(), totp.period(), totp.algorithm(), "BASE32"));
+    }
+
+    private void validateTotpParameters(LegacyTotp totp) {
+        if (totp.digits() != TOTP_DIGITS_SHORT && totp.digits() != TOTP_DIGITS_LONG) {
+            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
+        }
+        if (totp.period() <= 0 || totp.algorithm() == null || !TOTP_ALGORITHMS.contains(totp.algorithm())) {
+            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
+        }
+    }
+
+    private String validatedBase32Secret(String value) {
+        // Keycloak's Base32 decoder is permissive and includes padding in its output length.
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '=') {
+            end--;
+        }
+        var secret = value.substring(0, end);
+        if (secret.length() < 2 || !hasBase32Characters(secret)
+                || !Base32.encode(Base32.decode(secret)).equalsIgnoreCase(secret)) {
+            throw new IllegalArgumentException("Invalid legacy Base32 TOTP secret.");
+        }
+        return secret;
+    }
+
+    private boolean hasBase32Characters(String secret) {
+        for (int index = 0; index < secret.length(); index++) {
+            if (BASE32_ALPHABET.indexOf(secret.charAt(index)) < 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean sameTotp(OTPCredentialModel existing, OTPCredentialModel desired) {
+        return Objects.equals(existing.getUserLabel(), desired.getUserLabel())
+                && sameTotpParameters(existing, desired)
+                && MessageDigest.isEqual(existing.getDecodedSecret(), desired.getDecodedSecret());
+    }
+
+    private boolean sameTotpParameters(OTPCredentialModel existing, OTPCredentialModel desired) {
         var existingData = existing.getOTPCredentialData();
         var desiredData = desired.getOTPCredentialData();
-        return Objects.equals(existing.getUserLabel(), desired.getUserLabel())
-                && existingData.getDigits() == desiredData.getDigits()
+        return existingData.getDigits() == desiredData.getDigits()
                 && existingData.getPeriod() == desiredData.getPeriod()
-                && Objects.equals(existingData.getAlgorithm(), desiredData.getAlgorithm())
-                && MessageDigest.isEqual(existing.getDecodedSecret(), desired.getDecodedSecret());
+                && Objects.equals(existingData.getAlgorithm(), desiredData.getAlgorithm());
     }
 
     private void migrateOrganizations(LegacyUser legacyUser, UserModel userModel, RealmModel realmModel) {

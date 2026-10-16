@@ -12,6 +12,7 @@ import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialProvider;
+import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputValidator;
 import org.keycloak.credential.CredentialProviderFactory;
 import org.keycloak.credential.UserCredentialManager;
@@ -150,8 +151,9 @@ class TotpLoginTest {
         var localPassword = mock(LocalPasswordProvider.class);
         var manager = keycloakCredentialManager(localPassword);
         when(legacyService.isPasswordValid("username", "password")).thenReturn(false);
+        List<CredentialInput> inputs = List.of(password);
 
-        assertThatThrownBy(() -> manager.isValid(List.of(password)))
+        assertThatThrownBy(() -> manager.isValid(inputs))
                 .isInstanceOf(AuthenticationFlowException.class);
 
         verify(localPassword, never()).isValid(any(), any(), any());
@@ -163,8 +165,9 @@ class TotpLoginTest {
         var localPassword = mock(LocalPasswordProvider.class);
         var manager = keycloakCredentialManager(localPassword);
         when(legacyService.findByUsername("username")).thenReturn(Optional.empty());
+        List<CredentialInput> inputs = List.of(password);
 
-        assertThatThrownBy(() -> manager.isValid(List.of(password)))
+        assertThatThrownBy(() -> manager.isValid(inputs))
                 .isInstanceOf(AuthenticationFlowException.class);
 
         verify(transaction).setRollbackOnly();

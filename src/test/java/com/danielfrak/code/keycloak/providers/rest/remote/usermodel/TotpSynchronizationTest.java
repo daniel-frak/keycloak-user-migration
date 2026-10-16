@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.credential.OTPCredentialModel;
@@ -86,10 +87,11 @@ class TotpSynchronizationTest {
         return credentials.createStoredCredential(credential);
     }
 
-    @Test
-    void shouldMatchEquivalentSecretEncodings() {
+    @ParameterizedTest
+    @ValueSource(strings = {"ONSWG4TFOQ======", "ONSWG4TFOQ", "onswg4tfoq======"})
+    void shouldMatchEquivalentSecretEncodings(String secret) {
         var existing = store(DEVICE);
-        var base32Device = new LegacyTotp("ONSWG4TFOQ======", DEVICE.name(), 6, 30, "HmacSHA1", "BASE32");
+        var base32Device = new LegacyTotp(secret, DEVICE.name(), 6, 30, "HmacSHA1", "BASE32");
 
         synchronize(List.of(base32Device));
 
@@ -189,8 +191,9 @@ class TotpSynchronizationTest {
     void shouldValidateAllDevicesBeforeChangingCredentials(LegacyTotp invalidDevice) {
         var old = store(DEVICE);
         var validNewDevice = new LegacyTotp("new-secret", "New device", 6, 30, "HmacSHA1", null);
+        var devices = Arrays.asList(validNewDevice, invalidDevice);
 
-        assertThatThrownBy(() -> synchronize(Arrays.asList(validNewDevice, invalidDevice)))
+        assertThatThrownBy(() -> synchronize(devices))
                 .isInstanceOf(RuntimeException.class);
 
         assertThat(totps()).singleElement().extracting(CredentialModel::getId).isEqualTo(old.getId());
@@ -207,6 +210,8 @@ class TotpSynchronizationTest {
                 new LegacyTotp("secret", "Device", 6, 30, "unsupported", null),
                 new LegacyTotp("secret", "Device", 6, 30, "HmacSHA1", "unsupported"),
                 new LegacyTotp("!invalid!", "Device", 6, 30, "HmacSHA1", "BASE32"),
+                new LegacyTotp("ONSWG4TF=OQ", "Device", 6, 30, "HmacSHA1", "BASE32"),
+                new LegacyTotp("\uFF2FNSWG4TFOQ", "Device", 6, 30, "HmacSHA1", "BASE32"),
                 new LegacyTotp("AB", "Device", 6, 30, "HmacSHA1", "BASE32"),
                 new LegacyTotp("========", "Device", 6, 30, "HmacSHA1", "BASE32"));
     }
@@ -217,8 +222,9 @@ class TotpSynchronizationTest {
         when(user.credentialManager()).thenReturn(failingCredentials);
         when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
                 .thenReturn(Stream.empty());
+        var devices = List.of(DEVICE);
 
-        assertThatThrownBy(() -> synchronize(List.of(DEVICE))).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> synchronize(devices)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test

@@ -105,12 +105,18 @@ public class UserMigrationService {
             refreshUserFromLegacy(realm, userModel, legacyUser, userModel.getUsername());
         } catch (RuntimeException ex) {
             session.getTransactionManager().setRollbackOnly();
-            // Do not log the exception payload: it may contain data from the legacy credentials response.
-            LOG.errorf("Failed to synchronize legacy TOTP credentials for user %s (%s). Aborting login.",
-                    userModel.getId(), ex.getClass().getSimpleName());
+            logTotpSynchronizationFailure(userModel, ex);
             throw new AuthenticationFlowException("Unable to synchronize legacy TOTP credentials.",
                     AuthenticationFlowError.INTERNAL_ERROR);
         }
+    }
+
+    private void logTotpSynchronizationFailure(UserModel user, RuntimeException exception) {
+        // Preserve the failure location without exposing legacy credential data in messages or nested causes.
+        var sanitized = new RuntimeException(exception.getClass().getName());
+        sanitized.setStackTrace(exception.getStackTrace());
+        LOG.errorf(sanitized, "Failed to synchronize legacy TOTP credentials for user %s. Aborting login.",
+                user.getId());
     }
 
     public void refreshUserFromLegacy(RealmModel realm, UserModel userModel) {

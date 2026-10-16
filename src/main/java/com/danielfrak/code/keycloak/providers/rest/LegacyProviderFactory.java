@@ -48,7 +48,8 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
         var restService = new RestUserService(model, httpClient, new ObjectMapper());
 
         var localUserLookup = new LocalUserLookup(session);
-        var userMigrationService = new UserMigrationService(session, restService, localUserLookup, userModelFactory, config);
+        var userMigrationService = new UserMigrationService(
+                session, restService, localUserLookup, userModelFactory, config);
         var credentialValidationService = new CredentialValidationService(session, restService, config);
 
         return new LegacyProvider(userMigrationService, credentialValidationService, config);

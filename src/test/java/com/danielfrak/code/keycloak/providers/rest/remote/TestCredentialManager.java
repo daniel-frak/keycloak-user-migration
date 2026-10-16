@@ -8,12 +8,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 public class TestCredentialManager implements SubjectCredentialManager {
     
     private final Set<CredentialModel> storedCredentials = new HashSet<>();
+    private int nextCredentialId;
 
     @Override
     public boolean isValid(List<CredentialInput> inputs) {
@@ -33,7 +33,7 @@ public class TestCredentialManager implements SubjectCredentialManager {
     @Override
     public CredentialModel createStoredCredential(CredentialModel cred) {
         if (cred.getId() == null) {
-            cred.setId(UUID.randomUUID().toString());
+            cred.setId("credential-" + nextCredentialId++);
         }
         this.storedCredentials.add(cred);
         return cred;
