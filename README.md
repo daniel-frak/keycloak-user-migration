@@ -328,6 +328,24 @@ Authorization: Basic base64encode(username:password)
 When enabled (`UPDATE_USER_ON_LOGIN`), the provider re-fetches and updates user profile attributes (name, email,
 enabled flag, custom attributes) on every login.
 
+### Refresh TOTP credentials on login
+
+When enabled (`UPDATE_USER_TOTPS_ON_LOGIN`), the provider synchronizes TOTP credentials after successful legacy
+password validation. This option is disabled by default, preserving the existing import-on-creation behavior.
+
+The legacy response becomes authoritative for all TOTP devices, including those enrolled directly in Keycloak:
+
+- Added or changed devices replace stale credentials; unchanged devices retain their IDs and creation dates.
+- An explicit `"totps": []` removes all TOTP credentials.
+- Missing/null `totps`, invalid data, or a failed refresh aborts login and rolls back the transaction.
+
+Other credential types are unchanged. Synchronization requires a password login through this provider; legacy
+application logins, existing SSO sessions, and token refreshes do not trigger it.
+
+Set **Sever federation link after migration** to OFF (`SEVER_FEDERATION_LINK=false`). Users must remain linked
+to this provider. If a user's federation link was previously removed, restore that connection before expecting
+refresh-on-login to work; changing the setting does not restore existing links.
+
 ### Refresh user groups on login
 
 `UPDATE_USER_GROUPS_ON_LOGIN` supports the following values:
