@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 public class TestCredentialManager implements SubjectCredentialManager {
@@ -31,13 +32,16 @@ public class TestCredentialManager implements SubjectCredentialManager {
 
     @Override
     public CredentialModel createStoredCredential(CredentialModel cred) {
+        if (cred.getId() == null) {
+            cred.setId(UUID.randomUUID().toString());
+        }
         this.storedCredentials.add(cred);
         return cred;
     }
 
     @Override
     public boolean removeStoredCredentialById(String id) {
-        throw new RuntimeException("Not implemented");
+        return storedCredentials.removeIf(credential -> Objects.equals(credential.getId(), id));
     }
 
     @Override

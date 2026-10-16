@@ -24,6 +24,10 @@ public class MigrationConfiguration {
         return Boolean.parseBoolean(model.getConfig().getFirst(UPDATE_USER_ON_LOGIN));
     }
 
+    public boolean shouldUpdateUserTotpsOnLogin() {
+        return Boolean.parseBoolean(model.getConfig().getFirst(UPDATE_USER_TOTPS_ON_LOGIN));
+    }
+
     public UserSyncMode getGroupSyncMode() {
         var configValue = model.getConfig().getFirst(UPDATE_USER_GROUPS_ON_LOGIN);
         return UserSyncMode.fromConfig(configValue, UserSyncMode.SYNC_FIRST_LOGIN);

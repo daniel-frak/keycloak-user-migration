@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.component.ComponentValidationException;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.storage.UserStorageProviderFactory;
 
@@ -20,6 +22,15 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
     @Override
     public List<ProviderConfigProperty> getConfigProperties() {
         return ConfigurationProperties.getConfigProperties();
+    }
+
+    @Override
+    public void validateConfiguration(KeycloakSession session, RealmModel realm, ComponentModel model) {
+        var config = new MigrationConfiguration(model);
+        if (config.shouldUpdateUserTotpsOnLogin() && config.shouldSeverFederationLink()) {
+            throw new ComponentValidationException(
+                    "Disable 'Sever federation link after migration' before enabling TOTP refresh.");
+        }
     }
 
     @Override
@@ -37,7 +48,7 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
         var restService = new RestUserService(model, httpClient, new ObjectMapper());
 
         var localUserLookup = new LocalUserLookup(session);
-        var userMigrationService = new UserMigrationService(restService, localUserLookup, userModelFactory, config);
+        var userMigrationService = new UserMigrationService(session, restService, localUserLookup, userModelFactory, config);
         var credentialValidationService = new CredentialValidationService(session, restService, config);
 
         return new LegacyProvider(userMigrationService, credentialValidationService, config);
