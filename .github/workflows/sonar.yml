@@ -4,14 +4,11 @@ on:
   # `workflow_run` runs in the context of the base repository,
   # allowing it to access secrets even from forked pull requests.
   # This enables us to trigger a SonarCloud analysis for all PRs.
+  # The action never runs code from the pull request in this job.
   workflow_run:
     workflows: [ Build ]
     types:
       - completed
-
-env:
-  JAVA_VERSION: 21
-  JAVA_DISTRIBUTION: temurin
 
 jobs:
   sonar:
@@ -20,16 +17,13 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       actions: read # Required to download artifacts
+      contents: read
+      pull-requests: read
+      statuses: write # Lets the action post a status on the pull request
     steps:
-      # Must check out for custom same-repository actions to work
-      - name: Checkout Code
-        uses: actions/checkout@v7
-
       - name: Perform Sonar analysis
-        uses: ./.github/actions/sonar-fork-analysis
+        uses: galois-groups/sonar-fork-analysis@v2
         with:
-          distribution: ${{ env.JAVA_DISTRIBUTION }}
-          java-version: ${{ env.JAVA_VERSION }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          project-key: keycloak-user-migration
+          sonar-organization: codesoapbox
           sonar-token: ${{ secrets.SONAR_TOKEN }}
-          additional-flags: -Psonar-cloud
