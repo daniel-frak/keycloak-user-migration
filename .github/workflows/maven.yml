@@ -18,6 +18,8 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of Sonar analysis
 
       - name: Set up Java
         uses: actions/setup-java@v6
@@ -26,15 +28,18 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
-      - name: Build and test
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        # mvn install instead of verify for sonar-fork-analysis to work
-        run: mvn -B install -P code-coverage
-
-      - name: Prepare Sonar analysis
-        uses: ./.github/actions/sonar-fork-analysis
+      # Runs `mvn verify` with the arguments below. Pushes and pull requests from this repository
+      # are analyzed here. Pull requests from forks are built without the token and analyzed by the
+      # Sonar workflow.
+      - name: Build, test and analyze
+        uses: galois-groups/sonar-fork-analysis@v2
+        with:
+          project-key: keycloak-user-migration
+          sonar-organization: codesoapbox
+          sonar-token: ${{ secrets.SONAR_TOKEN }}
+          build-arguments: |
+            -Pcode-coverage
+            -Psonar-cloud
 
       - name: Upload plugin jar
         uses: actions/upload-artifact@v7
