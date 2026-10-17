@@ -22,6 +22,7 @@ public final class ConfigurationProperties {
     public static final String MIGRATE_UNMAPPED_ROLES_PROPERTY = "MIGRATE_UNMAPPED_ROLES";
     public static final String MIGRATE_UNMAPPED_GROUPS_PROPERTY = "MIGRATE_UNMAPPED_GROUPS";
     public static final String UPDATE_USER_ON_LOGIN = "UPDATE_USER_ON_LOGIN";
+    public static final String UPDATE_USER_TOTPS_ON_LOGIN = "UPDATE_USER_TOTPS_ON_LOGIN";
     public static final String UPDATE_USER_GROUPS_ON_LOGIN = "UPDATE_USER_GROUPS_ON_LOGIN";
     public static final String UPDATE_USER_ROLES_ON_LOGIN = "UPDATE_USER_ROLES_ON_LOGIN";
     public static final String IGNORED_SYNC_GROUPS_PROPERTY = "IGNORED_SYNC_GROUPS";
@@ -73,6 +74,13 @@ public final class ConfigurationProperties {
                     "Re-fetch legacy attributes on each login. Requires the user to remain federated - if the " +
                     "federation link is severed (setting below enabled), this option has no effect. Users whose " +
                     "links were already severed must be re-linked or re-imported for this to work.",
+                    BOOLEAN_TYPE, false),
+            new ProviderConfigProperty(UPDATE_USER_TOTPS_ON_LOGIN,
+                    "Refresh TOTP credentials on login",
+                    "Make the legacy system authoritative for TOTP credentials on password login, including " +
+                    "credentials already imported or enrolled in Keycloak. An empty totps list removes all TOTP " +
+                    "credentials. Missing or invalid TOTP data aborts login. Requires severing the federation " +
+                    "link to be disabled.",
                     BOOLEAN_TYPE, false),
             syncModeProperty(UPDATE_USER_GROUPS_ON_LOGIN,
                     "User groups sync mode",

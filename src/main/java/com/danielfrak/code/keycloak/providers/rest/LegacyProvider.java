@@ -1,6 +1,8 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
 import org.jboss.logging.Logger;
+import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.credential.CredentialInput;
 import org.keycloak.credential.CredentialInputUpdater;
 import org.keycloak.credential.CredentialInputValidator;
@@ -41,6 +43,15 @@ public class LegacyProvider implements UserStorageProvider,
         LOG.debugf("isValid called for user %s with credential type %s", getUserName(userModel), getType(input));
         if (!supportsCredentialType(input.getType())) {
             return false;
+        }
+
+        if (config.shouldUpdateUserTotpsOnLogin()) {
+            if (!credentialValidationService.validatePassword(realmModel, userModel, input)) {
+                // Returning false would allow Keycloak to fall back to a previously stored local password.
+                throw new AuthenticationFlowException(AuthenticationFlowError.INVALID_CREDENTIALS);
+            }
+            userMigrationService.refreshUserTotpsFromLegacy(realmModel, userModel);
+            return true;
         }
 
         userMigrationService.refreshUserFromLegacy(realmModel, userModel);

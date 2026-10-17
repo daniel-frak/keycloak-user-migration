@@ -67,7 +67,7 @@ class LegacyProviderTest {
         var migrationConfiguration = new MigrationConfiguration(model);
         var localUserLookup = new LocalUserLookup(session);
         var userMigrationService = new UserMigrationService(
-                legacyUserService, localUserLookup, userModelFactory, migrationConfiguration);
+                session, legacyUserService, localUserLookup, userModelFactory, migrationConfiguration);
         var credentialValidationService =
                 new CredentialValidationService(session, legacyUserService, migrationConfiguration);
         legacyProvider = new LegacyProvider(userMigrationService, credentialValidationService, migrationConfiguration);
