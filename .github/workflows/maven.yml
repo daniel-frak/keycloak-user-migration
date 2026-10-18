@@ -32,14 +32,12 @@ jobs:
       # are analyzed here. Pull requests from forks are built without the token and analyzed by the
       # Sonar workflow.
       - name: Build, test and analyze
-        uses: galois-groups/sonar-fork-analysis@v2
+        uses: galois-groups/sonar-fork-analysis@ce9b4ed47b4d01427c7ad12d1d76d628b3b07a8b # v2.0.1
         with:
           project-key: keycloak-user-migration
           sonar-organization: codesoapbox
           sonar-token: ${{ secrets.SONAR_TOKEN }}
-          build-arguments: |
-            -Pcode-coverage
-            -Psonar-cloud
+          build-arguments: -Pcode-coverage
 
       - name: Upload plugin jar
         uses: actions/upload-artifact@v7
