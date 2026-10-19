@@ -16,11 +16,16 @@ public class InMemoryUserRepository implements UserRepository {
                 generateUser("Lucy", "Brennan"),
                 generateUser("Mark", "Brown"),
                 generateUser("Kate", "Thomson"),
-                generateUser("John", "Doe")
+                generateUser("John", "Doe"),
+                generateUser("Mfa", "Tester", List.of())
         );
     }
 
     private User generateUser(String name, String lastName) {
+        return generateUser(name, lastName, List.of("UPDATE_PROFILE"));
+    }
+
+    private User generateUser(String name, String lastName, List<String> requiredActions) {
         String username = name.toLowerCase(Locale.ROOT);
 
         return User.builder()
@@ -29,6 +34,7 @@ public class InMemoryUserRepository implements UserRepository {
                 .firstName(name)
                 .lastName(lastName)
                 .password("password")
+                .requiredActions(requiredActions)
                 .build();
     }
 

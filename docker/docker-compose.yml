@@ -34,6 +34,8 @@ services:
       args:
         - MAVEN_IMAGE=${MAVEN_IMAGE}
         - JDK_IMAGE=${JDK_IMAGE}
+    environment:
+      SPRING_PROFILES_ACTIVE: e2e
     ports:
       - "8080:8080"
     networks:

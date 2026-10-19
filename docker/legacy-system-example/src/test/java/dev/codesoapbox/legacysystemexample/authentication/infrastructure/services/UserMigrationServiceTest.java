@@ -2,6 +2,7 @@ package dev.codesoapbox.legacysystemexample.authentication.infrastructure.servic
 
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.TestUserDataProvider;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.TotpDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -58,6 +60,30 @@ class UserMigrationServiceTest {
         assertTrue(details.isPresent());
         assertEquals(email, details.get().getEmail());
         assertTrue(details.get().isEmailVerified());
+    }
+
+    @Test
+    void shouldIncludeUpdatedTotpsInMigrationDetails() {
+        User user = userDataProvider.full();
+        String username = user.getUsername();
+        var totps = List.of(new TotpDetails(
+                "ONSWG4TFOQ======", "E2E authenticator", 6, 30, "HmacSHA1", "BASE32"));
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+
+        boolean updated = migrationService.updateTotpsForUser(username, totps);
+        Optional<UserMigrationDetails> details = migrationService.getMigrationDetails(username);
+
+        assertTrue(updated);
+        assertEquals(totps, details.orElseThrow().getTotps());
+    }
+
+    @Test
+    void shouldNotUpdateTotpsForUnknownUser() {
+        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+
+        boolean updated = migrationService.updateTotpsForUser("unknown", List.of());
+
+        assertFalse(updated);
     }
 
     @Test

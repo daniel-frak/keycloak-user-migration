@@ -14,9 +14,9 @@ class Keycloak {
         loginPage.logIn(data.admin.username, data.admin.password);
     }
 
-    signInAsLegacyUser() {
+    signInAsLegacyUser(user = data.legacyUser) {
         loginPage.visitForUser();
-        loginPage.logIn(data.legacyUser.username, data.legacyUser.simplePassword);
+        loginPage.logIn(user.username, user.simplePassword);
     }
 
     signOutViaUIAndClearCache() {
