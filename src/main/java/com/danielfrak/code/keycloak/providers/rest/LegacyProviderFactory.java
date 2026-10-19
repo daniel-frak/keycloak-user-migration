@@ -42,7 +42,8 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
                 session,
                 config,
                 new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory),
-                new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory)
+                new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory),
+                new TotpValidationService()
         );
         var httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
         var restService = new RestUserService(model, httpClient, new ObjectMapper());

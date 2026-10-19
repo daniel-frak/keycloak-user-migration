@@ -8,37 +8,37 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import org.jboss.logging.Logger;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
-import org.keycloak.models.utils.Base32;
 import org.keycloak.organization.OrganizationProvider;
 
 import java.security.MessageDigest;
-import java.util.ArrayList;
+import java.security.NoSuchAlgorithmException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.HexFormat;
 import java.util.stream.Collectors;
 
 public class UserModelFactory {
 
     private static final Logger LOG = Logger.getLogger(UserModelFactory.class);
-    private static final int TOTP_DIGITS_SHORT = 6;
-    private static final int TOTP_DIGITS_LONG = 8;
-    private static final List<String> TOTP_ALGORITHMS = List.of("HmacSHA1", "HmacSHA256", "HmacSHA512");
-    private static final String BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz234567";
-
     private final KeycloakSession session;
     private final MigrationConfiguration config;
     private final RoleMigrationService roleMigrationService;
     private final GroupMigrationService groupMigrationService;
+    private final TotpValidationService totpValidationService;
 
     public UserModelFactory(KeycloakSession session,
                             MigrationConfiguration config,
                             RoleMigrationService roleMigrationService,
-                            GroupMigrationService groupMigrationService) {
+                            GroupMigrationService groupMigrationService,
+                            TotpValidationService totpValidationService) {
         this.session = session;
         this.config = config;
         this.roleMigrationService = roleMigrationService;
         this.groupMigrationService = groupMigrationService;
+        this.totpValidationService = totpValidationService;
     }
 
     public UserModel create(LegacyUser legacyUser, RealmModel realm) {
@@ -181,104 +181,48 @@ public class UserModelFactory {
     private void migrateTotp(LegacyUser legacyUser, UserModel userModel) {
         if (legacyUser.totps() != null) {
             legacyUser.totps().forEach(totp ->
-                    userModel.credentialManager().createStoredCredential(toTotpCredential(totp)));
+                    userModel.credentialManager().createStoredCredential(totpValidationService.toTotpCredential(totp)));
         }
-    }
-
-    private OTPCredentialModel toTotpCredential(LegacyTotp totp) {
-        var credential = OTPCredentialModel.createTOTP(
-                totp.secret(), totp.digits(), totp.period(), totp.algorithm(), totp.encoding());
-        credential.setUserLabel(totp.name());
-        return credential;
     }
 
     public void synchronizeTotps(LegacyUser legacyUser, UserModel userModel) {
-        if (legacyUser.totps() == null) {
-            throw new IllegalArgumentException("TOTP refresh requires an explicit totps list.");
-        }
-        // Validate the complete payload before changing any stored credential.
-        var desired = legacyUser.totps().stream().map(this::validatedTotpCredential).toList();
+        var desired = totpValidationService.validateTotps(legacyUser.totps()).stream().collect(Collectors.toSet());
         var credentials = userModel.credentialManager();
-        var stale = new ArrayList<>(credentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE)
+        var current = credentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE)
                 .map(OTPCredentialModel::createFromCredentialModel)
                 .filter(otp -> OTPCredentialModel.TOTP.equals(otp.getOTPCredentialData().getSubType()))
-                .toList());
+                .collect(Collectors.toSet());
 
-        for (var credential : desired) {
-            var existing = stale.stream().filter(otp -> sameTotp(otp, credential)).findFirst();
-            if (existing.isPresent()) {
-                stale.remove(existing.get());
-            } else if (credentials.createStoredCredential(credential) == null) {
-                throw new IllegalStateException("Could not store synchronized TOTP credential.");
-            }
-        }
-        for (var credential : stale) {
-            if (!credentials.removeStoredCredentialById(credential.getId())) {
-                throw new IllegalStateException("Could not remove stale TOTP credential.");
-            }
-        }
+        Reconcile.from(current)
+                .towards(desired)
+                .byKey(this::totpKey)
+                .twoWay()
+                .removeAllowedIf(ignored -> true)
+                .removeWith(credential -> {
+                    if (!credentials.removeStoredCredentialById(credential.getId())) {
+                        throw new IllegalStateException("Could not remove stale TOTP credential.");
+                    }
+                })
+                .addWith(credential -> {
+                    if (credentials.createStoredCredential(credential) == null) {
+                        throw new IllegalStateException("Could not store synchronized TOTP credential.");
+                    }
+                })
+                .apply();
     }
 
-    private OTPCredentialModel validatedTotpCredential(LegacyTotp totp) {
-        if (totp == null || isEmpty(totp.secret())) {
-            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
+    private String totpKey(OTPCredentialModel credential) {
+        var data = credential.getOTPCredentialData();
+        try {
+            var digest = MessageDigest.getInstance("SHA-256").digest(credential.getDecodedSecret());
+            var label = credential.getUserLabel();
+            var labelKey = label == null ? "null" : "value"
+                    + Base64.getEncoder().encodeToString(label.getBytes(StandardCharsets.UTF_8));
+            return labelKey + "|" + data.getDigits() + "|"
+                    + data.getPeriod() + "|" + data.getAlgorithm() + "|" + HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("SHA-256 is unavailable.", ex);
         }
-        validateTotpParameters(totp);
-        if (totp.encoding() == null) {
-            return toTotpCredential(totp);
-        }
-        if (!"BASE32".equalsIgnoreCase(totp.encoding())) {
-            throw new IllegalArgumentException("Unsupported legacy TOTP secret encoding.");
-        }
-        var secret = validatedBase32Secret(totp.secret());
-        return toTotpCredential(new LegacyTotp(
-                secret, totp.name(), totp.digits(), totp.period(), totp.algorithm(), "BASE32"));
-    }
-
-    private void validateTotpParameters(LegacyTotp totp) {
-        if (totp.digits() != TOTP_DIGITS_SHORT && totp.digits() != TOTP_DIGITS_LONG) {
-            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
-        }
-        if (totp.period() <= 0 || totp.algorithm() == null || !TOTP_ALGORITHMS.contains(totp.algorithm())) {
-            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
-        }
-    }
-
-    private String validatedBase32Secret(String value) {
-        // Keycloak's Base32 decoder is permissive and includes padding in its output length.
-        int end = value.length();
-        while (end > 0 && value.charAt(end - 1) == '=') {
-            end--;
-        }
-        var secret = value.substring(0, end);
-        if (secret.length() < 2 || !hasBase32Characters(secret)
-                || !Base32.encode(Base32.decode(secret)).equalsIgnoreCase(secret)) {
-            throw new IllegalArgumentException("Invalid legacy Base32 TOTP secret.");
-        }
-        return secret;
-    }
-
-    private boolean hasBase32Characters(String secret) {
-        for (int index = 0; index < secret.length(); index++) {
-            if (BASE32_ALPHABET.indexOf(secret.charAt(index)) < 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean sameTotp(OTPCredentialModel existing, OTPCredentialModel desired) {
-        return Objects.equals(existing.getUserLabel(), desired.getUserLabel())
-                && sameTotpParameters(existing, desired)
-                && MessageDigest.isEqual(existing.getDecodedSecret(), desired.getDecodedSecret());
-    }
-
-    private boolean sameTotpParameters(OTPCredentialModel existing, OTPCredentialModel desired) {
-        var existingData = existing.getOTPCredentialData();
-        var desiredData = desired.getOTPCredentialData();
-        return existingData.getDigits() == desiredData.getDigits()
-                && existingData.getPeriod() == desiredData.getPeriod()
-                && Objects.equals(existingData.getAlgorithm(), desiredData.getAlgorithm());
     }
 
     private void migrateOrganizations(LegacyUser legacyUser, UserModel userModel, RealmModel realmModel) {

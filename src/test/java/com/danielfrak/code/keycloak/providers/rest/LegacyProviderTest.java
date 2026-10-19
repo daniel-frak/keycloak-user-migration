@@ -4,28 +4,41 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.keycloak.common.util.MultivaluedHashMap;
+import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.authentication.AuthenticationFlowException;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialInput;
+import org.keycloak.credential.CredentialInputValidator;
+import org.keycloak.credential.CredentialProvider;
+import org.keycloak.credential.CredentialProviderFactory;
 import org.keycloak.credential.CredentialModel;
+import org.keycloak.credential.UserCredentialManager;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PolicyError;
+import org.keycloak.tracing.TracingProvider;
+import io.opentelemetry.api.trace.Span;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.SEVER_FEDERATION_LINK;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.withId;
@@ -776,5 +789,319 @@ class LegacyProviderTest {
     void removeUserShouldReturnTrueForNullUser() {
         var result = legacyProvider.removeUser(realmModel, null);
         assertTrue(result);
+    }
+
+    @Nested
+    class IsValidWithTotpRefresh {
+
+        @Mock
+        private KeycloakSession session;
+        @Mock
+        private KeycloakTransactionManager transaction;
+        @Mock
+        private LegacyUserService legacyService;
+        @Mock
+        private UserModelFactory userModelFactory;
+        @Mock
+        private RealmModel realm;
+        @Mock
+        private UserModel user;
+        @Mock
+        private SubjectCredentialManager credentials;
+        @Mock
+        private PasswordPolicyManagerProvider passwordPolicy;
+
+        private final ComponentModel component = new ComponentModel();
+        private final UserCredentialModel password = UserCredentialModel.password("password");
+        private LegacyProvider provider;
+        private LegacyUser legacyUser;
+
+        @BeforeEach
+        void setUp() {
+            component.getConfig().putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "true");
+            component.getConfig().putSingle(SEVER_FEDERATION_LINK, "false");
+            var config = new MigrationConfiguration(component);
+            var migration = new UserMigrationService(
+                    session, legacyService, new LocalUserLookup(session), userModelFactory, config);
+            provider = new LegacyProvider(
+                    migration, new CredentialValidationService(session, legacyService, config), config);
+            legacyUser = response("id", true);
+
+            lenient().when(user.getUsername()).thenReturn("username");
+            lenient().when(user.getId()).thenReturn("id");
+            lenient().when(user.credentialManager()).thenReturn(credentials);
+            lenient().when(session.getProvider(PasswordPolicyManagerProvider.class)).thenReturn(passwordPolicy);
+            lenient().when(session.getTransactionManager()).thenReturn(transaction);
+            lenient().when(legacyService.isPasswordValid("username", "password")).thenReturn(true);
+            lenient().when(legacyService.findByUsername("username")).thenReturn(Optional.of(legacyUser));
+        }
+
+        private LegacyUser response(String id, boolean enabled) {
+            return new LegacyUser(id, "username", null, null, null, enabled, false,
+                    null, null, null, null, List.of(), null);
+        }
+
+        private UserCredentialManager keycloakCredentialManager(LocalPasswordProvider localPassword) {
+            component.setId("legacy-provider");
+            when(user.isFederated()).thenReturn(true);
+            when(user.getFederationLink()).thenReturn(component.getId());
+            when(realm.getComponent(component.getId())).thenReturn(component);
+            when(session.getAttribute(component.getId())).thenReturn(provider);
+            var sessionFactory = mock(KeycloakSessionFactory.class);
+            var localFactory = mock(LocalPasswordFactory.class);
+            lenient().when(localFactory.getId()).thenReturn(password.getType());
+            lenient().when(session.getKeycloakSessionFactory()).thenReturn(sessionFactory);
+            lenient().when(sessionFactory.getProviderFactoriesStream(CredentialProvider.class))
+                    .thenAnswer(invocation -> Stream.of(localFactory));
+            lenient().when(session.getProvider(CredentialProvider.class, password.getType()))
+                    .thenReturn(localPassword);
+            lenient().when(localPassword.supportsCredentialType(password.getType())).thenReturn(true);
+            lenient().when(localPassword.isValid(realm, user, password)).thenReturn(true);
+            var tracing = mock(TracingProvider.class);
+            when(session.getProvider(TracingProvider.class)).thenReturn(tracing);
+            when(tracing.trace(org.mockito.ArgumentMatchers.<Class<?>>any(), eq("isValid"),
+                    org.mockito.ArgumentMatchers.<Function<Span, Boolean>>any()))
+                    .thenAnswer(invocation -> {
+                        Function<Span, Boolean> operation = invocation.getArgument(2);
+                        return operation.apply(Span.getInvalid());
+                    });
+
+            return new UserCredentialManager(session, realm, user);
+        }
+
+        private abstract class LocalPasswordProvider
+                implements CredentialProvider<PasswordCredentialModel>, CredentialInputValidator {
+            @Override
+            public abstract boolean supportsCredentialType(String type);
+        }
+
+        private abstract class LocalPasswordFactory implements CredentialProviderFactory<LocalPasswordProvider> {
+        }
+
+        @Test
+        void shouldSynchronizeAfterPasswordValidationOnEveryPasswordLogin() {
+            var firstLogin = provider.isValid(realm, user, password);
+            var secondLogin = provider.isValid(realm, user, password);
+
+            assertTrue(firstLogin);
+            assertTrue(secondLogin);
+            var order = inOrder(legacyService, credentials, userModelFactory);
+            for (int login = 0; login < 2; login++) {
+                order.verify(legacyService).isPasswordValid("username", "password");
+                order.verify(credentials).updateCredential(password);
+                order.verify(legacyService).findByUsername("username");
+                order.verify(userModelFactory).synchronizeTotps(legacyUser, user);
+            }
+            verify(userModelFactory, never()).updateUserAttributes(any(), any());
+            verify(transaction, never()).setRollbackOnly();
+        }
+
+        @Test
+        void shouldRefreshThroughCredentialManagerOnRepeatedLogins() {
+            var localPassword = mock(LocalPasswordProvider.class);
+            var manager = keycloakCredentialManager(localPassword);
+
+            var firstLogin = manager.isValid(List.of(password));
+            var secondLogin = manager.isValid(List.of(password));
+
+            assertTrue(firstLogin);
+            assertTrue(secondLogin);
+            verify(userModelFactory, times(2)).synchronizeTotps(legacyUser, user);
+            verify(localPassword, never()).isValid(any(), any(), any());
+        }
+
+        @Test
+        void shouldNotFallBackToLocalPasswordIfLegacyPasswordIsRejected() {
+            var localPassword = mock(LocalPasswordProvider.class);
+            var manager = keycloakCredentialManager(localPassword);
+            when(legacyService.isPasswordValid("username", "password")).thenReturn(false);
+            List<CredentialInput> inputs = List.of(password);
+
+            var exception = assertThrows(AuthenticationFlowException.class, () -> manager.isValid(inputs));
+
+            assertEquals(AuthenticationFlowError.INVALID_CREDENTIALS, exception.getError());
+            verify(localPassword, never()).isValid(any(), any(), any());
+            verify(userModelFactory, never()).synchronizeTotps(any(), any());
+        }
+
+        @Test
+        void shouldNotFallBackToLocalPasswordIfTotpRefreshFails() {
+            var localPassword = mock(LocalPasswordProvider.class);
+            var manager = keycloakCredentialManager(localPassword);
+            when(legacyService.findByUsername("username")).thenReturn(Optional.empty());
+            List<CredentialInput> inputs = List.of(password);
+
+            var exception = assertThrows(AuthenticationFlowException.class, () -> manager.isValid(inputs));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verify(localPassword, never()).isValid(any(), any(), any());
+        }
+
+        @Test
+        void shouldPreserveLocalPasswordFallbackWhenRefreshIsDisabled() {
+            var localPassword = mock(LocalPasswordProvider.class);
+            var manager = keycloakCredentialManager(localPassword);
+            component.getConfig().putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "false");
+            when(legacyService.isPasswordValid("username", "password")).thenReturn(false);
+
+            var result = manager.isValid(List.of(password));
+
+            assertTrue(result);
+            verify(localPassword).isValid(realm, user, password);
+            verify(userModelFactory, never()).synchronizeTotps(any(), any());
+        }
+
+        @Test
+        void shouldReuseLegacyResponseForOtherRefreshOptions() {
+            component.getConfig().putSingle(UPDATE_USER_ON_LOGIN, "true");
+            component.getConfig().putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "SYNC_EVERY_LOGIN");
+            component.getConfig().putSingle(UPDATE_USER_ROLES_ON_LOGIN, "SYNC_EVERY_LOGIN");
+
+            var result = provider.isValid(realm, user, password);
+
+            assertTrue(result);
+            verify(legacyService).findByUsername("username");
+            var order = inOrder(userModelFactory);
+            order.verify(userModelFactory).synchronizeTotps(legacyUser, user);
+            order.verify(userModelFactory).updateUserAttributes(legacyUser, user);
+            order.verify(userModelFactory).synchronizeGroups(legacyUser, realm, user);
+            order.verify(userModelFactory).synchronizeRoles(legacyUser, realm, user);
+        }
+
+        @Test
+        void shouldNotSynchronizeWhenOptionIsAbsent() {
+            component.getConfig().remove(UPDATE_USER_TOTPS_ON_LOGIN);
+
+            var result = provider.isValid(realm, user, password);
+
+            assertTrue(result);
+            verify(legacyService, never()).findByUsername(anyString());
+            verifyNoInteractions(userModelFactory);
+        }
+
+        @Test
+        void shouldAbortWithoutFetchingTotpsWhenPasswordIsInvalid() {
+            when(legacyService.isPasswordValid("username", "password")).thenReturn(false);
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INVALID_CREDENTIALS, exception.getError());
+            verify(legacyService, never()).findByUsername(anyString());
+            verifyNoInteractions(credentials, userModelFactory);
+        }
+
+        @Test
+        void shouldAbortAndRollBackWhenLegacyUserIsUnavailable() {
+            when(legacyService.findByUsername("username")).thenReturn(Optional.empty());
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verifyNoInteractions(userModelFactory);
+        }
+
+        @Test
+        void shouldAbortAndRollBackWhenLegacyRequestFails() {
+            when(legacyService.findByUsername("username")).thenThrow(new IllegalStateException("unavailable"));
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+        }
+
+        @Test
+        void shouldAbortAndRollBackWhenTotpSynchronizationFails() {
+            doThrow(new IllegalArgumentException("Invalid TOTP configuration"))
+                    .when(userModelFactory).synchronizeTotps(legacyUser, user);
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+        }
+
+        @Test
+        void shouldNotSwallowTotpFailuresWhenProfileRefreshIsEnabled() {
+            component.getConfig().putSingle(UPDATE_USER_ON_LOGIN, "true");
+            doThrow(new IllegalStateException("Storage failed"))
+                    .when(userModelFactory).synchronizeTotps(legacyUser, user);
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verify(userModelFactory, never()).updateUserAttributes(any(), any());
+        }
+
+        @Test
+        void shouldKeepExistingBestEffortProfileRefreshBehavior() {
+            component.getConfig().putSingle(UPDATE_USER_ON_LOGIN, "true");
+            doThrow(new IllegalStateException("Profile failed"))
+                    .when(userModelFactory).updateUserAttributes(legacyUser, user);
+
+            var result = provider.isValid(realm, user, password);
+
+            assertTrue(result);
+            verify(userModelFactory).synchronizeTotps(legacyUser, user);
+            verify(transaction, never()).setRollbackOnly();
+        }
+
+        @Test
+        void shouldRejectFederationSevering() {
+            component.getConfig().putSingle(SEVER_FEDERATION_LINK, "true");
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verify(legacyService, never()).findByUsername(anyString());
+            verifyNoInteractions(userModelFactory);
+        }
+
+        @Test
+        void shouldRejectMismatchedLegacyUserId() {
+            when(legacyService.findByUsername("username"))
+                    .thenReturn(Optional.of(response("different-id", true)));
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verifyNoInteractions(userModelFactory);
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        void shouldSupportLegacyResponsesWithoutAnId(String id) {
+            var response = response(id, true);
+            when(legacyService.findByUsername("username")).thenReturn(Optional.of(response));
+
+            var result = provider.isValid(realm, user, password);
+
+            assertTrue(result);
+            verify(userModelFactory).synchronizeTotps(response, user);
+        }
+
+        @Test
+        void shouldRejectDisabledLegacyUser() {
+            when(legacyService.findByUsername("username")).thenReturn(Optional.of(response("id", false)));
+
+            var exception = assertThrows(AuthenticationFlowException.class,
+                    () -> provider.isValid(realm, user, password));
+
+            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            verify(transaction).setRollbackOnly();
+            verifyNoInteractions(userModelFactory);
+        }
     }
 }
