@@ -165,15 +165,6 @@
     </build>
 
     <profiles>
-        <profile>
-            <id>sonar-cloud</id>
-            <properties>
-                <sonar.projectKey>keycloak-user-migration</sonar.projectKey>
-                <sonar.organization>codesoapbox</sonar.organization>
-                <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-            </properties>
-        </profile>
-
         <!-- Code coverage report generation -->
         <profile>
             <id>code-coverage</id>
