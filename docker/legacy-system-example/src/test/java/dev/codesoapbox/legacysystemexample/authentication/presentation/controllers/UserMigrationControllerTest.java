@@ -2,6 +2,7 @@ package dev.codesoapbox.legacysystemexample.authentication.presentation.controll
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.TestMigrationDetailsProvider;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.TotpDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.infrastructure.services.UserMigrationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,12 +14,14 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -102,5 +105,37 @@ class UserMigrationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(content))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldUpdateTotpsForKnownUser() throws Exception {
+        var totps = List.of(new TotpDetails(
+                "ONSWG4TFOQ======", "Authenticator", 6, 30, "HmacSHA1", "BASE32"));
+        when(migrationService.updateTotpsForUser("lucy", totps)).thenReturn(true);
+
+        mvc.perform(put(PATH + "/lucy/totps")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(totps)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldRemoveTotpsForKnownUser() throws Exception {
+        when(migrationService.updateTotpsForUser("lucy", List.of())).thenReturn(true);
+
+        mvc.perform(put(PATH + "/lucy/totps")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void shouldReturnNotFoundForUnknownUserWhenUpdatingTotps() throws Exception {
+        when(migrationService.updateTotpsForUser("unknown", List.of())).thenReturn(false);
+
+        mvc.perform(put(PATH + "/unknown/totps")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isNotFound());
     }
 }

@@ -1,7 +1,7 @@
 module.exports = {
     legacySystem: {
         url: "http://legacy-system-example:8080/user-migration-support",
-        testSupportUrl: "http://localhost:8080/test-support"
+        testSupportUrl: "http://localhost:8080/user-migration-support"
     },
     providerName: "User migration using a REST client",
     pluginName: "Custom REST Client Provider",

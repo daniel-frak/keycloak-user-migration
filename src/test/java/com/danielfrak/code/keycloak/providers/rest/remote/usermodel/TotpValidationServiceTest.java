@@ -4,6 +4,7 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -69,6 +70,30 @@ class TotpValidationServiceTest {
         }
 
         @ParameterizedTest
+        @MethodSource("invalidParameters")
+        void shouldExplainInvalidParameters(LegacyTotp device, String expectedMessage) {
+            var devices = List.of(device);
+
+            assertThatThrownBy(() -> service.validateTotps(devices))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage(expectedMessage);
+        }
+
+        private static Stream<Arguments> invalidParameters() {
+            return Stream.of(
+                    Arguments.of(new LegacyTotp("secret", "Device", 0, 30, "HmacSHA1", null),
+                            "Legacy TOTP digits must be 6 or 8."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 0, "HmacSHA1", null),
+                            "Legacy TOTP period must be positive."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, -1, "HmacSHA1", null),
+                            "Legacy TOTP period must be positive."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, null, null),
+                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, "unsupported", null),
+                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."));
+        }
+
+        @ParameterizedTest
         @MethodSource("invalidDevices")
         void shouldRejectInvalidDevice(LegacyTotp device) {
             var devices = Arrays.asList(device);
@@ -82,10 +107,6 @@ class TotpValidationServiceTest {
                     null,
                     new LegacyTotp(null, "Device", 6, 30, "HmacSHA1", null),
                     new LegacyTotp(" ", "Device", 6, 30, "HmacSHA1", null),
-                    new LegacyTotp("secret", "Device", 0, 30, "HmacSHA1", null),
-                    new LegacyTotp("secret", "Device", 6, 0, "HmacSHA1", null),
-                    new LegacyTotp("secret", "Device", 6, 30, null, null),
-                    new LegacyTotp("secret", "Device", 6, 30, "unsupported", null),
                     new LegacyTotp("secret", "Device", 6, 30, "HmacSHA1", "unsupported"),
                     new LegacyTotp("!invalid!", "Device", 6, 30, "HmacSHA1", "BASE32"),
                     new LegacyTotp("ONSWG4TF=OQ", "Device", 6, 30, "HmacSHA1", "BASE32"),

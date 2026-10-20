@@ -24,10 +24,6 @@ public class UserMigrationDetails {
     private List<TotpDetails> totps;
 
     public static UserMigrationDetails from(User user) {
-        return from(user, null);
-    }
-
-    public static UserMigrationDetails from(User user, List<TotpDetails> totps) {
         return UserMigrationDetails.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -41,7 +37,7 @@ public class UserMigrationDetails {
                 .requiredActions(user.getRequiredActions() == null
                         ? List.of("UPDATE_PROFILE")
                         : user.getRequiredActions())
-                .totps(totps)
+                .totps(user.getTotps())
                 .build();
     }
 }

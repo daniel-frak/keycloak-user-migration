@@ -7,16 +7,13 @@ import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.Us
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 public class UserMigrationService {
 
     private final UserRepository userRepository;
-    private final Map<String, List<TotpDetails>> totpsByUsername = new ConcurrentHashMap<>();
 
     public UserMigrationService(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -26,14 +23,15 @@ public class UserMigrationService {
         log.info("Getting migration data for: " + usernameOrEmail);
         return userRepository.findByUsername(usernameOrEmail)
                 .or(() -> userRepository.findByEmail(usernameOrEmail))
-                .map(user -> UserMigrationDetails.from(user, totpsByUsername.get(user.getUsername())));
+                .map(UserMigrationDetails::from);
     }
 
     public boolean updateTotpsForUser(String username, List<TotpDetails> totps) {
-        if (userRepository.findByUsername(username).isEmpty()) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isEmpty()) {
             return false;
         }
-        totpsByUsername.put(username, List.copyOf(totps));
+        user.get().setTotps(List.copyOf(totps));
         return true;
     }
 

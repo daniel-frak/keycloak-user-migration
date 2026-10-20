@@ -35,6 +35,8 @@ class UserMigrationServiceTest {
     @Test
     void shouldGetMigrationDetailsByUsername() {
         User user = userDataProvider.full();
+        user.setTotps(List.of(new TotpDetails(
+                "secret", "Authenticator", 6, 30, "HmacSHA1", null)));
         String username = user.getUsername();
 
         when(userRepository.findByUsername(username))
@@ -45,6 +47,7 @@ class UserMigrationServiceTest {
         assertTrue(details.isPresent());
         assertEquals(username, details.get().getUsername());
         assertTrue(details.get().isEmailVerified());
+        assertEquals(user.getTotps(), details.get().getTotps());
     }
 
     @Test
@@ -63,7 +66,7 @@ class UserMigrationServiceTest {
     }
 
     @Test
-    void shouldIncludeUpdatedTotpsInMigrationDetails() {
+    void shouldUpdateTotpsForKnownUser() {
         User user = userDataProvider.full();
         String username = user.getUsername();
         var totps = List.of(new TotpDetails(
@@ -71,10 +74,22 @@ class UserMigrationServiceTest {
         when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
 
         boolean updated = migrationService.updateTotpsForUser(username, totps);
-        Optional<UserMigrationDetails> details = migrationService.getMigrationDetails(username);
 
         assertTrue(updated);
-        assertEquals(totps, details.orElseThrow().getTotps());
+        assertEquals(totps, user.getTotps());
+    }
+
+    @Test
+    void shouldRemoveTotpsForKnownUser() {
+        User user = userDataProvider.full();
+        user.setTotps(List.of(new TotpDetails(
+                "secret", "Authenticator", 6, 30, "HmacSHA1", null)));
+        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
+
+        boolean updated = migrationService.updateTotpsForUser(user.getUsername(), List.of());
+
+        assertTrue(updated);
+        assertTrue(user.getTotps().isEmpty());
     }
 
     @Test

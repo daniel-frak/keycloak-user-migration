@@ -1271,431 +1271,431 @@ class UserModelFactoryTest {
             verify(userModel, never()).deleteRoleMapping(untrackedRole);
         }
 
+        @Nested
+        class AddOnly {
+
+            @Test
+            void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
+                final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
+                configureMigrationOfUnmappedRoles();
+                userModelFactory = constructUserModelFactory();
+
+                RoleModel mappedRole = asRoleModel(legacyUser.roles().getFirst());
+                RoleModel missingRole = asRoleModel(legacyUser.roles().get(1));
+                RoleModel staleRole = staleRole();
+                existInRealm(mappedRole, missingRole);
+                UserModel userModel = userModelWithRoles(mappedRole, staleRole);
+
+                userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+
+                verify(userModel).grantRole(missingRole);
+                verify(userModel, never()).deleteRoleMapping(any());
+            }
+
+            @Test
+            void shouldHandleDuplicateRoleKeysInReconcileAndAddOnlyPaths() {
+                final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role-1", "legacy-role-2"));
+                configureMigrationOfUnmappedRoles();
+                userModelFactory = constructUserModelFactory();
+
+                RoleModel desiredRole1 = mock(RoleModel.class);
+                RoleModel desiredRole2 = mock(RoleModel.class);
+                when(desiredRole1.getId()).thenReturn("dup-role-id");
+                when(desiredRole2.getId()).thenReturn("dup-role-id");
+                when(realm.getRole("legacy-role-1")).thenReturn(desiredRole1);
+                when(realm.getRole("legacy-role-2")).thenReturn(desiredRole2);
+
+                RoleModel currentRole1 = mock(RoleModel.class);
+                RoleModel currentRole2 = mock(RoleModel.class);
+                when(currentRole1.getId()).thenReturn("dup-role-id");
+                when(currentRole2.getId()).thenReturn("dup-role-id");
+                UserModel userModel = mock(UserModel.class);
+                when(userModel.getRoleMappingsStream())
+                        .thenAnswer(invocation -> Stream.of(currentRole1, currentRole2));
+
+                userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+                userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+
+                verify(userModel, never()).grantRole(any());
+                verify(userModel, never()).deleteRoleMapping(any());
+            }
+        }
+    }
+
     @Nested
-    class AddOnly {
+    class SynchronizeGroups {
 
         @Test
-        void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
-            final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            configureMigrationOfUnmappedRoles();
+        void shouldSynchronizeGroupsByAddingMissingAndRemovingStaleMemberships() {
+            final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
+            configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            RoleModel mappedRole = asRoleModel(legacyUser.roles().getFirst());
-            RoleModel missingRole = asRoleModel(legacyUser.roles().get(1));
-            RoleModel staleRole = staleRole();
-            existInRealm(mappedRole, missingRole);
-            UserModel userModel = userModelWithRoles(mappedRole, staleRole);
+            GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
+            GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
+            GroupModel staleGroup = staleGroup();
+            existingGroupsInRealm(mappedGroup, missingGroup, staleGroup);
+            UserModel userModel = userModelWithGroups(mappedGroup, staleGroup);
 
-            userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
 
-            verify(userModel).grantRole(missingRole);
-            verify(userModel, never()).deleteRoleMapping(any());
+            verify(userModel).joinGroup(missingGroup);
+            verify(userModel).leaveGroup(staleGroup);
+            verify(userModel, never()).leaveGroup(mappedGroup);
         }
 
-        @Test
-        void shouldHandleDuplicateRoleKeysInReconcileAndAddOnlyPaths() {
-            final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role-1", "legacy-role-2"));
-            configureMigrationOfUnmappedRoles();
-            userModelFactory = constructUserModelFactory();
-
-            RoleModel desiredRole1 = mock(RoleModel.class);
-            RoleModel desiredRole2 = mock(RoleModel.class);
-            when(desiredRole1.getId()).thenReturn("dup-role-id");
-            when(desiredRole2.getId()).thenReturn("dup-role-id");
-            when(realm.getRole("legacy-role-1")).thenReturn(desiredRole1);
-            when(realm.getRole("legacy-role-2")).thenReturn(desiredRole2);
-
-            RoleModel currentRole1 = mock(RoleModel.class);
-            RoleModel currentRole2 = mock(RoleModel.class);
-            when(currentRole1.getId()).thenReturn("dup-role-id");
-            when(currentRole2.getId()).thenReturn("dup-role-id");
+        private UserModel userModelWithGroups(GroupModel... groupModels) {
             UserModel userModel = mock(UserModel.class);
-            when(userModel.getRoleMappingsStream())
-                    .thenAnswer(invocation -> Stream.of(currentRole1, currentRole2));
+            when(userModel.getGroupsStream())
+                    .thenReturn(Stream.of(groupModels));
+            return userModel;
+        }
 
-            userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
-            userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+        private GroupModel staleGroup() {
+            return asGroupModel("staleGroup");
+        }
 
-            verify(userModel, never()).grantRole(any());
-            verify(userModel, never()).deleteRoleMapping(any());
+        @Test
+        void shouldSynchronizeGroupsByOnlyAddingMissingMemberships() {
+            final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
+            GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
+            GroupModel staleGroup = staleGroup();
+            existingGroupsInRealm(mappedGroup, missingGroup, staleGroup);
+            UserModel userModel = userModelWithGroups(mappedGroup, staleGroup);
+
+            userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
+
+            verify(userModel).joinGroup(missingGroup);
+            verify(userModel, never()).leaveGroup(any());
+        }
+
+        @Test
+        void shouldSynchronizeGroupsUsingGroupIdAsIdentityKey() {
+            final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel desiredGroup = asGroupModel("legacy-group");
+            when(desiredGroup.getId())
+                    .thenReturn("group-id-1");
+            existingGroupsInRealm(desiredGroup);
+
+            GroupModel currentGroup = mock(GroupModel.class);
+            when(currentGroup.getId())
+                    .thenReturn("group-id-1");
+            UserModel userModel = userModelWithGroups(currentGroup);
+
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+            verify(userModel, never()).joinGroup(any());
+            verify(userModel, never()).leaveGroup(any());
+        }
+
+        private LegacyUser aLegacyUserWithGroups(List<String> groups) {
+            return new LegacyUser(
+                    null,
+                    "someUserName",
+                    "user@email.com",
+                    "John",
+                    "Smith",
+                    true,
+                    true,
+                    Map.of(),
+                    emptyList(),
+                    groups,
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+        }
+
+        @Test
+        void shouldSynchronizeGroupsUsingNameKeyWhenGroupIdIsBlank() {
+            final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel desiredGroup = asGroupModel("legacy-group");
+            when(desiredGroup.getId())
+                    .thenReturn(" ");
+            existingGroupsInRealm(desiredGroup);
+
+            GroupModel currentGroup = asGroupModel("legacy-group");
+            when(currentGroup.getId())
+                    .thenReturn("");
+            UserModel userModel = userModelWithGroups(currentGroup);
+
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+            verify(userModel, never()).joinGroup(any());
+            verify(userModel, never()).leaveGroup(any());
+        }
+
+        @Test
+        void shouldHandleDuplicateGroupKeysInAddOnlyPath() {
+            final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group-1", "legacy-group-2"));
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel desiredGroup1 = mock(GroupModel.class);
+            GroupModel desiredGroup2 = mock(GroupModel.class);
+            when(desiredGroup1.getId()).thenReturn("dup-group-id");
+            when(desiredGroup2.getId()).thenReturn("dup-group-id");
+            when(desiredGroup1.getName()).thenReturn("legacy-group-1");
+            when(desiredGroup2.getName()).thenReturn("legacy-group-2");
+            existingGroupsInRealm(desiredGroup1, desiredGroup2);
+
+            GroupModel currentGroup1 = mock(GroupModel.class);
+            GroupModel currentGroup2 = mock(GroupModel.class);
+            when(currentGroup1.getId()).thenReturn("dup-group-id");
+            when(currentGroup2.getId()).thenReturn("dup-group-id");
+            UserModel userModel = userModelWithGroups(currentGroup1, currentGroup2);
+
+            userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
+
+            verify(userModel, never()).joinGroup(any());
+        }
+
+        @Test
+        void shouldRemoveCurrentGroupWithNullNameWhenAbsentFromLegacy() {
+            final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel currentGroup = mock(GroupModel.class);
+            when(currentGroup.getId())
+                    .thenReturn(null);
+            when(currentGroup.getName())
+                    .thenReturn(null);
+            UserModel userModel = userModelWithGroups(currentGroup);
+
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+            verify(userModel).leaveGroup(currentGroup);
+        }
+
+        @Test
+        void shouldRemoveCurrentGroupWithBlankNameWhenAbsentFromLegacy() {
+            final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
+            configureMigrationOfUnmappedGroups();
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel currentGroup = asGroupModel(" ");
+            when(currentGroup.getId()).thenReturn(null);
+            UserModel userModel = userModelWithGroups(currentGroup);
+
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+            verify(userModel).leaveGroup(currentGroup);
+        }
+
+        @Test
+        void shouldNotRemoveIgnoredGroupsDuringSynchronization() {
+            final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
+            configureMigrationOfUnmappedGroups();
+            config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("manual-*"));
+            userModelFactory = constructUserModelFactory();
+
+            GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
+            GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
+            GroupModel untrackedGroup = asGroupModel("manual-group");
+            existingGroupsInRealm(mappedGroup, missingGroup, untrackedGroup);
+            UserModel userModel = userModelWithGroups(mappedGroup, untrackedGroup);
+
+            userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+
+            verify(userModel, never()).leaveGroup(untrackedGroup);
         }
     }
-}
 
-@Nested
-class SynchronizeGroups {
+    @Nested
+    class IsDuplicateUserId {
 
-    @Test
-    void shouldSynchronizeGroupsByAddingMissingAndRemovingStaleMemberships() {
-        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
+        @Test
+        void isDuplicateUserIdShouldReturnFalseGivenNotMigratingUserId() {
+            final LegacyUser legacyUser = TestLegacyUser.minimal();
+            userModelFactory = constructUserModelFactory();
 
-        GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
-        GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
-        GroupModel staleGroup = staleGroup();
-        existingGroupsInRealm(mappedGroup, missingGroup, staleGroup);
-        UserModel userModel = userModelWithGroups(mappedGroup, staleGroup);
+            var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
 
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
+            assertThat(result).isFalse();
+        }
 
-        verify(userModel).joinGroup(missingGroup);
-        verify(userModel).leaveGroup(staleGroup);
-        verify(userModel, never()).leaveGroup(mappedGroup);
+        @Test
+        void isDuplicateUserIdShouldReturnTrueGivenMigratingIdAndItAlreadyExists() {
+            final LegacyUser legacyUser = TestLegacyUser.withId();
+            mockUserModelWithSameIdAlreadyExists(legacyUser);
+            userModelFactory = constructUserModelFactory();
+
+            var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
+
+            assertThat(result).isTrue();
+        }
+
+        private void mockUserModelWithSameIdAlreadyExists(LegacyUser legacyUser) {
+            when(userProvider.getUserById(realm, legacyUser.id()))
+                    .thenReturn(matchingUserModel(legacyUser));
+        }
+
+        @Test
+        void isDuplicateUserIdShouldReturnFalseGivenMigratingIdAndItDoesntExist() {
+            final LegacyUser legacyUser = TestLegacyUser.withId();
+            mockNoExistingUserModelWithSameId(legacyUser);
+            userModelFactory = constructUserModelFactory();
+
+            var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
+
+            assertThat(result).isFalse();
+        }
+
+        private void mockNoExistingUserModelWithSameId(LegacyUser legacyUser) {
+            when(userProvider.getUserById(realm, legacyUser.id()))
+                    .thenReturn(null);
+        }
     }
 
-    private UserModel userModelWithGroups(GroupModel... groupModels) {
-        UserModel userModel = mock(UserModel.class);
-        when(userModel.getGroupsStream())
-                .thenReturn(Stream.of(groupModels));
-        return userModel;
+    @Nested
+    class UpdateUserAttributes {
+
+        @Test
+        void shouldUpdateUsernameOnExistingUser() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "newUsername",
+                    "email@example.com",
+                    "First",
+                    "Last",
+                    true, true,
+                    Map.of(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("oldUsername");
+
+            userModelFactory = constructUserModelFactory();
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getUsername()).isEqualTo("newUsername");
+        }
+
+        @Test
+        void shouldUpdateBasicAttributesOnExistingUser() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "username",
+                    "new@email.com",
+                    "NewFirst",
+                    "NewLast",
+                    false, false,
+                    Map.of(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("username");
+            userModel.setEmail("old@email.com");
+            userModel.setFirstName("OldFirst");
+            userModel.setLastName("OldLast");
+            userModel.setEnabled(true);
+            userModel.setEmailVerified(true);
+
+            userModelFactory = constructUserModelFactory();
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getEmail()).isEqualTo("new@email.com");
+            assertThat(userModel.getFirstName()).isEqualTo("NewFirst");
+            assertThat(userModel.getLastName()).isEqualTo("NewLast");
+            assertThat(userModel.isEnabled()).isFalse();
+            assertThat(userModel.isEmailVerified()).isFalse();
+        }
+
+        @Test
+        void shouldOverwriteExistingCustomAttributes() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "username",
+                    "email",
+                    "first",
+                    "last",
+                    true,
+                    true,
+                    Map.of("attr1", List.of("newVal")),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("username");
+            userModel.setAttribute("attr1", List.of("oldVal"));
+
+            userModelFactory = constructUserModelFactory();
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getAttributeStream("attr1")).containsExactly("newVal");
+        }
+
+        @Test
+        void shouldNotRemoveExtraLocalAttributesWhenUpdating() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "username",
+                    "email",
+                    "first",
+                    "last",
+                    true,
+                    true,
+                    Map.of("attr1", List.of("val1")),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("username");
+            userModel.setAttribute("localAttr", List.of("localVal"));
+
+            userModelFactory = constructUserModelFactory();
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getAttributeStream("attr1")).containsExactly("val1");
+            assertThat(userModel.getAttributeStream("localAttr")).containsExactly("localVal");
+        }
+
+        @Test
+        void shouldHandleNullAttributesInLegacyUserGracefully() {
+            var legacyUser = new LegacyUser(
+                    null,
+                    "username",
+                    "email",
+                    "first",
+                    "last",
+                    true,
+                    true,
+                    null,
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList(),
+                    emptyList()
+            );
+            UserModel userModel = new TestUserModel("username");
+            userModel.setAttribute("localAttr", List.of("localVal"));
+
+            userModelFactory = constructUserModelFactory();
+            // Should not throw NPE
+            userModelFactory.updateUserAttributes(legacyUser, userModel);
+
+            assertThat(userModel.getAttributeStream("localAttr")).containsExactly("localVal");
+        }
     }
-
-    private GroupModel staleGroup() {
-        return asGroupModel("staleGroup");
-    }
-
-    @Test
-    void shouldSynchronizeGroupsByOnlyAddingMissingMemberships() {
-        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
-        GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
-        GroupModel staleGroup = staleGroup();
-        existingGroupsInRealm(mappedGroup, missingGroup, staleGroup);
-        UserModel userModel = userModelWithGroups(mappedGroup, staleGroup);
-
-        userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
-
-        verify(userModel).joinGroup(missingGroup);
-        verify(userModel, never()).leaveGroup(any());
-    }
-
-    @Test
-    void shouldSynchronizeGroupsUsingGroupIdAsIdentityKey() {
-        final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel desiredGroup = asGroupModel("legacy-group");
-        when(desiredGroup.getId())
-                .thenReturn("group-id-1");
-        existingGroupsInRealm(desiredGroup);
-
-        GroupModel currentGroup = mock(GroupModel.class);
-        when(currentGroup.getId())
-                .thenReturn("group-id-1");
-        UserModel userModel = userModelWithGroups(currentGroup);
-
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
-
-        verify(userModel, never()).joinGroup(any());
-        verify(userModel, never()).leaveGroup(any());
-    }
-
-    private LegacyUser aLegacyUserWithGroups(List<String> groups) {
-        return new LegacyUser(
-                null,
-                "someUserName",
-                "user@email.com",
-                "John",
-                "Smith",
-                true,
-                true,
-                Map.of(),
-                emptyList(),
-                groups,
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-    }
-
-    @Test
-    void shouldSynchronizeGroupsUsingNameKeyWhenGroupIdIsBlank() {
-        final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel desiredGroup = asGroupModel("legacy-group");
-        when(desiredGroup.getId())
-                .thenReturn(" ");
-        existingGroupsInRealm(desiredGroup);
-
-        GroupModel currentGroup = asGroupModel("legacy-group");
-        when(currentGroup.getId())
-                .thenReturn("");
-        UserModel userModel = userModelWithGroups(currentGroup);
-
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
-
-        verify(userModel, never()).joinGroup(any());
-        verify(userModel, never()).leaveGroup(any());
-    }
-
-    @Test
-    void shouldHandleDuplicateGroupKeysInAddOnlyPath() {
-        final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group-1", "legacy-group-2"));
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel desiredGroup1 = mock(GroupModel.class);
-        GroupModel desiredGroup2 = mock(GroupModel.class);
-        when(desiredGroup1.getId()).thenReturn("dup-group-id");
-        when(desiredGroup2.getId()).thenReturn("dup-group-id");
-        when(desiredGroup1.getName()).thenReturn("legacy-group-1");
-        when(desiredGroup2.getName()).thenReturn("legacy-group-2");
-        existingGroupsInRealm(desiredGroup1, desiredGroup2);
-
-        GroupModel currentGroup1 = mock(GroupModel.class);
-        GroupModel currentGroup2 = mock(GroupModel.class);
-        when(currentGroup1.getId()).thenReturn("dup-group-id");
-        when(currentGroup2.getId()).thenReturn("dup-group-id");
-        UserModel userModel = userModelWithGroups(currentGroup1, currentGroup2);
-
-        userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
-
-        verify(userModel, never()).joinGroup(any());
-    }
-
-    @Test
-    void shouldRemoveCurrentGroupWithNullNameWhenAbsentFromLegacy() {
-        final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel currentGroup = mock(GroupModel.class);
-        when(currentGroup.getId())
-                .thenReturn(null);
-        when(currentGroup.getName())
-                .thenReturn(null);
-        UserModel userModel = userModelWithGroups(currentGroup);
-
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
-
-        verify(userModel).leaveGroup(currentGroup);
-    }
-
-    @Test
-    void shouldRemoveCurrentGroupWithBlankNameWhenAbsentFromLegacy() {
-        final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
-        configureMigrationOfUnmappedGroups();
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel currentGroup = asGroupModel(" ");
-        when(currentGroup.getId()).thenReturn(null);
-        UserModel userModel = userModelWithGroups(currentGroup);
-
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
-
-        verify(userModel).leaveGroup(currentGroup);
-    }
-
-    @Test
-    void shouldNotRemoveIgnoredGroupsDuringSynchronization() {
-        final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-        configureMigrationOfUnmappedGroups();
-        config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("manual-*"));
-        userModelFactory = constructUserModelFactory();
-
-        GroupModel mappedGroup = asGroupModel(legacyUser.groups().getFirst());
-        GroupModel missingGroup = asGroupModel(legacyUser.groups().get(1));
-        GroupModel untrackedGroup = asGroupModel("manual-group");
-        existingGroupsInRealm(mappedGroup, missingGroup, untrackedGroup);
-        UserModel userModel = userModelWithGroups(mappedGroup, untrackedGroup);
-
-        userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
-
-        verify(userModel, never()).leaveGroup(untrackedGroup);
-    }
-}
-
-@Nested
-class IsDuplicateUserId {
-
-    @Test
-    void isDuplicateUserIdShouldReturnFalseGivenNotMigratingUserId() {
-        final LegacyUser legacyUser = TestLegacyUser.minimal();
-        userModelFactory = constructUserModelFactory();
-
-        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
-
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void isDuplicateUserIdShouldReturnTrueGivenMigratingIdAndItAlreadyExists() {
-        final LegacyUser legacyUser = TestLegacyUser.withId();
-        mockUserModelWithSameIdAlreadyExists(legacyUser);
-        userModelFactory = constructUserModelFactory();
-
-        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
-
-        assertThat(result).isTrue();
-    }
-
-    private void mockUserModelWithSameIdAlreadyExists(LegacyUser legacyUser) {
-        when(userProvider.getUserById(realm, legacyUser.id()))
-                .thenReturn(matchingUserModel(legacyUser));
-    }
-
-    @Test
-    void isDuplicateUserIdShouldReturnFalseGivenMigratingIdAndItDoesntExist() {
-        final LegacyUser legacyUser = TestLegacyUser.withId();
-        mockNoExistingUserModelWithSameId(legacyUser);
-        userModelFactory = constructUserModelFactory();
-
-        var result = userModelFactory.isDuplicateUserId(legacyUser, realm);
-
-        assertThat(result).isFalse();
-    }
-
-    private void mockNoExistingUserModelWithSameId(LegacyUser legacyUser) {
-        when(userProvider.getUserById(realm, legacyUser.id()))
-                .thenReturn(null);
-    }
-}
-
-@Nested
-class UpdateUserAttributes {
-
-    @Test
-    void shouldUpdateUsernameOnExistingUser() {
-        var legacyUser = new LegacyUser(
-                null,
-                "newUsername",
-                "email@example.com",
-                "First",
-                "Last",
-                true, true,
-                Map.of(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-        UserModel userModel = new TestUserModel("oldUsername");
-
-        userModelFactory = constructUserModelFactory();
-        userModelFactory.updateUserAttributes(legacyUser, userModel);
-
-        assertThat(userModel.getUsername()).isEqualTo("newUsername");
-    }
-
-    @Test
-    void shouldUpdateBasicAttributesOnExistingUser() {
-        var legacyUser = new LegacyUser(
-                null,
-                "username",
-                "new@email.com",
-                "NewFirst",
-                "NewLast",
-                false, false,
-                Map.of(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-        UserModel userModel = new TestUserModel("username");
-        userModel.setEmail("old@email.com");
-        userModel.setFirstName("OldFirst");
-        userModel.setLastName("OldLast");
-        userModel.setEnabled(true);
-        userModel.setEmailVerified(true);
-
-        userModelFactory = constructUserModelFactory();
-        userModelFactory.updateUserAttributes(legacyUser, userModel);
-
-        assertThat(userModel.getEmail()).isEqualTo("new@email.com");
-        assertThat(userModel.getFirstName()).isEqualTo("NewFirst");
-        assertThat(userModel.getLastName()).isEqualTo("NewLast");
-        assertThat(userModel.isEnabled()).isFalse();
-        assertThat(userModel.isEmailVerified()).isFalse();
-    }
-
-    @Test
-    void shouldOverwriteExistingCustomAttributes() {
-        var legacyUser = new LegacyUser(
-                null,
-                "username",
-                "email",
-                "first",
-                "last",
-                true,
-                true,
-                Map.of("attr1", List.of("newVal")),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-        UserModel userModel = new TestUserModel("username");
-        userModel.setAttribute("attr1", List.of("oldVal"));
-
-        userModelFactory = constructUserModelFactory();
-        userModelFactory.updateUserAttributes(legacyUser, userModel);
-
-        assertThat(userModel.getAttributeStream("attr1")).containsExactly("newVal");
-    }
-
-    @Test
-    void shouldNotRemoveExtraLocalAttributesWhenUpdating() {
-        var legacyUser = new LegacyUser(
-                null,
-                "username",
-                "email",
-                "first",
-                "last",
-                true,
-                true,
-                Map.of("attr1", List.of("val1")),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-        UserModel userModel = new TestUserModel("username");
-        userModel.setAttribute("localAttr", List.of("localVal"));
-
-        userModelFactory = constructUserModelFactory();
-        userModelFactory.updateUserAttributes(legacyUser, userModel);
-
-        assertThat(userModel.getAttributeStream("attr1")).containsExactly("val1");
-        assertThat(userModel.getAttributeStream("localAttr")).containsExactly("localVal");
-    }
-
-    @Test
-    void shouldHandleNullAttributesInLegacyUserGracefully() {
-        var legacyUser = new LegacyUser(
-                null,
-                "username",
-                "email",
-                "first",
-                "last",
-                true,
-                true,
-                null,
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList(),
-                emptyList()
-        );
-        UserModel userModel = new TestUserModel("username");
-        userModel.setAttribute("localAttr", List.of("localVal"));
-
-        userModelFactory = constructUserModelFactory();
-        // Should not throw NPE
-        userModelFactory.updateUserAttributes(legacyUser, userModel);
-
-        assertThat(userModel.getAttributeStream("localAttr")).containsExactly("localVal");
-    }
-}
 }

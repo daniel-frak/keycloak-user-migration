@@ -19,7 +19,7 @@ describe('TOTP refresh on password login', () => {
 
     it('should add and remove a legacy TOTP for an already migrated user', () => {
         cy.request('PUT',
-            `${data.legacySystem.testSupportUrl}/users/${data.totpUser.username}/totps`, []);
+            `${data.legacySystem.testSupportUrl}/${data.totpUser.username}/totps`, []);
 
         configureProviderTotpRefresh(false, false);
         clearBrowserSession();
@@ -29,7 +29,7 @@ describe('TOTP refresh on password login', () => {
         clearBrowserSession();
 
         cy.request('PUT',
-            `${data.legacySystem.testSupportUrl}/users/${data.totpUser.username}/totps`,
+            `${data.legacySystem.testSupportUrl}/${data.totpUser.username}/totps`,
             [data.totpUser.totp]);
 
         configureProviderTotpRefresh(true, false);
@@ -40,7 +40,7 @@ describe('TOTP refresh on password login', () => {
 
         clearBrowserSession();
         cy.request('PUT',
-            `${data.legacySystem.testSupportUrl}/users/${data.totpUser.username}/totps`, []);
+            `${data.legacySystem.testSupportUrl}/${data.totpUser.username}/totps`, []);
 
         keycloak.signInAsLegacyUser(data.totpUser);
         loginPage.elements.totpField().should('not.exist');

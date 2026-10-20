@@ -45,10 +45,13 @@ public class TotpValidationService {
 
     private void validateTotpParameters(LegacyTotp totp) {
         if (totp.digits() != TOTP_DIGITS_SHORT && totp.digits() != TOTP_DIGITS_LONG) {
-            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
+            throw new IllegalArgumentException("Legacy TOTP digits must be 6 or 8.");
         }
-        if (totp.period() <= 0 || totp.algorithm() == null || !TOTP_ALGORITHMS.contains(totp.algorithm())) {
-            throw new IllegalArgumentException("Invalid legacy TOTP configuration.");
+        if (totp.period() <= 0) {
+            throw new IllegalArgumentException("Legacy TOTP period must be positive.");
+        }
+        if (totp.algorithm() == null || !TOTP_ALGORITHMS.contains(totp.algorithm())) {
+            throw new IllegalArgumentException("Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512.");
         }
     }
 
