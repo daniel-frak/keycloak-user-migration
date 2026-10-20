@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
@@ -21,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
@@ -189,6 +193,44 @@ class UserModelFactoryTest {
                 assertThat(otp.getId()).isEqualTo(existing.getId());
                 assertThat(otp.getCreatedDate()).isEqualTo(123L);
             });
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"null"})
+        void shouldPreserveCredentialsWithOptionalLabels(String label) {
+            var device = new LegacyTotp(DEVICE.secret(), label, 6, 30, "HmacSHA1", null);
+            var existing = store(device);
+            var devices = List.of(device);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().satisfies(otp -> {
+                assertThat(otp.getId()).isEqualTo(existing.getId());
+                assertThat(otp.getUserLabel()).isEqualTo(label);
+            });
+        }
+
+        @Test
+        void shouldFailWithoutChangingCredentialsWhenSha256IsUnavailable() {
+            var existing = store(DEVICE);
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+            var cause = new NoSuchAlgorithmException("SHA-256 unavailable");
+
+            try (var messageDigest = mockStatic(MessageDigest.class)) {
+                messageDigest.when(() -> MessageDigest.getInstance("SHA-256")).thenThrow(cause);
+
+                assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("SHA-256 is unavailable.")
+                        .hasCause(cause);
+            }
+
+            assertThat(totps()).singleElement().extracting(CredentialModel::getId).isEqualTo(existing.getId());
         }
 
         @Test

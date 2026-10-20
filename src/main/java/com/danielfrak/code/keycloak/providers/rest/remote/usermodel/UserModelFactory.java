@@ -4,7 +4,6 @@ import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganizationDomain;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
-import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import org.jboss.logging.Logger;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
@@ -15,7 +14,6 @@ import java.security.NoSuchAlgorithmException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.HexFormat;
 import java.util.stream.Collectors;
@@ -216,8 +214,8 @@ public class UserModelFactory {
         try {
             var digest = MessageDigest.getInstance("SHA-256").digest(credential.getDecodedSecret());
             var label = credential.getUserLabel();
-            var labelKey = label == null ? "null" : "value"
-                    + Base64.getEncoder().encodeToString(label.getBytes(StandardCharsets.UTF_8));
+            var labelKey = label == null ? "null" : ("value"
+                    + Base64.getEncoder().encodeToString(label.getBytes(StandardCharsets.UTF_8)));
             return labelKey + "|" + data.getDigits() + "|"
                     + data.getPeriod() + "|" + data.getAlgorithm() + "|" + HexFormat.of().formatHex(digest);
         } catch (NoSuchAlgorithmException ex) {

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.keycloak.models.credential.OTPCredentialModel;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,6 +34,19 @@ class TotpValidationServiceTest {
                 assertThat(credential.getOTPCredentialData().getDigits()).isEqualTo(device.digits());
                 assertThat(credential.getOTPCredentialData().getPeriod()).isEqualTo(device.period());
                 assertThat(credential.getOTPCredentialData().getAlgorithm()).isEqualTo(device.algorithm());
+            });
+        }
+
+        @Test
+        void shouldAcceptEightDigitTotp() {
+            var device = new LegacyTotp("secret", "Authenticator", 8, 60, "HmacSHA512", null);
+
+            var result = service.validateTotps(List.of(device));
+
+            assertThat(result).singleElement().satisfies(credential -> {
+                assertThat(credential.getOTPCredentialData().getDigits()).isEqualTo(8);
+                assertThat(credential.getOTPCredentialData().getPeriod()).isEqualTo(60);
+                assertThat(credential.getOTPCredentialData().getAlgorithm()).isEqualTo("HmacSHA512");
             });
         }
 
