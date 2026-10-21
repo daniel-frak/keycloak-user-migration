@@ -4,6 +4,7 @@ class LoginPage {
         usernameField: () => cy.get('#username'),
         passwordField: () => cy.get('#password'),
         logInBtn: () => cy.get('#kc-login'),
+        totpField: () => cy.get('#otp'),
     }
 
     visitForAdmin() {

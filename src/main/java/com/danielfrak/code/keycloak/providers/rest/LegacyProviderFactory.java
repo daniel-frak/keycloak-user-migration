@@ -7,7 +7,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.LaxRedirectStrategy;
 import org.keycloak.component.ComponentModel;
+import org.keycloak.component.ComponentValidationException;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.models.RealmModel;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.storage.UserStorageProviderFactory;
 
@@ -23,6 +25,15 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
     }
 
     @Override
+    public void validateConfiguration(KeycloakSession session, RealmModel realm, ComponentModel model) {
+        var config = new MigrationConfiguration(model);
+        if (config.shouldUpdateUserTotpsOnLogin() && config.shouldSeverFederationLink()) {
+            throw new ComponentValidationException(
+                    "Disable 'Sever federation link after migration' before enabling TOTP refresh.");
+        }
+    }
+
+    @Override
     public LegacyProvider create(KeycloakSession session, ComponentModel model) {
         var legacyMappingParser = new LegacyMappingParser();
         var wildcardPatternFactory = new WildcardPatternFactory();
@@ -31,13 +42,15 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
                 session,
                 config,
                 new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory),
-                new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory)
+                new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory),
+                new TotpValidationService()
         );
         var httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
         var restService = new RestUserService(model, httpClient, new ObjectMapper());
 
         var localUserLookup = new LocalUserLookup(session);
-        var userMigrationService = new UserMigrationService(restService, localUserLookup, userModelFactory, config);
+        var userMigrationService = new UserMigrationService(
+                session, restService, localUserLookup, userModelFactory, config);
         var credentialValidationService = new CredentialValidationService(session, restService, config);
 
         return new LegacyProvider(userMigrationService, credentialValidationService, config);

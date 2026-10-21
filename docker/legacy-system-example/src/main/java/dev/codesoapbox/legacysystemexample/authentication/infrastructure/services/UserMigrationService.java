@@ -1,10 +1,12 @@
 package dev.codesoapbox.legacysystemexample.authentication.infrastructure.services;
 
-import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.TotpDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -22,6 +24,15 @@ public class UserMigrationService {
         return userRepository.findByUsername(usernameOrEmail)
                 .or(() -> userRepository.findByEmail(usernameOrEmail))
                 .map(UserMigrationDetails::from);
+    }
+
+    public boolean updateTotpsForUser(String username, List<TotpDetails> totps) {
+        Optional<User> user = userRepository.findByUsername(username);
+        if (user.isEmpty()) {
+            return false;
+        }
+        user.get().setTotps(List.copyOf(totps));
+        return true;
     }
 
     public boolean passwordIsCorrect(String usernameOrEmail, String password) {

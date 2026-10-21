@@ -2,6 +2,7 @@ package dev.codesoapbox.legacysystemexample.authentication.infrastructure.servic
 
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.TestUserDataProvider;
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.TotpDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.User;
 import dev.codesoapbox.legacysystemexample.authentication.domain.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,6 +35,8 @@ class UserMigrationServiceTest {
     @Test
     void shouldGetMigrationDetailsByUsername() {
         User user = userDataProvider.full();
+        user.setTotps(List.of(new TotpDetails(
+                "secret", "Authenticator", 6, 30, "HmacSHA1", null)));
         String username = user.getUsername();
 
         when(userRepository.findByUsername(username))
@@ -43,6 +47,7 @@ class UserMigrationServiceTest {
         assertTrue(details.isPresent());
         assertEquals(username, details.get().getUsername());
         assertTrue(details.get().isEmailVerified());
+        assertEquals(user.getTotps(), details.get().getTotps());
     }
 
     @Test
@@ -58,6 +63,42 @@ class UserMigrationServiceTest {
         assertTrue(details.isPresent());
         assertEquals(email, details.get().getEmail());
         assertTrue(details.get().isEmailVerified());
+    }
+
+    @Test
+    void shouldUpdateTotpsForKnownUser() {
+        User user = userDataProvider.full();
+        String username = user.getUsername();
+        var totps = List.of(new TotpDetails(
+                "ONSWG4TFOQ======", "E2E authenticator", 6, 30, "HmacSHA1", "BASE32"));
+        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+
+        boolean updated = migrationService.updateTotpsForUser(username, totps);
+
+        assertTrue(updated);
+        assertEquals(totps, user.getTotps());
+    }
+
+    @Test
+    void shouldRemoveTotpsForKnownUser() {
+        User user = userDataProvider.full();
+        user.setTotps(List.of(new TotpDetails(
+                "secret", "Authenticator", 6, 30, "HmacSHA1", null)));
+        when(userRepository.findByUsername(user.getUsername())).thenReturn(Optional.of(user));
+
+        boolean updated = migrationService.updateTotpsForUser(user.getUsername(), List.of());
+
+        assertTrue(updated);
+        assertTrue(user.getTotps().isEmpty());
+    }
+
+    @Test
+    void shouldNotUpdateTotpsForUnknownUser() {
+        when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
+
+        boolean updated = migrationService.updateTotpsForUser("unknown", List.of());
+
+        assertFalse(updated);
     }
 
     @Test

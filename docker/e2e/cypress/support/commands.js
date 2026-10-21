@@ -90,7 +90,8 @@ Cypress.Commands.add("resetState", () => {
     function deleteTestUserIfExists() {
         removeImportedUsers();
         usersPage.visit();
-        return usersPage.deleteUserIfExists(data.legacyUser.username);
+        return usersPage.deleteUserIfExists(data.legacyUser.username)
+            .then(() => usersPage.deleteUserIfExists(data.totpUser.username));
     }
 
     /*

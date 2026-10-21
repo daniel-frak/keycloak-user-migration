@@ -1,9 +1,12 @@
 package dev.codesoapbox.legacysystemexample.authentication.domain.model;
 
 import lombok.Builder;
-import lombok.Value;
+import lombok.Getter;
+import lombok.Setter;
 
-@Value
+import java.util.List;
+
+@Getter
 @Builder
 public class User {
 
@@ -13,4 +16,7 @@ public class User {
     private String firstName;
     private String lastName;
     private String password;
+    private List<String> requiredActions;
+    @Setter
+    private List<TotpDetails> totps;
 }

@@ -1,5 +1,6 @@
 package dev.codesoapbox.legacysystemexample.authentication.presentation.controllers;
 
+import dev.codesoapbox.legacysystemexample.authentication.domain.model.TotpDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserMigrationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.domain.model.UserValidationDetails;
 import dev.codesoapbox.legacysystemexample.authentication.infrastructure.services.UserMigrationService;
@@ -11,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping(value = AuthenticationControllerPaths.MIGRATION_SUPPORT_PATH,
@@ -33,6 +36,18 @@ public class UserMigrationController {
         return migrationService.getMigrationDetails(usernameOrEmail)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).build());
+    }
+
+    @PutMapping("/{username}/totps")
+    @Operation(summary = "Updates TOTP credentials for a user")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "TOTP credentials were updated"),
+            @ApiResponse(responseCode = "404", description = "User could not be found")})
+    public ResponseEntity<Void> updateTotps(@PathVariable String username,
+                                            @RequestBody List<TotpDetails> totps) {
+        return migrationService.updateTotpsForUser(username, totps)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
     }
 
     @PostMapping("/{usernameOrEmail}")

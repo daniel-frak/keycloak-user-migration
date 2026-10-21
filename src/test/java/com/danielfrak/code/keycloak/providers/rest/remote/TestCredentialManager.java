@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 public class TestCredentialManager implements SubjectCredentialManager {
     
     private final Set<CredentialModel> storedCredentials = new HashSet<>();
+    private int nextCredentialId;
 
     @Override
     public boolean isValid(List<CredentialInput> inputs) {
@@ -31,13 +32,16 @@ public class TestCredentialManager implements SubjectCredentialManager {
 
     @Override
     public CredentialModel createStoredCredential(CredentialModel cred) {
+        if (cred.getId() == null) {
+            cred.setId("credential-" + nextCredentialId++);
+        }
         this.storedCredentials.add(cred);
         return cred;
     }
 
     @Override
     public boolean removeStoredCredentialById(String id) {
-        throw new RuntimeException("Not implemented");
+        return storedCredentials.removeIf(credential -> Objects.equals(credential.getId(), id));
     }
 
     @Override

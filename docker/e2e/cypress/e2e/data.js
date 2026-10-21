@@ -1,6 +1,7 @@
 module.exports = {
     legacySystem: {
-        url: "http://legacy-system-example:8080/user-migration-support"
+        url: "http://legacy-system-example:8080/user-migration-support",
+        testSupportUrl: "http://localhost:8080/user-migration-support"
     },
     providerName: "User migration using a REST client",
     pluginName: "Custom REST Client Provider",
@@ -21,5 +22,19 @@ module.exports = {
         email: "lucy@example.com",
         firstName: "Lucy",
         lastName: "Brennan"
+    },
+    totpUser: {
+        username: "mfa",
+        simplePassword: "password",
+        firstName: "Mfa",
+        lastName: "Tester",
+        totp: {
+            secret: "ONSWG4TFOQ======",
+            name: "E2E authenticator",
+            digits: 6,
+            period: 30,
+            algorithm: "HmacSHA1",
+            encoding: "BASE32"
+        }
     }
 }

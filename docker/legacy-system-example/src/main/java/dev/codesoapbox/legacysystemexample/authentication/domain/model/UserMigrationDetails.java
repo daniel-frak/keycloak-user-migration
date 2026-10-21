@@ -21,6 +21,7 @@ public class UserMigrationDetails {
     private List<String> roles;
     private List<String> groups;
     private List<String> requiredActions;
+    private List<TotpDetails> totps;
 
     public static UserMigrationDetails from(User user) {
         return UserMigrationDetails.builder()
@@ -33,7 +34,10 @@ public class UserMigrationDetails {
                 .attributes(Map.of("attribute 1", List.of("value1", "value 2")))
                 .roles(List.of("role 1", "role 2"))
                 .groups(List.of("group 1", "group2"))
-                .requiredActions(List.of("UPDATE_PROFILE"))
+                .requiredActions(user.getRequiredActions() == null
+                        ? List.of("UPDATE_PROFILE")
+                        : user.getRequiredActions())
+                .totps(user.getTotps())
                 .build();
     }
 }

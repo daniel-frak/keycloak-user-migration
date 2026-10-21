@@ -4,6 +4,9 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
 import org.jboss.logging.Logger;
+import org.keycloak.authentication.AuthenticationFlowError;
+import org.keycloak.authentication.AuthenticationFlowException;
+import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 
@@ -14,15 +17,17 @@ public class UserMigrationService {
 
     private static final Logger LOG = Logger.getLogger(UserMigrationService.class);
 
+    private final KeycloakSession session;
     private final LegacyUserService legacyUserService;
     private final LocalUserLookup localUserLookup;
     private final UserModelFactory userModelFactory;
     private final MigrationConfiguration config;
 
-    public UserMigrationService(LegacyUserService legacyUserService,
+    public UserMigrationService(KeycloakSession session, LegacyUserService legacyUserService,
                                 LocalUserLookup localUserLookup,
                                 UserModelFactory userModelFactory,
                                 MigrationConfiguration config) {
+        this.session = session;
         this.legacyUserService = legacyUserService;
         this.localUserLookup = localUserLookup;
         this.userModelFactory = userModelFactory;
@@ -80,6 +85,38 @@ public class UserMigrationService {
         LOG.debugf("Found existing user %s in Keycloak. Updating from legacy payload.",
                 existingUser.getUsername());
         userModelFactory.updateUserAttributes(legacyUser, existingUser);
+    }
+
+    public void refreshUserTotpsFromLegacy(RealmModel realm, UserModel userModel) {
+        try {
+            if (config.shouldSeverFederationLink()) {
+                throw new IllegalStateException("TOTP refresh requires a retained federation link.");
+            }
+            var legacyUser = legacyUserService.findByUsername(userModel.getUsername())
+                    .orElseThrow(() -> new IllegalStateException("Legacy user unavailable during TOTP refresh."));
+            if (!legacyUser.isEnabled()) {
+                throw new IllegalStateException("Legacy user disabled during TOTP refresh.");
+            }
+            if (legacyUser.id() != null && !legacyUser.id().isBlank()
+                    && !legacyUser.id().equals(userModel.getId())) {
+                throw new IllegalStateException("Legacy user id differs during TOTP refresh.");
+            }
+            userModelFactory.synchronizeTotps(legacyUser, userModel);
+            refreshUserFromLegacy(realm, userModel, legacyUser, userModel.getUsername());
+        } catch (RuntimeException ex) {
+            session.getTransactionManager().setRollbackOnly();
+            logTotpSynchronizationFailure(userModel, ex);
+            throw new AuthenticationFlowException("Unable to synchronize legacy TOTP credentials.",
+                    AuthenticationFlowError.INTERNAL_ERROR);
+        }
+    }
+
+    private void logTotpSynchronizationFailure(UserModel user, RuntimeException exception) {
+        // Preserve the failure location without exposing legacy credential data in messages or nested causes.
+        var sanitized = new RuntimeException(exception.getClass().getName());
+        sanitized.setStackTrace(exception.getStackTrace());
+        LOG.errorf(sanitized, "Failed to synchronize legacy TOTP credentials for user %s. Aborting login.",
+                user.getId());
     }
 
     public void refreshUserFromLegacy(RealmModel realm, UserModel userModel) {

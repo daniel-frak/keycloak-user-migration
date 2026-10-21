@@ -6,16 +6,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.credential.CredentialModel;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
+import org.keycloak.models.credential.PasswordCredentialModel;
+import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.organization.OrganizationProvider;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +60,9 @@ class UserModelFactoryTest {
     private OrganizationProvider organizationProvider;
 
     @Mock
+    private TotpValidationService totpValidationService;
+
+    @Mock
     private RealmModel realm;
 
     private WildcardPatternFactory wildcardPatternFactory;
@@ -66,6 +79,9 @@ class UserModelFactoryTest {
                 .thenReturn(userProvider);
         lenient().when(session.getProvider(OrganizationProvider.class))
                 .thenReturn(organizationProvider);
+        lenient().when(totpValidationService.toTotpCredential(any()))
+                .thenAnswer(invocation ->
+                        new TotpValidationService().toTotpCredential(invocation.getArgument(0)));
 
         wildcardPatternFactory = new WildcardPatternFactory();
         legacyMappingParser = new LegacyMappingParser();
@@ -75,7 +91,8 @@ class UserModelFactoryTest {
         var roleMigrationService = new RoleMigrationService(model, legacyMappingParser, wildcardPatternFactory);
         var groupMigrationService = new GroupMigrationService(model, legacyMappingParser, wildcardPatternFactory);
         var migrationConfiguration = new MigrationConfiguration(model);
-        return new UserModelFactory(session, migrationConfiguration, roleMigrationService, groupMigrationService);
+        return new UserModelFactory(session, migrationConfiguration, roleMigrationService, groupMigrationService,
+                totpValidationService);
     }
 
     private void configureMigrationOfUnmappedRoles() {
@@ -100,6 +117,272 @@ class UserModelFactoryTest {
         for (RoleModel roleModel : roleModels) {
             when(realm.getRole(roleModel.getName()))
                     .thenReturn(roleModel);
+        }
+    }
+
+    @Nested
+    class SynchronizeTotps {
+
+        private static final LegacyTotp DEVICE =
+                new LegacyTotp("secret", "Authenticator", 6, 30, "HmacSHA1", null);
+
+        private final TestCredentialManager credentialManager = new TestCredentialManager();
+        private final UserModel user = mock(UserModel.class);
+
+        @BeforeEach
+        void setUp() {
+            userModelFactory = constructUserModelFactory();
+            lenient().when(user.credentialManager()).thenReturn(credentialManager);
+        }
+
+        private LegacyUser legacyUser(List<LegacyTotp> devices) {
+            return new LegacyUser("id", "username", null, null, null, true, false,
+                    null, null, null, null, devices, null);
+        }
+
+        private OTPCredentialModel credential(LegacyTotp device) {
+            var credential = OTPCredentialModel.createTOTP(
+                    device.secret(), device.digits(), device.period(), device.algorithm(), device.encoding());
+            credential.setUserLabel(device.name());
+            return credential;
+        }
+
+        private List<OTPCredentialModel> credentials(List<LegacyTotp> devices) {
+            return devices.stream().map(this::credential).toList();
+        }
+
+        private List<OTPCredentialModel> totps() {
+            return credentialManager.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE)
+                    .map(OTPCredentialModel::createFromCredentialModel)
+                    .filter(otp -> OTPCredentialModel.TOTP.equals(otp.getOTPCredentialData().getSubType()))
+                    .toList();
+        }
+
+        private CredentialModel store(LegacyTotp device) {
+            return credentialManager.createStoredCredential(credential(device));
+        }
+
+        @Test
+        void shouldImportTotpForAnExistingUser() {
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().satisfies(otp -> {
+                assertThat(otp.getOTPSecretData().getValue()).isEqualTo(DEVICE.secret());
+                assertThat(otp.getUserLabel()).isEqualTo(DEVICE.name());
+                assertThat(otp.getOTPCredentialData().getDigits()).isEqualTo(6);
+                assertThat(otp.getOTPCredentialData().getPeriod()).isEqualTo(30);
+            });
+        }
+
+        @Test
+        void shouldPreserveCredentialIdAndCreationTimeOnRepeatedLogins() {
+            var existing = store(DEVICE);
+            existing.setCreatedDate(123L);
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().satisfies(otp -> {
+                assertThat(otp.getId()).isEqualTo(existing.getId());
+                assertThat(otp.getCreatedDate()).isEqualTo(123L);
+            });
+        }
+
+        @ParameterizedTest
+        @NullAndEmptySource
+        @ValueSource(strings = {"null"})
+        void shouldPreserveCredentialsWithOptionalLabels(String label) {
+            var device = new LegacyTotp(DEVICE.secret(), label, 6, 30, "HmacSHA1", null);
+            var existing = store(device);
+            var devices = List.of(device);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().satisfies(otp -> {
+                assertThat(otp.getId()).isEqualTo(existing.getId());
+                assertThat(otp.getUserLabel()).isEqualTo(label);
+            });
+        }
+
+        @Test
+        void shouldFailWithoutChangingCredentialsWhenSha256IsUnavailable() {
+            var existing = store(DEVICE);
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+            var cause = new NoSuchAlgorithmException("SHA-256 unavailable");
+
+            try (var messageDigest = mockStatic(MessageDigest.class)) {
+                messageDigest.when(() -> MessageDigest.getInstance("SHA-256")).thenThrow(cause);
+
+                assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
+                        .isInstanceOf(IllegalStateException.class)
+                        .hasMessage("SHA-256 is unavailable.")
+                        .hasCause(cause);
+            }
+
+            assertThat(totps()).singleElement().extracting(CredentialModel::getId).isEqualTo(existing.getId());
+        }
+
+        @Test
+        void shouldMatchEquivalentSecretEncodings() {
+            var existing = store(DEVICE);
+            var devices = List.of(new LegacyTotp(
+                    "ONSWG4TFOQ======", DEVICE.name(), 6, 30, "HmacSHA1", "BASE32"));
+            when(totpValidationService.validateTotps(devices))
+                    .thenReturn(new TotpValidationService().validateTotps(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().extracting(CredentialModel::getId).isEqualTo(existing.getId());
+        }
+
+        @Test
+        void shouldRemoveStaleTotpsAndPreserveOtherCredentialTypes() {
+            store(DEVICE);
+            store(new LegacyTotp("local-secret", "Keycloak device", 6, 30, "HmacSHA1", null));
+            var hotp = credentialManager.createStoredCredential(
+                    OTPCredentialModel.createHOTP("hotp", 6, 0, "HmacSHA1"));
+            var password = new CredentialModel();
+            password.setType(PasswordCredentialModel.TYPE);
+            credentialManager.createStoredCredential(password);
+            var recoveryCodes = new CredentialModel();
+            recoveryCodes.setType("recovery-authn-codes");
+            credentialManager.createStoredCredential(recoveryCodes);
+            var devices = List.<LegacyTotp>of();
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).isEmpty();
+            assertThat(credentialManager.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
+                    .containsExactly(hotp);
+            assertThat(credentialManager.getStoredCredentialsByTypeStream(PasswordCredentialModel.TYPE))
+                    .containsExactly(password);
+            assertThat(credentialManager.getStoredCredentialsByTypeStream("recovery-authn-codes"))
+                    .containsExactly(recoveryCodes);
+        }
+
+        @Test
+        void shouldReconcileMultipleDevicesWithoutDuplicates() {
+            var retained = store(DEVICE);
+            store(new LegacyTotp("removed-secret", "Removed device", 6, 30, "HmacSHA1", null));
+            var added = new LegacyTotp("new-secret", "New device", 8, 60, "HmacSHA512", null);
+            var devices = List.of(DEVICE, added);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).hasSize(2);
+            assertThat(totps()).extracting(CredentialModel::getId).contains(retained.getId());
+            assertThat(totps()).extracting(CredentialModel::getUserLabel)
+                    .containsExactlyInAnyOrder(DEVICE.name(), added.name());
+        }
+
+        @Test
+        void shouldAcceptRotatedCodeAndRejectOldCode() {
+            store(DEVICE);
+            var rotated = new LegacyTotp("rotated-secret", DEVICE.name(), 6, 30, "HmacSHA1", null);
+            var devices = List.of(rotated);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+            var otp = new TimeBasedOTP("HmacSHA1", 6, 30, 0);
+            var calendar = new GregorianCalendar();
+            calendar.setTimeInMillis(1234567890000L);
+            otp.setCalendar(calendar);
+            var oldCode = otp.generateTOTP(DEVICE.secret().getBytes(StandardCharsets.UTF_8));
+            var newCode = otp.generateTOTP(rotated.secret().getBytes(StandardCharsets.UTF_8));
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            var storedSecret = totps().getFirst().getDecodedSecret();
+            assertThat(otp.validateTOTP(newCode, storedSecret)).isTrue();
+            assertThat(otp.validateTOTP(oldCode, storedSecret)).isFalse();
+        }
+
+        @ParameterizedTest
+        @MethodSource("changedDevices")
+        void shouldReplaceChangedTotpConfiguration(LegacyTotp changedDevice) {
+            var old = store(DEVICE);
+            var devices = List.of(changedDevice);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            userModelFactory.synchronizeTotps(legacyUser, user);
+
+            assertThat(totps()).singleElement().satisfies(otp -> {
+                assertThat(otp.getId()).isNotEqualTo(old.getId());
+                assertThat(otp.getOTPSecretData().getValue()).isEqualTo(changedDevice.secret());
+                assertThat(otp.getUserLabel()).isEqualTo(changedDevice.name());
+                assertThat(otp.getOTPCredentialData().getDigits()).isEqualTo(changedDevice.digits());
+                assertThat(otp.getOTPCredentialData().getPeriod()).isEqualTo(changedDevice.period());
+                assertThat(otp.getOTPCredentialData().getAlgorithm()).isEqualTo(changedDevice.algorithm());
+            });
+        }
+
+        private static Stream<LegacyTotp> changedDevices() {
+            return Stream.of(
+                    new LegacyTotp("rotated-secret", DEVICE.name(), 6, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), "Renamed device", 6, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 8, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 60, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 30, "HmacSHA256", null));
+        }
+
+        @Test
+        void shouldNotChangeCredentialsWhenValidationFails() {
+            var old = store(DEVICE);
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices))
+                    .thenThrow(new IllegalArgumentException("Invalid legacy TOTP configuration."));
+            var legacyUser = legacyUser(devices);
+
+            assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
+                    .isInstanceOf(IllegalArgumentException.class);
+
+            assertThat(totps()).singleElement().extracting(CredentialModel::getId).isEqualTo(old.getId());
+        }
+
+        @Test
+        void shouldFailIfCredentialCannotBeCreated() {
+            var failingCredentials = mock(SubjectCredentialManager.class);
+            when(user.credentialManager()).thenReturn(failingCredentials);
+            when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
+                    .thenReturn(Stream.empty());
+            var devices = List.of(DEVICE);
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        void shouldFailIfStaleCredentialCannotBeRemoved() {
+            var old = store(DEVICE);
+            var failingCredentials = mock(SubjectCredentialManager.class);
+            when(user.credentialManager()).thenReturn(failingCredentials);
+            when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
+                    .thenReturn(Stream.of(old));
+            var devices = List.<LegacyTotp>of();
+            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            var legacyUser = legacyUser(devices);
+
+            assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
+                    .isInstanceOf(IllegalStateException.class);
         }
     }
 
@@ -812,7 +1095,7 @@ class UserModelFactoryTest {
             var groupMigrationService = new GroupMigrationService(modelWithNullIgnoredLists,
                     legacyMappingParser, wildcardPatternFactory);
             var factory = new UserModelFactory(session, new MigrationConfiguration(modelWithNullIgnoredLists),
-                    roleMigrationService, groupMigrationService);
+                    roleMigrationService, groupMigrationService, totpValidationService);
 
             var legacyUser = new LegacyUser(
                     null,
