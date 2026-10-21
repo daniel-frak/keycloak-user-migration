@@ -1,5 +1,7 @@
 # Keycloak user migration plugin
 
+Test sonar workflow in a fork
+
 ![Code Soapbox logo](readme-images/logo.png)
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=keycloak-user-migration&metric=alert_status)](https://sonarcloud.io/dashboard?id=keycloak-user-migration)
