@@ -5,10 +5,12 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganizationDoma
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpRequestException;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpPost;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,12 +24,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -397,5 +401,17 @@ class RestUserServiceTest {
         var isPasswordValid = restUserService.isPasswordValid(
                 "someUsername", "somePassword");
         assertThat(isPasswordValid).isFalse();
+    }
+
+    @Test
+    void isPasswordValidShouldRethrowWhenRequestFails() {
+        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var exception = new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out"));
+
+        when(httpClient.post(anyString(), anyString()))
+                .thenThrow(exception);
+
+        assertThatThrownBy(() -> restUserService.isPasswordValid("someUsername", "somePassword"))
+                .isSameAs(exception);
     }
 }

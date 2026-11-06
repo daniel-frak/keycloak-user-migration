@@ -18,13 +18,16 @@ import static com.danielfrak.code.keycloak.providers.rest.ConfigurationPropertie
 public class RestUserService implements LegacyUserService {
 
     private static final Logger LOG = Logger.getLogger(RestUserService.class);
+    private static final String PASSWORD_VALIDATION = "password validation";
 
+    private final String providerName;
     private final String uri;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
+        this.providerName = model.getName();
         this.uri = model.getConfig().getFirst(URI_PROPERTY);
         this.objectMapper = objectMapper;
 
@@ -83,8 +86,8 @@ public class RestUserService implements LegacyUserService {
             var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
         } catch (RuntimeException|IOException e) {
-            LOG.errorf("Got a RuntimeException or IOException: when looking up user %s", usernameOrEmail);
-            LOG.errorf("Exception message: %s", e.getMessage());
+            LOG.error(lookupFailureMessage(providerName, uri, e));
+            LOG.debugf("Failed lookup was for user %s", usernameOrEmail);
             return Optional.empty();
         }
     }
@@ -101,9 +104,32 @@ public class RestUserService implements LegacyUserService {
             var response = httpClient.post(passwordValidationUri, json);
             return response.getCode() == HttpStatus.SC_OK;
         } catch (IOException e) {
-            LOG.errorf("Got an IOException: when validating password for user %s", username);
-            LOG.errorf("Exception message: %s", e.getMessage());
+            LOG.error(failureMessage(PASSWORD_VALIDATION, providerName, uri, e, "treating password as invalid"));
+            LOG.debugf("Failed password validation was for user %s", username);
             return false;
+        } catch (RuntimeException e) {
+            // Rethrown rather than treated as a wrong password: brute force detection would count it as a failed
+            // login, locking users out while the legacy system is unavailable
+            LOG.error(failureMessage(PASSWORD_VALIDATION, providerName, uri, e, "aborting password validation"));
+            LOG.debugf("Failed password validation was for user %s", username);
+            throw e;
         }
+    }
+
+    /**
+     * One log line per failed request: the provider and its URI (without the user, to keep personal data out of the
+     * log) and the cause, e.g. a timeout, so failures can be told apart and alerted on per provider.
+     */
+    static String lookupFailureMessage(String providerName, String uri, Exception e) {
+        return failureMessage("user lookup", providerName, uri, e, "treating user as not found");
+    }
+
+    static String failureMessage(String operation, String providerName, String uri, Exception e,
+                                 String consequence) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        String detail = cause.getMessage() != null ? cause.getMessage() : e.getMessage();
+        String causeDescription = cause.getClass().getSimpleName() + (detail != null ? ": " + detail : "");
+        return String.format("Legacy %s failed for provider '%s' (%s): %s - %s",
+                operation, providerName, uri, causeDescription, consequence);
     }
 }
