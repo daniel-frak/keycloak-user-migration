@@ -323,6 +323,38 @@ If basic auth is enabled, the username and password will be sent in the authoriz
 Authorization: Basic base64encode(username:password)
 ```
 
+### HTTP timeouts
+
+Keycloak calls the migration endpoints while the user waits, e.g. when signing in or registering with an e-mail
+address Keycloak doesn't know yet. By default, the rest client waits for the legacy system without a time limit:
+an unreachable host blocks the request until the operating system gives up (often a few minutes), a host that
+accepts the connection but never answers blocks it indefinitely.
+
+Set timeouts in milliseconds to fail fast instead:
+
+- `HTTP_CONNECT_TIMEOUT` (**Rest client connect timeout (ms)**): maximum time to establish the connection
+- `HTTP_READ_TIMEOUT` (**Rest client read timeout (ms)**): maximum time to wait for data once connected
+
+Leave a field empty to keep the default behavior. Both apply per connection and the read timeout per read, not to
+the request as a whole: a legacy system that sends its response slowly, a few bytes at a time, or redirects can
+take longer than the configured values.
+
+When a timeout is reached, the request fails like any other connection error:
+
+- **User lookup:** the user is treated as not found (as before for any failed lookup). Keep in mind that this
+  lets e.g. a registration with the e-mail address of a legacy user pass while the legacy system is unavailable
+- **Password validation:** the login is aborted with an error. It is not treated as a wrong password, so brute
+  force detection doesn't count it as a failed login
+
+Each failure is logged at ERROR level with the provider and the cause, without the user (which is logged at
+DEBUG level), e.g.:
+
+```
+Legacy user lookup failed for provider 'my-app' (https://legacy.example.com/users): SocketTimeoutException: Read timed out - treating user as not found
+```
+
+A failed lookup is then also logged by the migration as `User not found in external repository: <user>` (WARN).
+
 ### Refresh user attributes on login
 
 When enabled (`UPDATE_USER_ON_LOGIN`), the provider re-fetches and updates user profile attributes (name, email,
