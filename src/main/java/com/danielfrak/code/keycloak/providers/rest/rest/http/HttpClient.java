@@ -4,6 +4,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -27,6 +28,7 @@ public class HttpClient {
     private static final String USERNAME_PASSWORD_FORMAT = "%s:%s";
 
     private final HttpClientBuilder httpClientBuilder;
+    private final RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
 
     public HttpClient(HttpClientBuilder httpClientBuilder) {
         this.httpClientBuilder = httpClientBuilder;
@@ -50,6 +52,16 @@ public class HttpClient {
             var authorizationHeader = new BasicHeader(HttpHeaders.AUTHORIZATION, String.format(BEARER_FORMAT, token));
             httpClientBuilder.setDefaultHeaders(List.of(authorizationHeader));
         }
+    }
+
+    public void setConnectTimeout(int connectTimeoutMillis) {
+        requestConfigBuilder.setConnectTimeout(connectTimeoutMillis);
+        httpClientBuilder.setDefaultRequestConfig(requestConfigBuilder.build());
+    }
+
+    public void setReadTimeout(int readTimeoutMillis) {
+        requestConfigBuilder.setSocketTimeout(readTimeoutMillis);
+        httpClientBuilder.setDefaultRequestConfig(requestConfigBuilder.build());
     }
 
     public HttpResponse get(String uri) {

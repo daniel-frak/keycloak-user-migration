@@ -76,7 +76,8 @@ public final class ConfigurationProperties {
             new ProviderConfigProperty(HTTP_READ_TIMEOUT_PROPERTY,
                     HTTP_READ_TIMEOUT_LABEL,
                     "Maximum time in milliseconds to wait for data from the legacy system once connected " +
-                    "(between two packets, not for the whole response). Leave empty to wait indefinitely.",
+                    "(between two packets, not for the whole response). Leave empty for no timeout: the " +
+                    "request then waits until the legacy system answers or closes the connection.",
                     STRING_TYPE, null),
             new ProviderConfigProperty(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION,
                     "Use user id for credential verification",

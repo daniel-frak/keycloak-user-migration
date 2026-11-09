@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
@@ -18,7 +19,6 @@ import static com.danielfrak.code.keycloak.providers.rest.ConfigurationPropertie
 public class RestUserService implements LegacyUserService {
 
     private static final Logger LOG = Logger.getLogger(RestUserService.class);
-    private static final String PASSWORD_VALIDATION = "password validation";
 
     private final String providerName;
     private final String uri;
@@ -33,6 +33,13 @@ public class RestUserService implements LegacyUserService {
 
         configureBasicAuth(model, httpClient);
         configureBearerTokenAuth(model, httpClient);
+        configureTimeouts(model, httpClient);
+    }
+
+    private void configureTimeouts(ComponentModel model, HttpClient httpClient) {
+        var config = new MigrationConfiguration(model);
+        config.getHttpConnectTimeoutMillis().ifPresent(httpClient::setConnectTimeout);
+        config.getHttpReadTimeoutMillis().ifPresent(httpClient::setReadTimeout);
     }
 
     private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
@@ -86,7 +93,7 @@ public class RestUserService implements LegacyUserService {
             var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
         } catch (RuntimeException|IOException e) {
-            LOG.error(lookupFailureMessage(providerName, uri, e));
+            LOG.error(lookupFailureMessage(e));
             LOG.debugf("Failed lookup was for user %s", usernameOrEmail);
             return Optional.empty();
         }
@@ -104,31 +111,35 @@ public class RestUserService implements LegacyUserService {
             var response = httpClient.post(passwordValidationUri, json);
             return response.getCode() == HttpStatus.SC_OK;
         } catch (IOException e) {
-            LOG.error(failureMessage(PASSWORD_VALIDATION, providerName, uri, e, "treating password as invalid"));
+            LOG.error(passwordValidationFailureMessage(e, "treating password as invalid"));
             LOG.debugf("Failed password validation was for user %s", username);
             return false;
         } catch (RuntimeException e) {
-            // Rethrown rather than treated as a wrong password: brute force detection would count it as a failed
-            // login, locking users out while the legacy system is unavailable
-            LOG.error(failureMessage(PASSWORD_VALIDATION, providerName, uri, e, "aborting password validation"));
+            LOG.error(passwordValidationFailureMessage(e, "aborting password validation"));
             LOG.debugf("Failed password validation was for user %s", username);
             throw e;
         }
+    }
+
+    private String lookupFailureMessage(Exception e) {
+        return failureMessage("user lookup", e, "treating user as not found");
+    }
+
+    private String passwordValidationFailureMessage(Exception e, String consequence) {
+        return failureMessage("password validation", e, consequence);
     }
 
     /**
      * One log line per failed request: the provider and its URI (without the user, to keep personal data out of the
      * log) and the cause, e.g. a timeout, so failures can be told apart and alerted on per provider.
      */
-    static String lookupFailureMessage(String providerName, String uri, Exception e) {
-        return failureMessage("user lookup", providerName, uri, e, "treating user as not found");
-    }
-
-    static String failureMessage(String operation, String providerName, String uri, Exception e,
-                                 String consequence) {
+    private String failureMessage(String operation, Exception e, String consequence) {
         Throwable cause = e.getCause() != null ? e.getCause() : e;
         String detail = cause.getMessage() != null ? cause.getMessage() : e.getMessage();
-        String causeDescription = cause.getClass().getSimpleName() + (detail != null ? ": " + detail : "");
+        String causeDescription = cause.getClass().getSimpleName();
+        if (detail != null) {
+            causeDescription += ": " + detail;
+        }
         return String.format("Legacy %s failed for provider '%s' (%s): %s - %s",
                 operation, providerName, uri, causeDescription, consequence);
     }

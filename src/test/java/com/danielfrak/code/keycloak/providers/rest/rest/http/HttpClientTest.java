@@ -8,6 +8,7 @@ import okhttp3.mockwebserver.SocketPolicy;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -20,15 +21,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class HttpClientTest {
@@ -386,5 +391,29 @@ class HttpClientTest {
         assertNotNull(authorization);
         assertTrue(authorization.startsWith("Bearer"));
         assertTrue(authorization.endsWith(token));
+    }
+
+    @Test
+    void shouldSetConnectAndReadTimeouts() {
+        var httpClientBuilder = mock(HttpClientBuilder.class);
+        httpClient = new HttpClient(httpClientBuilder);
+
+        httpClient.setConnectTimeout(3000);
+        httpClient.setReadTimeout(5000);
+
+        var requestConfig = ArgumentCaptor.forClass(RequestConfig.class);
+        verify(httpClientBuilder, atLeastOnce()).setDefaultRequestConfig(requestConfig.capture());
+        assertEquals(3000, requestConfig.getValue().getConnectTimeout());
+        assertEquals(5000, requestConfig.getValue().getSocketTimeout());
+    }
+
+    @Test
+    void getShouldThrowWhenReadTimeoutIsExceeded() {
+        httpClient.setReadTimeout(10);
+        mockWebServer.enqueue(new MockResponse().setHeadersDelay(5, TimeUnit.SECONDS));
+
+        var exception = assertThrows(RestUserProviderException.class, () -> httpClient.get(uri));
+
+        assertInstanceOf(SocketTimeoutException.class, exception.getCause());
     }
 }
