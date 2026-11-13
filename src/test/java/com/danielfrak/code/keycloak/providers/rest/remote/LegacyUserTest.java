@@ -25,7 +25,7 @@ class LegacyUserTest {
     }
 
     @Test
-    void shouldAddDefaultRequiredActionsWhenSettingIsOmitted() throws JsonProcessingException {
+    void shouldAddDefaultRequiredActionsGivenSettingIsOmitted() throws JsonProcessingException {
         LegacyUser legacyUser = objectMapper.readValue("""
                 {"username":"someUsername"}
                 """, LegacyUser.class);

@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.exceptions.SanitizedTotpSynchronizationException;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
@@ -113,8 +114,7 @@ public class UserMigrationService {
 
     private void logTotpSynchronizationFailure(UserModel user, RuntimeException exception) {
         // Preserve the failure location without exposing legacy credential data in messages or nested causes.
-        var sanitized = new RuntimeException(exception.getClass().getName());
-        sanitized.setStackTrace(exception.getStackTrace());
+        var sanitized = new SanitizedTotpSynchronizationException(exception);
         LOG.errorf(sanitized, "Failed to synchronize legacy TOTP credentials for user %s. Aborting login.",
                 user.getId());
     }

@@ -20,16 +20,13 @@ import org.keycloak.models.utils.TimeBasedOTP;
 import org.keycloak.organization.OrganizationProvider;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.GregorianCalendar;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
@@ -68,23 +65,49 @@ class UserModelFactoryTest {
     private WildcardPatternFactory wildcardPatternFactory;
     private LegacyMappingParser legacyMappingParser;
 
+    private static void otpCredentialsAreStoredFor(SubjectCredentialManager failingCredentials, CredentialModel old) {
+        when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
+                .thenReturn(Stream.of(old));
+    }
+
+    private static void noOtpCredentialsAreStoredFor(SubjectCredentialManager failingCredentials) {
+        when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
+                .thenReturn(Stream.empty());
+    }
+
     @BeforeEach
     void setUp() {
         config = new MultivaluedHashMap<>();
+        modelIsConfigured();
+        modelHasId();
+        sessionReturnsProviders();
+        totpCredentialsAreMapped();
+
+        wildcardPatternFactory = new WildcardPatternFactory();
+        legacyMappingParser = new LegacyMappingParser();
+    }
+
+    private void modelIsConfigured() {
         lenient().when(model.getConfig())
                 .thenReturn(config);
+    }
+
+    private void modelHasId() {
         lenient().when(model.getId())
                 .thenReturn(MODEL_ID);
+    }
+
+    private void sessionReturnsProviders() {
         lenient().when(session.users())
                 .thenReturn(userProvider);
         lenient().when(session.getProvider(OrganizationProvider.class))
                 .thenReturn(organizationProvider);
+    }
+
+    private void totpCredentialsAreMapped() {
         lenient().when(totpValidationService.toTotpCredential(any()))
                 .thenAnswer(invocation ->
                         new TotpValidationService().toTotpCredential(invocation.getArgument(0)));
-
-        wildcardPatternFactory = new WildcardPatternFactory();
-        legacyMappingParser = new LegacyMappingParser();
     }
 
     private UserModelFactory constructUserModelFactory() {
@@ -108,7 +131,7 @@ class UserModelFactoryTest {
 
     private RoleModel asRoleModel(String roleName) {
         RoleModel roleModel = mock(RoleModel.class);
-        when(roleModel.getName())
+        lenient().when(roleModel.getName())
                 .thenReturn(roleName);
         return roleModel;
     }
@@ -120,6 +143,91 @@ class UserModelFactoryTest {
         }
     }
 
+    private GroupModel asGroupModel(String groupName) {
+        GroupModel groupModel = mock(GroupModel.class);
+        lenient().when(groupModel.getName())
+                .thenReturn(groupName);
+        return groupModel;
+    }
+
+    private void existingGroupsInRealm(GroupModel... groupModels) {
+        when(realm.getGroupsStream())
+                .then(i -> Stream.of(groupModels));
+    }
+
+    private TestUserModel matchingUserModel(LegacyUser legacyUser) {
+        return new TestUserModel(legacyUser.username(), legacyUser.id());
+    }
+
+    private void userModelWillBeCreatedSuccessfullyWithoutIdMigration(LegacyUser legacyUser) {
+        when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                legacyUser.shouldAddDefaultRequiredActions()))
+                .thenReturn(matchingUserModel(legacyUser));
+    }
+
+    private void configureMigrationOfUnmappedGroups() {
+        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
+    }
+
+    private void legacyTotpConfigurationIsInvalid(List<LegacyTotp> devices) {
+        when(totpValidationService.validateTotps(devices))
+                .thenThrow(new IllegalArgumentException("Invalid legacy TOTP configuration."));
+    }
+
+    private void totpCredentialsAreValidatedByRealTotpValidationService(List<LegacyTotp> devices) {
+        when(totpValidationService.validateTotps(devices))
+                .thenReturn(new TotpValidationService().validateTotps(devices));
+    }
+
+    private ComponentModel modelWithNullIgnoredLists() {
+        ComponentModel modelWithNullIgnoredLists = mock(ComponentModel.class);
+        MultivaluedHashMap<String, String> configWithNullIgnoredLists = configWithNullIgnoredLists();
+        when(modelWithNullIgnoredLists.getConfig()).thenReturn(configWithNullIgnoredLists);
+        when(modelWithNullIgnoredLists.getId()).thenReturn(MODEL_ID);
+        return modelWithNullIgnoredLists;
+    }
+
+    private MultivaluedHashMap<String, String> configWithNullIgnoredLists() {
+        @SuppressWarnings("unchecked")
+        MultivaluedHashMap<String, String> configWithNullIgnoredLists = mock(MultivaluedHashMap.class);
+        when(configWithNullIgnoredLists.getList(ROLE_MAP_PROPERTY)).thenReturn(emptyList());
+        when(configWithNullIgnoredLists.getList(GROUP_MAP_PROPERTY)).thenReturn(emptyList());
+        when(configWithNullIgnoredLists.getList(IGNORED_SYNC_ROLES_PROPERTY)).thenReturn(null);
+        when(configWithNullIgnoredLists.getList(IGNORED_SYNC_GROUPS_PROPERTY)).thenReturn(null);
+        when(configWithNullIgnoredLists.getFirst(MIGRATE_UNMAPPED_ROLES_PROPERTY)).thenReturn("true");
+        when(configWithNullIgnoredLists.getFirst(MIGRATE_UNMAPPED_GROUPS_PROPERTY)).thenReturn("true");
+        when(configWithNullIgnoredLists.getFirst(UPDATE_USER_ROLES_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
+        when(configWithNullIgnoredLists.getFirst(UPDATE_USER_GROUPS_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
+
+        return configWithNullIgnoredLists;
+    }
+
+    private void organizationWillBeSuccessfullyCreated(LegacyOrganization legacyOrganization, OrganizationModel orgMock) {
+        when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
+                .thenReturn(orgMock);
+    }
+
+    private void noOrganizationsExist() {
+        lenient().when(organizationProvider.getByAlias(any()))
+                .thenReturn(null);
+    }
+
+    private void organizationIsFoundByAlias(OrganizationModel orgMock) {
+        when(organizationProvider.getByAlias(anyString()))
+                .thenReturn(orgMock);
+    }
+
+    private void organizationsAreEnabledInRealm() {
+        when(realm.isOrganizationsEnabled()).thenReturn(true);
+    }
+
+    private RoleModel roleModelWithIdAndName(String roleId, String roleName) {
+        RoleModel desiredRole = asRoleModel(roleName);
+        when(desiredRole.getId())
+                .thenReturn(roleId);
+        return desiredRole;
+    }
+
     @Nested
     class SynchronizeTotps {
 
@@ -129,9 +237,22 @@ class UserModelFactoryTest {
         private final TestCredentialManager credentialManager = new TestCredentialManager();
         private final UserModel user = mock(UserModel.class);
 
+        private static Stream<LegacyTotp> changedDevices() {
+            return Stream.of(
+                    new LegacyTotp("rotated-secret", DEVICE.name(), 6, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), "Renamed device", 6, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 8, 30, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 60, "HmacSHA1", null),
+                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 30, "HmacSHA256", null));
+        }
+
         @BeforeEach
         void setUp() {
             userModelFactory = constructUserModelFactory();
+            mockUserModelHasCredentialManager();
+        }
+
+        private void mockUserModelHasCredentialManager() {
             lenient().when(user.credentialManager()).thenReturn(credentialManager);
         }
 
@@ -165,7 +286,7 @@ class UserModelFactoryTest {
         @Test
         void shouldImportTotpForAnExistingUser() {
             var devices = List.of(DEVICE);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -178,12 +299,17 @@ class UserModelFactoryTest {
             });
         }
 
+        private void totpsAreValidated(List<LegacyTotp> devices) {
+            when(totpValidationService.validateTotps(devices))
+                    .thenReturn(credentials(devices));
+        }
+
         @Test
         void shouldPreserveCredentialIdAndCreationTimeOnRepeatedLogins() {
             var existing = store(DEVICE);
             existing.setCreatedDate(123L);
             var devices = List.of(DEVICE);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -202,7 +328,7 @@ class UserModelFactoryTest {
             var device = new LegacyTotp(DEVICE.secret(), label, 6, 30, "HmacSHA1", null);
             var existing = store(device);
             var devices = List.of(device);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -214,16 +340,14 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldFailWithoutChangingCredentialsWhenSha256IsUnavailable() {
+        void shouldFailWithoutChangingCredentialsGivenSha256IsUnavailable() {
             var existing = store(DEVICE);
             var devices = List.of(DEVICE);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
             var cause = new NoSuchAlgorithmException("SHA-256 unavailable");
 
-            try (var messageDigest = mockStatic(MessageDigest.class)) {
-                messageDigest.when(() -> MessageDigest.getInstance("SHA-256")).thenThrow(cause);
-
+            try (var ignored = sha256IsUnavailable(cause)) {
                 assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
                         .isInstanceOf(IllegalStateException.class)
                         .hasMessage("SHA-256 is unavailable.")
@@ -238,8 +362,7 @@ class UserModelFactoryTest {
             var existing = store(DEVICE);
             var devices = List.of(new LegacyTotp(
                     "ONSWG4TFOQ======", DEVICE.name(), 6, 30, "HmacSHA1", "BASE32"));
-            when(totpValidationService.validateTotps(devices))
-                    .thenReturn(new TotpValidationService().validateTotps(devices));
+            totpCredentialsAreValidatedByRealTotpValidationService(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -260,7 +383,7 @@ class UserModelFactoryTest {
             recoveryCodes.setType("recovery-authn-codes");
             credentialManager.createStoredCredential(recoveryCodes);
             var devices = List.<LegacyTotp>of();
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -280,7 +403,7 @@ class UserModelFactoryTest {
             store(new LegacyTotp("removed-secret", "Removed device", 6, 30, "HmacSHA1", null));
             var added = new LegacyTotp("new-secret", "New device", 8, 60, "HmacSHA512", null);
             var devices = List.of(DEVICE, added);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -297,7 +420,7 @@ class UserModelFactoryTest {
             store(DEVICE);
             var rotated = new LegacyTotp("rotated-secret", DEVICE.name(), 6, 30, "HmacSHA1", null);
             var devices = List.of(rotated);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
             var otp = new TimeBasedOTP("HmacSHA1", 6, 30, 0);
             var calendar = new GregorianCalendar();
@@ -318,7 +441,7 @@ class UserModelFactoryTest {
         void shouldReplaceChangedTotpConfiguration(LegacyTotp changedDevice) {
             var old = store(DEVICE);
             var devices = List.of(changedDevice);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             userModelFactory.synchronizeTotps(legacyUser, user);
@@ -333,21 +456,11 @@ class UserModelFactoryTest {
             });
         }
 
-        private static Stream<LegacyTotp> changedDevices() {
-            return Stream.of(
-                    new LegacyTotp("rotated-secret", DEVICE.name(), 6, 30, "HmacSHA1", null),
-                    new LegacyTotp(DEVICE.secret(), "Renamed device", 6, 30, "HmacSHA1", null),
-                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 8, 30, "HmacSHA1", null),
-                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 60, "HmacSHA1", null),
-                    new LegacyTotp(DEVICE.secret(), DEVICE.name(), 6, 30, "HmacSHA256", null));
-        }
-
         @Test
-        void shouldNotChangeCredentialsWhenValidationFails() {
+        void shouldNotChangeCredentialsGivenValidationFails() {
             var old = store(DEVICE);
             var devices = List.of(DEVICE);
-            when(totpValidationService.validateTotps(devices))
-                    .thenThrow(new IllegalArgumentException("Invalid legacy TOTP configuration."));
+            legacyTotpConfigurationIsInvalid(devices);
             var legacyUser = legacyUser(devices);
 
             assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
@@ -357,28 +470,30 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldFailIfCredentialCannotBeCreated() {
+        void shouldFailGivenCredentialCannotBeCreated() {
             var failingCredentials = mock(SubjectCredentialManager.class);
-            when(user.credentialManager()).thenReturn(failingCredentials);
-            when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
-                    .thenReturn(Stream.empty());
+            mockUserHasCredentials(failingCredentials);
+            noOtpCredentialsAreStoredFor(failingCredentials);
             var devices = List.of(DEVICE);
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
                     .isInstanceOf(IllegalStateException.class);
+        }
+
+        private void mockUserHasCredentials(SubjectCredentialManager failingCredentials) {
+            when(user.credentialManager()).thenReturn(failingCredentials);
         }
 
         @Test
-        void shouldFailIfStaleCredentialCannotBeRemoved() {
+        void shouldFailGivenStaleCredentialCannotBeRemoved() {
             var old = store(DEVICE);
             var failingCredentials = mock(SubjectCredentialManager.class);
-            when(user.credentialManager()).thenReturn(failingCredentials);
-            when(failingCredentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE))
-                    .thenReturn(Stream.of(old));
+            mockUserHasCredentials(failingCredentials);
+            otpCredentialsAreStoredFor(failingCredentials, old);
             var devices = List.<LegacyTotp>of();
-            when(totpValidationService.validateTotps(devices)).thenReturn(credentials(devices));
+            totpsAreValidated(devices);
             var legacyUser = legacyUser(devices);
 
             assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
@@ -386,30 +501,11 @@ class UserModelFactoryTest {
         }
     }
 
-    private GroupModel asGroupModel(String groupName) {
-        GroupModel groupModel = mock(GroupModel.class);
-        when(groupModel.getName())
-                .thenReturn(groupName);
-        return groupModel;
-    }
+    private static MockedStatic<MessageDigest> sha256IsUnavailable(Throwable throwable) {
+        MockedStatic<MessageDigest> messageDigest = mockStatic(MessageDigest.class);
+        messageDigest.when(() -> MessageDigest.getInstance("SHA-256")).thenThrow(throwable);
 
-    private void existingGroupsInRealm(GroupModel... groupModels) {
-        when(realm.getGroupsStream())
-                .then(i -> Stream.of(groupModels));
-    }
-
-    private TestUserModel matchingUserModel(LegacyUser legacyUser) {
-        return new TestUserModel(legacyUser.username(), legacyUser.id());
-    }
-
-    private void mockSuccessfulUserModelCreationWithoutIdMigration(LegacyUser legacyUser) {
-        when(userProvider.addUser(realm, null, legacyUser.username(), true,
-                legacyUser.shouldAddDefaultRequiredActions()))
-                .thenReturn(matchingUserModel(legacyUser));
-    }
-
-    private void configureMigrationOfUnmappedGroups() {
-        config.putSingle(MIGRATE_UNMAPPED_GROUPS_PROPERTY, "true");
+        return messageDigest;
     }
 
     @Nested
@@ -418,7 +514,7 @@ class UserModelFactoryTest {
         @Test
         void shouldCreateMinimalUser() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -429,7 +525,7 @@ class UserModelFactoryTest {
         @Test
         void shouldCreateMinimalUserGivenLegacyUserIdIsBlank() {
             final LegacyUser legacyUser = TestLegacyUser.withBlankId();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -454,11 +550,9 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldNotThrowWhenKeycloakLowercasesTheUsername() {
+        void shouldNotThrowGivenKeycloakLowercasesTheUsername() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            when(userProvider.addUser(realm, null, legacyUser.username(), true,
-                    legacyUser.shouldAddDefaultRequiredActions()))
-                    .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
+            userModelWillBeCreatedSuccessfullyWithLowercasedUsername(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -469,7 +563,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateBasicAttributes() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -507,7 +601,7 @@ class UserModelFactoryTest {
         @Test
         void shouldDisableDefaultRequiredActionsWithoutLegacyUserId() {
             LegacyUser legacyUser = TestLegacyUser.withDefaultRequiredActions(false, false);
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             userModelFactory.create(legacyUser, realm);
@@ -529,7 +623,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedRolesAndIgnoreUnmappedRoles() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureNoMigrationOfUnmappedRoles();
             final String newRoleName = configureMappingForFirstRole(legacyUser);
             mockRoleDoesNotExistInRealm(newRoleName);
@@ -570,7 +664,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedRolesAndUnmappedRoles() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             String mappedRoleName = configureMappingForFirstRole(legacyUser);
             String unmappedRoleName = legacyUser.roles().get(1);
@@ -589,7 +683,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedClientRolesAndIgnoreUnmappedClientRoles() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureNoMigrationOfUnmappedRoles();
             final var newRole = configureMappingForFirstRole(legacyUser);
             userModelFactory = constructUserModelFactory();
@@ -627,7 +721,7 @@ class UserModelFactoryTest {
         @Test
         void shouldAssignExistingRoleToUser() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureNoMigrationOfUnmappedRoles();
             String mappedRoleName = configureMappingForFirstRole(legacyUser);
             RoleModel mappedRoleModel = mockRoleExistsInRealm(mappedRoleName);
@@ -642,7 +736,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateUserWithNullAndEmptyRoles() {
             final LegacyUser legacyUser = TestLegacyUser.withNullAndEmptyRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             userModelFactory = constructUserModelFactory();
 
@@ -655,7 +749,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedAndUnmappedClientRoles() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             final String mappedRoleName = configureMappingForFirstRole(legacyUser);
             final String unmappedRoleName = legacyUser.roles().get(1);
@@ -676,9 +770,9 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldNotMigrateClientRoleIfNotFound() {
+        void shouldNotMigrateClientRoleGivenNotFound() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             configureMappingForFirstRole(legacyUser);
             final ClientModel clientModel = mockRealmHasClient();
@@ -694,7 +788,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedGroupsAndIgnoreUnmappedGroups() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureNoMigrationOfUnmappedGroups();
             final String newGroup = configureMappingForFirstGroup(legacyUser);
             mockRealmHasNoGroups();
@@ -734,7 +828,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateMappedAndUnmappedGroups() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedGroups();
             String mappedGroupName = configureMappingForFirstGroup(legacyUser);
             String unmappedGroupName = legacyUser.groups().get(1);
@@ -752,7 +846,7 @@ class UserModelFactoryTest {
         @Test
         void shouldAddUserToExistingGroup() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureNoMigrationOfUnmappedGroups();
             final String mappedGroupName = configureMappingForFirstGroup(legacyUser);
             final GroupModel mappedGroupModel = mockGroupExistsInRealm(mappedGroupName);
@@ -777,7 +871,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateUserWithNullAndEmptyGroups() {
             final LegacyUser legacyUser = TestLegacyUser.withNullAndEmptyGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
@@ -789,7 +883,7 @@ class UserModelFactoryTest {
         @Test
         void shouldHandleConfiguredIgnoredRolePatternsContainingNullAndBlankEntries() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             config.put(IGNORED_SYNC_ROLES_PROPERTY, java.util.Arrays.asList(null, "  ", "old*"));
             RoleModel ignoredRole = asRoleModel(legacyUser.roles().getFirst());
@@ -804,11 +898,11 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldSkipOrganizationMigrationWhenFeatureEnabledButLegacyOrganizationsAreEmpty() {
+        void shouldSkipOrganizationMigrationGivenFeatureEnabledButLegacyOrganizationsAreEmpty() {
             final LegacyUser legacyUser = TestLegacyUser.withId();
             mockSuccessfulUserModelCreationWithIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
-            when(realm.isOrganizationsEnabled()).thenReturn(true);
+            organizationsAreEnabledInRealm();
             OrganizationProvider provider = mock(OrganizationProvider.class);
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -818,11 +912,11 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldSkipOrganizationMigrationWhenFeatureEnabledButLegacyOrganizationsAreNull() {
+        void shouldSkipOrganizationMigrationGivenFeatureEnabledButLegacyOrganizationsAreNull() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
-            when(realm.isOrganizationsEnabled()).thenReturn(true);
+            organizationsAreEnabledInRealm();
             OrganizationProvider provider = mock(OrganizationProvider.class);
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -832,11 +926,11 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldNotImportRolesOnFirstLoginWhenRoleSyncModeIsNoSync() {
+        void shouldNotImportRolesOnFirstLoginGivenRoleSyncModeIsNoSync() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
             config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "NO_SYNC");
             configureMigrationOfUnmappedRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -847,7 +941,7 @@ class UserModelFactoryTest {
         @Test
         void shouldNotImportIgnoredRolesOnFirstLogin() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedRoles();
             config.put(IGNORED_SYNC_ROLES_PROPERTY, List.of("another*"));
             RoleModel importedRole = asRoleModel(legacyUser.roles().getFirst());
@@ -862,11 +956,11 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldNotImportGroupsOnFirstLoginWhenGroupSyncModeIsNoSync() {
+        void shouldNotImportGroupsOnFirstLoginGivenGroupSyncModeIsNoSync() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
             config.putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "NO_SYNC");
             configureMigrationOfUnmappedGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -877,7 +971,7 @@ class UserModelFactoryTest {
         @Test
         void shouldNotImportIgnoredGroupsOnFirstLogin() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoGroups();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             configureMigrationOfUnmappedGroups();
             config.put(IGNORED_SYNC_GROUPS_PROPERTY, List.of("another*"));
 
@@ -895,7 +989,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateAdditionalAttributes() {
             final LegacyUser legacyUser = TestLegacyUser.withOneAttribute();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -907,7 +1001,7 @@ class UserModelFactoryTest {
         @Test
         void shouldSetFederationLink() {
             final LegacyUser legacyUser = TestLegacyUser.minimal();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -918,7 +1012,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateRequiredActions() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoRequiredActions();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -930,7 +1024,7 @@ class UserModelFactoryTest {
         @Test
         void shouldMigrateTotp() {
             final LegacyUser legacyUser = TestLegacyUser.withTwoTotps();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             final LegacyTotp legacyTotp1 = legacyUser.totps().getFirst();
             final LegacyTotp legacyTotp2 = legacyUser.totps().get(1);
             userModelFactory = constructUserModelFactory();
@@ -972,14 +1066,12 @@ class UserModelFactoryTest {
         @Test
         void shouldCreateUserWithExistingOrganization() {
             final LegacyUser legacyUser = TestLegacyUser.withOneOrganization();
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             userModelFactory = constructUserModelFactory();
 
-            when(realm.isOrganizationsEnabled())
-                    .thenReturn(true);
+            organizationsAreEnabledInRealm();
             OrganizationModel orgMock = mock(OrganizationModel.class);
-            when(organizationProvider.getByAlias(anyString()))
-                    .thenReturn(orgMock);
+            organizationIsFoundByAlias(orgMock);
 
             UserModel result = userModelFactory.create(legacyUser, realm);
 
@@ -995,14 +1087,11 @@ class UserModelFactoryTest {
             final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
             OrganizationModel orgMock = mock(OrganizationModel.class);
 
-            when(realm.isOrganizationsEnabled())
-                    .thenReturn(true);
-            when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
-                    .thenReturn(null);
-            when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
-                    .thenReturn(orgMock);
+            organizationsAreEnabledInRealm();
+            noOrganizationsExist();
+            organizationWillBeSuccessfullyCreated(legacyOrganization, orgMock);
 
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
 
             userModelFactory = constructUserModelFactory();
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -1026,14 +1115,11 @@ class UserModelFactoryTest {
             final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
             OrganizationModel orgMock = mock(OrganizationModel.class);
 
-            when(realm.isOrganizationsEnabled())
-                    .thenReturn(true);
-            when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
-                    .thenReturn(null);
-            when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
-                    .thenReturn(orgMock);
+            organizationsAreEnabledInRealm();
+            noOrganizationsExist();
+            organizationWillBeSuccessfullyCreated(legacyOrganization, orgMock);
 
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
 
             userModelFactory = constructUserModelFactory();
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -1054,14 +1140,11 @@ class UserModelFactoryTest {
             final LegacyOrganization legacyOrganization = legacyUser.organizations().getFirst();
             OrganizationModel orgMock = mock(OrganizationModel.class);
 
-            when(realm.isOrganizationsEnabled())
-                    .thenReturn(true);
-            when(organizationProvider.getByAlias(legacyOrganization.orgAlias()))
-                    .thenReturn(null);
-            when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
-                    .thenReturn(orgMock);
+            organizationsAreEnabledInRealm();
+            noOrganizationsExist();
+            organizationWillBeSuccessfullyCreated(legacyOrganization, orgMock);
 
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
 
             userModelFactory = constructUserModelFactory();
             UserModel result = userModelFactory.create(legacyUser, realm);
@@ -1075,21 +1158,9 @@ class UserModelFactoryTest {
                     .setDomains(anySet());
         }
 
-        @SuppressWarnings("unchecked")
         @Test
-        void shouldUseDefaultIgnoredRolesAndEmptyIgnoredGroupsWhenConfiguredListsAreNull() {
-            ComponentModel modelWithNullIgnoredLists = mock(ComponentModel.class);
-            MultivaluedHashMap<String, String> configWithNullIgnoredLists = mock(MultivaluedHashMap.class);
-            when(modelWithNullIgnoredLists.getConfig()).thenReturn(configWithNullIgnoredLists);
-            when(configWithNullIgnoredLists.getList(ROLE_MAP_PROPERTY)).thenReturn(emptyList());
-            when(configWithNullIgnoredLists.getList(GROUP_MAP_PROPERTY)).thenReturn(emptyList());
-            when(configWithNullIgnoredLists.getList(IGNORED_SYNC_ROLES_PROPERTY)).thenReturn(null);
-            when(configWithNullIgnoredLists.getList(IGNORED_SYNC_GROUPS_PROPERTY)).thenReturn(null);
-            when(configWithNullIgnoredLists.getFirst(MIGRATE_UNMAPPED_ROLES_PROPERTY)).thenReturn("true");
-            when(configWithNullIgnoredLists.getFirst(MIGRATE_UNMAPPED_GROUPS_PROPERTY)).thenReturn("true");
-            when(configWithNullIgnoredLists.getFirst(UPDATE_USER_ROLES_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
-            when(configWithNullIgnoredLists.getFirst(UPDATE_USER_GROUPS_ON_LOGIN)).thenReturn("SYNC_FIRST_LOGIN");
-            when(modelWithNullIgnoredLists.getId()).thenReturn(MODEL_ID);
+        void shouldUseDefaultIgnoredRolesAndEmptyIgnoredGroupsGivenConfiguredListsAreNull() {
+            ComponentModel modelWithNullIgnoredLists = modelWithNullIgnoredLists();
             var roleMigrationService = new RoleMigrationService(modelWithNullIgnoredLists,
                     legacyMappingParser, wildcardPatternFactory);
             var groupMigrationService = new GroupMigrationService(modelWithNullIgnoredLists,
@@ -1112,7 +1183,7 @@ class UserModelFactoryTest {
                     emptyList(),
                     emptyList()
             );
-            mockSuccessfulUserModelCreationWithoutIdMigration(legacyUser);
+            userModelWillBeCreatedSuccessfullyWithoutIdMigration(legacyUser);
             GroupModel manualGroup = asGroupModel("manual-group");
             existingGroupsInRealm(manualGroup);
 
@@ -1123,6 +1194,12 @@ class UserModelFactoryTest {
             assertThat(result.getGroupsStream().toList())
                     .containsExactly(manualGroup);
         }
+    }
+
+    private void userModelWillBeCreatedSuccessfullyWithLowercasedUsername(LegacyUser legacyUser) {
+        when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                legacyUser.shouldAddDefaultRequiredActions()))
+                .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
     }
 
     @Nested
@@ -1160,18 +1237,16 @@ class UserModelFactoryTest {
 
         @Test
         void shouldSynchronizeRolesUsingRoleIdAsIdentityKey() {
-            final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role"));
+            String roleName = "legacy-role";
+            final LegacyUser legacyUser = aLegacyUserWithRoles(List.of(roleName));
             configureMigrationOfUnmappedRoles();
             userModelFactory = constructUserModelFactory();
+            String roleId = "role-id-1";
 
-            RoleModel desiredRole = asRoleModel("legacy-role");
-            when(desiredRole.getId())
-                    .thenReturn("role-id-1");
+            RoleModel desiredRole = roleModelWithIdAndName(roleId, roleName);
             existInRealm(desiredRole);
 
-            RoleModel currentRole = mock(RoleModel.class);
-            when(currentRole.getId())
-                    .thenReturn("role-id-1");
+            RoleModel currentRole = roleModelWithIdAndName(roleId, roleName);
             UserModel userModel = userModelWithRoles(currentRole);
 
             userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
@@ -1199,19 +1274,15 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldSynchronizeRolesUsingNameKeyWhenRoleIdIsBlank() {
+        void shouldSynchronizeRolesUsingNameKeyGivenRoleIdIsBlank() {
             final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role"));
             configureMigrationOfUnmappedRoles();
             userModelFactory = constructUserModelFactory();
 
-            RoleModel desiredRole = asRoleModel("legacy-role");
-            when(desiredRole.getId())
-                    .thenReturn(" ");
+            RoleModel desiredRole = roleModelWithIdAndName(" ", "legacy-role");
             existInRealm(desiredRole);
 
-            RoleModel currentRole = asRoleModel("legacy-role");
-            when(currentRole.getId())
-                    .thenReturn("");
+            RoleModel currentRole = roleModelWithIdAndName("", "legacy-role");
             UserModel userModel = userModelWithRoles(currentRole);
 
             userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
@@ -1221,13 +1292,12 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldRemoveCurrentRoleWithBlankNameWhenAbsentFromLegacy() {
+        void shouldRemoveCurrentRoleWithBlankNameGivenAbsentFromLegacy() {
             final LegacyUser legacyUser = aLegacyUserWithRoles(emptyList());
             configureMigrationOfUnmappedRoles();
             userModelFactory = constructUserModelFactory();
 
-            RoleModel currentRole = asRoleModel(" ");
-            when(currentRole.getId()).thenReturn(null);
+            RoleModel currentRole = roleModelWithIdAndName(null, " ");
             UserModel userModel = userModelWithRoles(currentRole);
 
             userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
@@ -1271,55 +1341,51 @@ class UserModelFactoryTest {
             verify(userModel, never()).deleteRoleMapping(untrackedRole);
         }
 
-        @Nested
-        class AddOnly {
+        @Test
+        void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
+            final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
+            configureMigrationOfUnmappedRoles();
+            userModelFactory = constructUserModelFactory();
 
-            @Test
-            void shouldSynchronizeRolesByOnlyAddingMissingMappings() {
-                final LegacyUser legacyUser = TestLegacyUser.withTwoRoles();
-                configureMigrationOfUnmappedRoles();
-                userModelFactory = constructUserModelFactory();
+            RoleModel mappedRole = asRoleModel(legacyUser.roles().getFirst());
+            RoleModel missingRole = asRoleModel(legacyUser.roles().get(1));
+            RoleModel staleRole = staleRole();
+            existInRealm(mappedRole, missingRole);
+            UserModel userModel = userModelWithRoles(mappedRole, staleRole);
 
-                RoleModel mappedRole = asRoleModel(legacyUser.roles().getFirst());
-                RoleModel missingRole = asRoleModel(legacyUser.roles().get(1));
-                RoleModel staleRole = staleRole();
-                existInRealm(mappedRole, missingRole);
-                UserModel userModel = userModelWithRoles(mappedRole, staleRole);
+            userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
 
-                userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
-
-                verify(userModel).grantRole(missingRole);
-                verify(userModel, never()).deleteRoleMapping(any());
-            }
-
-            @Test
-            void shouldHandleDuplicateRoleKeysInReconcileAndAddOnlyPaths() {
-                final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role-1", "legacy-role-2"));
-                configureMigrationOfUnmappedRoles();
-                userModelFactory = constructUserModelFactory();
-
-                RoleModel desiredRole1 = mock(RoleModel.class);
-                RoleModel desiredRole2 = mock(RoleModel.class);
-                when(desiredRole1.getId()).thenReturn("dup-role-id");
-                when(desiredRole2.getId()).thenReturn("dup-role-id");
-                when(realm.getRole("legacy-role-1")).thenReturn(desiredRole1);
-                when(realm.getRole("legacy-role-2")).thenReturn(desiredRole2);
-
-                RoleModel currentRole1 = mock(RoleModel.class);
-                RoleModel currentRole2 = mock(RoleModel.class);
-                when(currentRole1.getId()).thenReturn("dup-role-id");
-                when(currentRole2.getId()).thenReturn("dup-role-id");
-                UserModel userModel = mock(UserModel.class);
-                when(userModel.getRoleMappingsStream())
-                        .thenAnswer(invocation -> Stream.of(currentRole1, currentRole2));
-
-                userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
-                userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
-
-                verify(userModel, never()).grantRole(any());
-                verify(userModel, never()).deleteRoleMapping(any());
-            }
+            verify(userModel).grantRole(missingRole);
+            verify(userModel, never()).deleteRoleMapping(any());
         }
+
+        @Test
+        void shouldHandleDuplicateRoleKeysInReconcileAndAddOnlyPaths() {
+            final LegacyUser legacyUser = aLegacyUserWithRoles(List.of("legacy-role-1", "legacy-role-2"));
+            configureMigrationOfUnmappedRoles();
+            userModelFactory = constructUserModelFactory();
+
+            RoleModel desiredRole1 = roleModelWithIdAndName("dup-role-id", "legacy-role-1");
+            RoleModel desiredRole2 = roleModelWithIdAndName("dup-role-id", "legacy-role-2");
+            existInRealm(desiredRole1, desiredRole2);
+
+            RoleModel currentRole1 = roleModelWithIdAndName("dup-role-id", null);
+            RoleModel currentRole2 = roleModelWithIdAndName("dup-role-id", null);
+            UserModel userModel = userModelWithRoleMappings(currentRole1, currentRole2);
+
+            userModelFactory.synchronizeRoles(legacyUser, realm, userModel);
+            userModelFactory.synchronizeRolesAddOnly(legacyUser, realm, userModel);
+
+            verify(userModel, never()).grantRole(any());
+            verify(userModel, never()).deleteRoleMapping(any());
+        }
+    }
+
+    private UserModel userModelWithRoleMappings(RoleModel... roleModels) {
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream())
+                .thenAnswer(invocation -> Stream.of(roleModels));
+        return userModel;
     }
 
     @Nested
@@ -1375,18 +1441,16 @@ class UserModelFactoryTest {
 
         @Test
         void shouldSynchronizeGroupsUsingGroupIdAsIdentityKey() {
-            final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
+            String groupName = "legacy-group";
+            String groupId = "group-id-1";
+            final LegacyUser legacyUser = aLegacyUserWithGroups(List.of(groupName));
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            GroupModel desiredGroup = asGroupModel("legacy-group");
-            when(desiredGroup.getId())
-                    .thenReturn("group-id-1");
+            GroupModel desiredGroup = groupWithIdAndName(groupId, groupName);
             existingGroupsInRealm(desiredGroup);
 
-            GroupModel currentGroup = mock(GroupModel.class);
-            when(currentGroup.getId())
-                    .thenReturn("group-id-1");
+            GroupModel currentGroup = groupWithIdAndName(groupId, groupName);
             UserModel userModel = userModelWithGroups(currentGroup);
 
             userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
@@ -1414,19 +1478,15 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldSynchronizeGroupsUsingNameKeyWhenGroupIdIsBlank() {
+        void shouldSynchronizeGroupsUsingNameKeyGivenGroupIdIsBlank() {
             final LegacyUser legacyUser = aLegacyUserWithGroups(List.of("legacy-group"));
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            GroupModel desiredGroup = asGroupModel("legacy-group");
-            when(desiredGroup.getId())
-                    .thenReturn(" ");
+            GroupModel desiredGroup = groupWithIdAndName(" ", "legacy-group");
             existingGroupsInRealm(desiredGroup);
 
-            GroupModel currentGroup = asGroupModel("legacy-group");
-            when(currentGroup.getId())
-                    .thenReturn("");
+            GroupModel currentGroup = groupWithIdAndName("", "legacy-group");
             UserModel userModel = userModelWithGroups(currentGroup);
 
             userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
@@ -1441,18 +1501,12 @@ class UserModelFactoryTest {
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            GroupModel desiredGroup1 = mock(GroupModel.class);
-            GroupModel desiredGroup2 = mock(GroupModel.class);
-            when(desiredGroup1.getId()).thenReturn("dup-group-id");
-            when(desiredGroup2.getId()).thenReturn("dup-group-id");
-            when(desiredGroup1.getName()).thenReturn("legacy-group-1");
-            when(desiredGroup2.getName()).thenReturn("legacy-group-2");
+            GroupModel desiredGroup1 = groupWithIdAndName("dup-group-id", "legacy-group-1");
+            GroupModel desiredGroup2 = groupWithIdAndName("dup-group-id", "legacy-group-2");
             existingGroupsInRealm(desiredGroup1, desiredGroup2);
 
-            GroupModel currentGroup1 = mock(GroupModel.class);
-            GroupModel currentGroup2 = mock(GroupModel.class);
-            when(currentGroup1.getId()).thenReturn("dup-group-id");
-            when(currentGroup2.getId()).thenReturn("dup-group-id");
+            GroupModel currentGroup1 = groupWithIdAndName("dup-group-id", null);
+            GroupModel currentGroup2 = groupWithIdAndName("dup-group-id", null);
             UserModel userModel = userModelWithGroups(currentGroup1, currentGroup2);
 
             userModelFactory.synchronizeGroupsAddOnly(legacyUser, realm, userModel);
@@ -1461,16 +1515,12 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldRemoveCurrentGroupWithNullNameWhenAbsentFromLegacy() {
+        void shouldRemoveCurrentGroupWithNullNameGivenAbsentFromLegacy() {
             final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            GroupModel currentGroup = mock(GroupModel.class);
-            when(currentGroup.getId())
-                    .thenReturn(null);
-            when(currentGroup.getName())
-                    .thenReturn(null);
+            GroupModel currentGroup = groupWithIdAndName(null, null);
             UserModel userModel = userModelWithGroups(currentGroup);
 
             userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
@@ -1479,13 +1529,12 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldRemoveCurrentGroupWithBlankNameWhenAbsentFromLegacy() {
+        void shouldRemoveCurrentGroupWithBlankNameGivenAbsentFromLegacy() {
             final LegacyUser legacyUser = aLegacyUserWithGroups(emptyList());
             configureMigrationOfUnmappedGroups();
             userModelFactory = constructUserModelFactory();
 
-            GroupModel currentGroup = asGroupModel(" ");
-            when(currentGroup.getId()).thenReturn(null);
+            GroupModel currentGroup = groupWithIdAndName(null, " ");
             UserModel userModel = userModelWithGroups(currentGroup);
 
             userModelFactory.synchronizeGroups(legacyUser, realm, userModel);
@@ -1510,6 +1559,13 @@ class UserModelFactoryTest {
 
             verify(userModel, never()).leaveGroup(untrackedGroup);
         }
+    }
+
+    private GroupModel groupWithIdAndName(String groupId, String groupName) {
+        GroupModel desiredGroup = asGroupModel(groupName);
+        when(desiredGroup.getId())
+                .thenReturn(groupId);
+        return desiredGroup;
     }
 
     @Nested
@@ -1645,7 +1701,7 @@ class UserModelFactoryTest {
         }
 
         @Test
-        void shouldNotRemoveExtraLocalAttributesWhenUpdating() {
+        void shouldNotRemoveExtraLocalAttributes() {
             var legacyUser = new LegacyUser(
                     null,
                     "username",
