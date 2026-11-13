@@ -129,16 +129,11 @@ public class RestUserService implements LegacyUserService {
         return failureMessage("password validation", e, consequence);
     }
 
-    /**
-     * One log line per failed request: the provider and its URI (without the user, to keep personal data out of the
-     * log) and the cause, e.g. a timeout, so failures can be told apart and alerted on per provider.
-     */
     private String failureMessage(String operation, Exception e, String consequence) {
         Throwable cause = e.getCause() != null ? e.getCause() : e;
-        String detail = cause.getMessage() != null ? cause.getMessage() : e.getMessage();
         String causeDescription = cause.getClass().getSimpleName();
-        if (detail != null) {
-            causeDescription += ": " + detail;
+        if (cause.getMessage() != null) {
+            causeDescription += ": " + cause.getMessage();
         }
         return String.format("Legacy %s failed for provider '%s' (%s): %s - %s",
                 operation, providerName, uri, causeDescription, consequence);

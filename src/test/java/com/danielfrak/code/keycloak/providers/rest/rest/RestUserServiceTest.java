@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.LogCapture;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganizationDomain;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
@@ -24,15 +25,12 @@ import org.keycloak.component.ComponentModel;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Handler;
-import java.util.logging.LogRecord;
-import java.util.logging.Logger;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -97,6 +95,25 @@ class RestUserServiceTest {
         config.putSingle(API_HTTP_BASIC_ENABLED_PROPERTY, Boolean.TRUE.toString());
         config.putSingle(API_HTTP_BASIC_USERNAME_PROPERTY, httpBasicAuthUsername);
         config.putSingle(API_HTTP_BASIC_PASSWORD_PROPERTY, httpBasicAuthPassword);
+    }
+
+    @Test
+    void shouldSetConfiguredTimeoutsOnHttpClient() {
+        config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, "3000");
+        config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, "5000");
+
+        new RestUserService(model, httpClient, objectMapper);
+
+        verify(httpClient).setConnectTimeout(3000);
+        verify(httpClient).setReadTimeout(5000);
+    }
+
+    @Test
+    void shouldNotSetTimeoutsOnHttpClientWhenNotConfigured() {
+        new RestUserService(model, httpClient, objectMapper);
+
+        verify(httpClient, never()).setConnectTimeout(anyInt());
+        verify(httpClient, never()).setReadTimeout(anyInt());
     }
 
     @Test
@@ -410,7 +427,7 @@ class RestUserServiceTest {
 
     @Test
     void isPasswordValidShouldRethrowWhenRequestFails() {
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         var exception = new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out"));
 
         when(httpClient.post(anyString(), anyString()))
@@ -421,32 +438,13 @@ class RestUserServiceTest {
     }
 
     @Test
-    void shouldSetConfiguredTimeoutsOnHttpClient() {
-        config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, "3000");
-        config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, "5000");
-
-        new RestUserService(model, httpClient, new ObjectMapper());
-
-        verify(httpClient).setConnectTimeout(3000);
-        verify(httpClient).setReadTimeout(5000);
-    }
-
-    @Test
-    void shouldNotSetTimeoutsOnHttpClientWhenNotConfigured() {
-        new RestUserService(model, httpClient, new ObjectMapper());
-
-        verify(httpClient, never()).setConnectTimeout(anyInt());
-        verify(httpClient, never()).setReadTimeout(anyInt());
-    }
-
-    @Test
     void findByEmailShouldLogProviderAndCauseWithoutUserWhenRequestFails() {
         when(model.getName()).thenReturn("someProvider");
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         when(httpClient.get(anyString()))
                 .thenThrow(new HttpRequestException(new HttpGet(URI), new SocketTimeoutException("Read timed out")));
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             restUserService.findByEmail("someone@example.com");
 
             assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
@@ -457,11 +455,11 @@ class RestUserServiceTest {
     @Test
     void findByEmailShouldLogExceptionItselfWhenItHasNoCause() {
         when(model.getName()).thenReturn("someProvider");
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         when(httpClient.get(anyString()))
                 .thenThrow(new IllegalStateException("Connection pool shut down"));
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             restUserService.findByEmail("someone@example.com");
 
             assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
@@ -470,28 +468,28 @@ class RestUserServiceTest {
     }
 
     @Test
-    void findByEmailShouldLogOuterMessageWhenCauseHasNone() {
+    void findByEmailShouldNotLogRequestWithUserWhenCauseHasNoMessage() {
         when(model.getName()).thenReturn("someProvider");
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         when(httpClient.get(anyString()))
-                .thenThrow(new RuntimeException("Outer message", new IllegalStateException()));
+                .thenThrow(new HttpRequestException(new HttpGet(URI + "/someone%40example.com"), new EOFException()));
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             restUserService.findByEmail("someone@example.com");
 
             assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): IllegalStateException: Outer message - treating user as not found");
+                    URI + "): EOFException - treating user as not found");
         }
     }
 
     @Test
     void findByEmailShouldLogExceptionTypeOnlyWhenThereIsNoMessage() {
         when(model.getName()).thenReturn("someProvider");
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         when(httpClient.get(anyString()))
                 .thenThrow(new RuntimeException());
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             restUserService.findByEmail("someone@example.com");
 
             assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
@@ -502,11 +500,11 @@ class RestUserServiceTest {
     @Test
     void isPasswordValidShouldLogProviderAndCauseWithoutUserBeforeRethrowing() {
         when(model.getName()).thenReturn("someProvider");
-        var restUserService = new RestUserService(model, httpClient, new ObjectMapper());
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
         when(httpClient.post(anyString(), anyString()))
                 .thenThrow(new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out")));
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             assertThatThrownBy(() -> restUserService.isPasswordValid("someone@example.com", "somePassword"))
                     .isInstanceOf(HttpRequestException.class);
 
@@ -525,44 +523,12 @@ class RestUserServiceTest {
                 .thenThrow(new JsonProcessingException("Cannot serialize") {
                 });
 
-        try (var logs = new LogCapture()) {
+        try (var logs = new LogCapture(RestUserService.class)) {
             restUserService.isPasswordValid("someone@example.com", "somePassword");
 
             assertThat(logs.messages()).singleElement().asString()
                     .startsWith("Legacy password validation failed for provider 'someProvider' (" + URI + "): ")
                     .endsWith("Cannot serialize - treating password as invalid");
-        }
-    }
-
-    /**
-     * Collects what RestUserService logs at INFO level and above (jboss-logging uses java.util.logging in tests).
-     */
-    private static class LogCapture extends Handler implements AutoCloseable {
-
-        private final Logger logger = Logger.getLogger(RestUserService.class.getName());
-        private final List<String> messages = new ArrayList<>();
-
-        LogCapture() {
-            logger.addHandler(this);
-        }
-
-        List<String> messages() {
-            return messages;
-        }
-
-        @Override
-        public void publish(LogRecord logRecord) {
-            messages.add(logRecord.getMessage());
-        }
-
-        @Override
-        public void flush() {
-            // Nothing to flush
-        }
-
-        @Override
-        public void close() {
-            logger.removeHandler(this);
         }
     }
 }

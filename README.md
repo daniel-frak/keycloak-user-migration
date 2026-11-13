@@ -325,10 +325,9 @@ Authorization: Basic base64encode(username:password)
 
 ### HTTP timeouts
 
-By default, the rest client waits for the legacy system without a time limit, so an unreachable or unresponsive
-legacy system blocks logins and registrations. Set **Rest client connect timeout (ms)** (`HTTP_CONNECT_TIMEOUT`) and
-**Rest client read timeout (ms)** (`HTTP_READ_TIMEOUT`) to fail fast instead. A user lookup that times out is
-treated as "user not found"; a password validation that times out aborts the login.
+By default, there is no time limit for a response from the legacy system, which may cause Keycloak to wait
+indefinitely if the legacy system is unavailable. Set **Rest client connect timeout (ms)** (`HTTP_CONNECT_TIMEOUT`) and
+**Rest client read timeout (ms)** (`HTTP_READ_TIMEOUT`) to fail fast instead.
 
 ### Refresh user attributes on login
 
