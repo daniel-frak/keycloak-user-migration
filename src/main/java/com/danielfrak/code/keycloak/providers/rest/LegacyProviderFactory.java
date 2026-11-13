@@ -31,6 +31,12 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
             throw new ComponentValidationException(
                     "Disable 'Sever federation link after migration' before enabling TOTP refresh.");
         }
+        try {
+            config.getHttpConnectTimeoutMillis();
+            config.getHttpReadTimeoutMillis();
+        } catch (IllegalArgumentException e) {
+            throw new ComponentValidationException(e.getMessage(), e);
+        }
     }
 
     @Override

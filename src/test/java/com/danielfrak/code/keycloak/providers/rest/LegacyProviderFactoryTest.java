@@ -3,6 +3,8 @@ package com.danielfrak.code.keycloak.providers.rest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.keycloak.component.ComponentValidationException;
@@ -10,6 +12,8 @@ import org.keycloak.models.KeycloakSession;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_CONNECT_TIMEOUT_PROPERTY;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_READ_TIMEOUT_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.PROVIDER_NAME;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.URI_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN;
@@ -18,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -77,6 +82,29 @@ class LegacyProviderFactoryTest {
                 () -> legacyProviderFactory.validateConfiguration(session, null, model));
 
         config.putSingle(SEVER_FEDERATION_LINK, "false");
+        assertDoesNotThrow(() -> legacyProviderFactory.validateConfiguration(session, null, model));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
+    void shouldRejectInvalidHttpTimeouts(String property) {
+        var config = new MultivaluedHashMap<String, String>();
+        config.putSingle(property, "abc");
+        when(model.getConfig()).thenReturn(config);
+
+        var exception = assertThrows(ComponentValidationException.class,
+                () -> legacyProviderFactory.validateConfiguration(session, null, model));
+
+        assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
+    void shouldAcceptValidHttpTimeouts(String property) {
+        var config = new MultivaluedHashMap<String, String>();
+        config.putSingle(property, "3000");
+        when(model.getConfig()).thenReturn(config);
+
         assertDoesNotThrow(() -> legacyProviderFactory.validateConfiguration(session, null, model));
     }
 }

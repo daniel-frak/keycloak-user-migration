@@ -1,5 +1,6 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
@@ -19,17 +20,20 @@ public class RestUserService implements LegacyUserService {
 
     private static final Logger LOG = Logger.getLogger(RestUserService.class);
 
+    private final String providerName;
     private final String uri;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
+        this.providerName = model.getName();
         this.uri = model.getConfig().getFirst(URI_PROPERTY);
         this.objectMapper = objectMapper;
 
         configureBasicAuth(model, httpClient);
         configureBearerTokenAuth(model, httpClient);
+        configureTimeouts(model, httpClient);
     }
 
     private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
@@ -48,6 +52,12 @@ public class RestUserService implements LegacyUserService {
             String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
             httpClient.enableBearerTokenAuth(token);
         }
+    }
+
+    private void configureTimeouts(ComponentModel model, HttpClient httpClient) {
+        var config = new MigrationConfiguration(model);
+        config.getHttpConnectTimeoutMillis().ifPresent(httpClient::setConnectTimeout);
+        config.getHttpReadTimeoutMillis().ifPresent(httpClient::setReadTimeout);
     }
 
     @Override
@@ -83,8 +93,8 @@ public class RestUserService implements LegacyUserService {
             var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
         } catch (RuntimeException|IOException e) {
-            LOG.errorf("Got a RuntimeException or IOException: when looking up user %s", usernameOrEmail);
-            LOG.errorf("Exception message: %s", e.getMessage());
+            LOG.error(lookupFailureMessage(e));
+            LOG.debugf("Failed lookup was for user %s", usernameOrEmail);
             return Optional.empty();
         }
     }
@@ -101,9 +111,31 @@ public class RestUserService implements LegacyUserService {
             var response = httpClient.post(passwordValidationUri, json);
             return response.getCode() == HttpStatus.SC_OK;
         } catch (IOException e) {
-            LOG.errorf("Got an IOException: when validating password for user %s", username);
-            LOG.errorf("Exception message: %s", e.getMessage());
+            LOG.error(passwordValidationFailureMessage(e, "treating password as invalid"));
+            LOG.debugf("Failed password validation was for user %s", username);
             return false;
+        } catch (RuntimeException e) {
+            LOG.error(passwordValidationFailureMessage(e, "aborting password validation"));
+            LOG.debugf("Failed password validation was for user %s", username);
+            throw e;
         }
+    }
+
+    private String lookupFailureMessage(Exception e) {
+        return failureMessage("user lookup", e, "treating user as not found");
+    }
+
+    private String passwordValidationFailureMessage(Exception e, String consequence) {
+        return failureMessage("password validation", e, consequence);
+    }
+
+    private String failureMessage(String operation, Exception e, String consequence) {
+        Throwable cause = e.getCause() != null ? e.getCause() : e;
+        String causeDescription = cause.getClass().getSimpleName();
+        if (cause.getMessage() != null) {
+            causeDescription += ": " + cause.getMessage();
+        }
+        return String.format("Legacy %s failed for provider '%s' (%s): %s - %s",
+                operation, providerName, uri, causeDescription, consequence);
     }
 }

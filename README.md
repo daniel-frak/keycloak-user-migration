@@ -323,6 +323,12 @@ If basic auth is enabled, the username and password will be sent in the authoriz
 Authorization: Basic base64encode(username:password)
 ```
 
+### HTTP timeouts
+
+By default, there is no time limit for a response from the legacy system, which may cause Keycloak to wait
+indefinitely if the legacy system is unavailable. Set **Rest client connect timeout (ms)** (`HTTP_CONNECT_TIMEOUT`) and
+**Rest client read timeout (ms)** (`HTTP_READ_TIMEOUT`) to fail fast instead.
+
 ### Refresh user attributes on login
 
 When enabled (`UPDATE_USER_ON_LOGIN`), the provider re-fetches and updates user profile attributes (name, email,

@@ -1,14 +1,18 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.LogCapture;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganization;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyOrganizationDomain;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyTotp;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
+import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpRequestException;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,13 +25,17 @@ import org.keycloak.component.ComponentModel;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.EOFException;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -88,6 +96,25 @@ class RestUserServiceTest {
         config.putSingle(API_HTTP_BASIC_ENABLED_PROPERTY, Boolean.TRUE.toString());
         config.putSingle(API_HTTP_BASIC_USERNAME_PROPERTY, httpBasicAuthUsername);
         config.putSingle(API_HTTP_BASIC_PASSWORD_PROPERTY, httpBasicAuthPassword);
+    }
+
+    @Test
+    void shouldSetConfiguredTimeoutsOnHttpClient() {
+        config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, "3000");
+        config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, "5000");
+
+        new RestUserService(model, httpClient, objectMapper);
+
+        verify(httpClient).setConnectTimeout(3000);
+        verify(httpClient).setReadTimeout(5000);
+    }
+
+    @Test
+    void shouldNotSetTimeoutsOnHttpClientWhenNotConfigured() {
+        new RestUserService(model, httpClient, objectMapper);
+
+        verify(httpClient, never()).setConnectTimeout(anyInt());
+        verify(httpClient, never()).setReadTimeout(anyInt());
     }
 
     @Test
@@ -397,5 +424,119 @@ class RestUserServiceTest {
         var isPasswordValid = restUserService.isPasswordValid(
                 "someUsername", "somePassword");
         assertThat(isPasswordValid).isFalse();
+    }
+
+    @Test
+    void isPasswordValidShouldRethrowWhenRequestFails() {
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        var exception = new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out"));
+
+        when(httpClient.post(anyString(), anyString()))
+                .thenThrow(exception);
+
+        assertThatThrownBy(() -> restUserService.isPasswordValid("someUsername", "somePassword"))
+                .isSameAs(exception);
+    }
+
+    @Test
+    void findByEmailShouldLogProviderAndCauseWithoutUserWhenRequestFails() {
+        when(model.getName()).thenReturn("someProvider");
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        when(httpClient.get(anyString()))
+                .thenThrow(new HttpRequestException(new HttpGet(URI), new SocketTimeoutException("Read timed out")));
+
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
+            restUserService.findByEmail("someone@example.com");
+        }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): SocketTimeoutException: Read timed out - treating user as not found");
+    }
+
+    @Test
+    void findByEmailShouldLogExceptionItselfWhenItHasNoCause() {
+        when(model.getName()).thenReturn("someProvider");
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        when(httpClient.get(anyString()))
+                .thenThrow(new IllegalStateException("Connection pool shut down"));
+
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
+            restUserService.findByEmail("someone@example.com");
+        }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
+    }
+
+    @Test
+    void findByEmailShouldNotLogRequestWithUserWhenCauseHasNoMessage() {
+        when(model.getName()).thenReturn("someProvider");
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        when(httpClient.get(anyString()))
+                .thenThrow(new HttpRequestException(new HttpGet(URI + "/someone%40example.com"), new EOFException()));
+
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
+            restUserService.findByEmail("someone@example.com");
+        }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): EOFException - treating user as not found");
+    }
+
+    @Test
+    void findByEmailShouldLogExceptionTypeOnlyWhenThereIsNoMessage() {
+        when(model.getName()).thenReturn("someProvider");
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        when(httpClient.get(anyString()))
+                .thenThrow(new RuntimeException());
+
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
+            restUserService.findByEmail("someone@example.com");
+        }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): RuntimeException - treating user as not found");
+    }
+
+    @Test
+    void isPasswordValidShouldLogProviderAndCauseWithoutUserBeforeRethrowing() {
+        when(model.getName()).thenReturn("someProvider");
+        var restUserService = new RestUserService(model, httpClient, objectMapper);
+        when(httpClient.post(anyString(), anyString()))
+                .thenThrow(new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out")));
+
+        var logs = new LogCapture(RestUserService.class);
+        Throwable thrown;
+        try (logs) {
+            thrown = catchThrowable(() -> restUserService.isPasswordValid("someone@example.com", "somePassword"));
+        }
+
+        assertThat(thrown).isInstanceOf(HttpRequestException.class);
+        assertThat(logs.messages()).containsExactly("Legacy password validation failed for provider " +
+                "'someProvider' (" + URI + "): SocketTimeoutException: Read timed out - " +
+                "aborting password validation");
+    }
+
+    @Test
+    void isPasswordValidShouldLogProviderAndCauseWhenRequestBodyCannotBeCreated() throws JsonProcessingException {
+        when(model.getName()).thenReturn("someProvider");
+        var mockObjectMapper = mock(ObjectMapper.class);
+        var restUserService = new RestUserService(model, httpClient, mockObjectMapper);
+        when(mockObjectMapper.writeValueAsString(any()))
+                .thenThrow(new JsonProcessingException("Cannot serialize") {
+                });
+
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
+            restUserService.isPasswordValid("someone@example.com", "somePassword");
+        }
+
+        assertThat(logs.messages()).singleElement().asString()
+                .startsWith("Legacy password validation failed for provider 'someProvider' (" + URI + "): ")
+                .endsWith("Cannot serialize - treating password as invalid");
     }
 }
