@@ -36,12 +36,6 @@ public class RestUserService implements LegacyUserService {
         configureTimeouts(model, httpClient);
     }
 
-    private void configureTimeouts(ComponentModel model, HttpClient httpClient) {
-        var config = new MigrationConfiguration(model);
-        config.getHttpConnectTimeoutMillis().ifPresent(httpClient::setConnectTimeout);
-        config.getHttpReadTimeoutMillis().ifPresent(httpClient::setReadTimeout);
-    }
-
     private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
         var basicAuthConfig = model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY);
         var basicAuthEnabled = Boolean.parseBoolean(basicAuthConfig);
@@ -58,6 +52,12 @@ public class RestUserService implements LegacyUserService {
             String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
             httpClient.enableBearerTokenAuth(token);
         }
+    }
+
+    private void configureTimeouts(ComponentModel model, HttpClient httpClient) {
+        var config = new MigrationConfiguration(model);
+        config.getHttpConnectTimeoutMillis().ifPresent(httpClient::setConnectTimeout);
+        config.getHttpReadTimeoutMillis().ifPresent(httpClient::setReadTimeout);
     }
 
     @Override

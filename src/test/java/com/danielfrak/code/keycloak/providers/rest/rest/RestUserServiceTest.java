@@ -35,6 +35,7 @@ import java.util.Optional;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -444,12 +445,13 @@ class RestUserServiceTest {
         when(httpClient.get(anyString()))
                 .thenThrow(new HttpRequestException(new HttpGet(URI), new SocketTimeoutException("Read timed out")));
 
-        try (var logs = new LogCapture(RestUserService.class)) {
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
             restUserService.findByEmail("someone@example.com");
-
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): SocketTimeoutException: Read timed out - treating user as not found");
         }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): SocketTimeoutException: Read timed out - treating user as not found");
     }
 
     @Test
@@ -459,12 +461,13 @@ class RestUserServiceTest {
         when(httpClient.get(anyString()))
                 .thenThrow(new IllegalStateException("Connection pool shut down"));
 
-        try (var logs = new LogCapture(RestUserService.class)) {
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
             restUserService.findByEmail("someone@example.com");
-
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
         }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
     }
 
     @Test
@@ -474,12 +477,13 @@ class RestUserServiceTest {
         when(httpClient.get(anyString()))
                 .thenThrow(new HttpRequestException(new HttpGet(URI + "/someone%40example.com"), new EOFException()));
 
-        try (var logs = new LogCapture(RestUserService.class)) {
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
             restUserService.findByEmail("someone@example.com");
-
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): EOFException - treating user as not found");
         }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): EOFException - treating user as not found");
     }
 
     @Test
@@ -489,12 +493,13 @@ class RestUserServiceTest {
         when(httpClient.get(anyString()))
                 .thenThrow(new RuntimeException());
 
-        try (var logs = new LogCapture(RestUserService.class)) {
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
             restUserService.findByEmail("someone@example.com");
-
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): RuntimeException - treating user as not found");
         }
+
+        assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
+                URI + "): RuntimeException - treating user as not found");
     }
 
     @Test
@@ -504,14 +509,16 @@ class RestUserServiceTest {
         when(httpClient.post(anyString(), anyString()))
                 .thenThrow(new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out")));
 
-        try (var logs = new LogCapture(RestUserService.class)) {
-            assertThatThrownBy(() -> restUserService.isPasswordValid("someone@example.com", "somePassword"))
-                    .isInstanceOf(HttpRequestException.class);
-
-            assertThat(logs.messages()).containsExactly("Legacy password validation failed for provider " +
-                    "'someProvider' (" + URI + "): SocketTimeoutException: Read timed out - " +
-                    "aborting password validation");
+        var logs = new LogCapture(RestUserService.class);
+        Throwable thrown;
+        try (logs) {
+            thrown = catchThrowable(() -> restUserService.isPasswordValid("someone@example.com", "somePassword"));
         }
+
+        assertThat(thrown).isInstanceOf(HttpRequestException.class);
+        assertThat(logs.messages()).containsExactly("Legacy password validation failed for provider " +
+                "'someProvider' (" + URI + "): SocketTimeoutException: Read timed out - " +
+                "aborting password validation");
     }
 
     @Test
@@ -523,12 +530,13 @@ class RestUserServiceTest {
                 .thenThrow(new JsonProcessingException("Cannot serialize") {
                 });
 
-        try (var logs = new LogCapture(RestUserService.class)) {
+        var logs = new LogCapture(RestUserService.class);
+        try (logs) {
             restUserService.isPasswordValid("someone@example.com", "somePassword");
-
-            assertThat(logs.messages()).singleElement().asString()
-                    .startsWith("Legacy password validation failed for provider 'someProvider' (" + URI + "): ")
-                    .endsWith("Cannot serialize - treating password as invalid");
         }
+
+        assertThat(logs.messages()).singleElement().asString()
+                .startsWith("Legacy password validation failed for provider 'someProvider' (" + URI + "): ")
+                .endsWith("Cannot serialize - treating password as invalid");
     }
 }
