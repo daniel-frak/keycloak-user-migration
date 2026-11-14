@@ -6,6 +6,5 @@ public record LegacyOrganization(
         String orgName,
         String orgAlias,
         List<LegacyOrganizationDomain> domains
-)
-{
+) {
 }

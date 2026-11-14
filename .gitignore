@@ -14,3 +14,6 @@
 *.iml
 *.idea
 .DS_Store
+
+### Custom ###
+checkstyle-cachefile

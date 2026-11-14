@@ -8,11 +8,11 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.Arrays;
-import java.util.List;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.stream.Stream;
 
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -22,6 +22,88 @@ class TotpValidationServiceTest {
 
     @Nested
     class ValidateTotps {
+
+        private static Stream<Arguments> invalidParameters() {
+            return Stream.of(
+                    Arguments.of(new LegacyTotp("secret", "Device", 0, 30, "HmacSHA1", null),
+                            "Legacy TOTP digits must be 6 or 8."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 0, "HmacSHA1", null),
+                            "Legacy TOTP period must be positive."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, -1, "HmacSHA1", null),
+                            "Legacy TOTP period must be positive."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, null, null),
+                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."),
+                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, "unsupported", null),
+                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."));
+        }
+
+        private static Stream<LegacyTotp> invalidDevices() {
+            return Stream.of(
+                    null,
+                    new LegacyTotp(
+                            null,
+                            "Device",
+                            6, 30,
+                            "HmacSHA1",
+                            null
+                    ),
+                    new LegacyTotp(
+                            " ",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            null
+                    ),
+                    new LegacyTotp(
+                            "secret",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "unsupported"
+                    ),
+                    new LegacyTotp(
+                            "!invalid!",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "BASE32"
+                    ),
+                    new LegacyTotp(
+                            "ONSWG4TF=OQ",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "BASE32"
+                    ),
+                    new LegacyTotp(
+                            "ＯNSWG4TFOQ",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "BASE32"
+                    ),
+                    new LegacyTotp(
+                            "AB",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "BASE32"
+                    ),
+                    new LegacyTotp("========",
+                            "Device",
+                            6,
+                            30,
+                            "HmacSHA1",
+                            "BASE32"
+                    )
+            );
+        }
 
         @Test
         void shouldCreateCredentialForUtf8Secret() {
@@ -58,9 +140,8 @@ class TotpValidationServiceTest {
 
             var result = service.validateTotps(List.of(device));
 
-            assertThat(result).singleElement().satisfies(credential -> {
-                assertThat(credential.getDecodedSecret()).isEqualTo("secret".getBytes(StandardCharsets.UTF_8));
-            });
+            assertThat(result).singleElement().satisfies(credential ->
+                    assertThat(credential.getDecodedSecret()).isEqualTo("secret".getBytes(StandardCharsets.UTF_8)));
         }
 
         @Test
@@ -79,40 +160,13 @@ class TotpValidationServiceTest {
                     .hasMessage(expectedMessage);
         }
 
-        private static Stream<Arguments> invalidParameters() {
-            return Stream.of(
-                    Arguments.of(new LegacyTotp("secret", "Device", 0, 30, "HmacSHA1", null),
-                            "Legacy TOTP digits must be 6 or 8."),
-                    Arguments.of(new LegacyTotp("secret", "Device", 6, 0, "HmacSHA1", null),
-                            "Legacy TOTP period must be positive."),
-                    Arguments.of(new LegacyTotp("secret", "Device", 6, -1, "HmacSHA1", null),
-                            "Legacy TOTP period must be positive."),
-                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, null, null),
-                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."),
-                    Arguments.of(new LegacyTotp("secret", "Device", 6, 30, "unsupported", null),
-                            "Legacy TOTP algorithm must be HmacSHA1, HmacSHA256 or HmacSHA512."));
-        }
-
         @ParameterizedTest
         @MethodSource("invalidDevices")
         void shouldRejectInvalidDevice(LegacyTotp device) {
-            var devices = Arrays.asList(device);
+            var devices = singletonList(device);
 
             assertThatThrownBy(() -> service.validateTotps(devices))
                     .isInstanceOf(IllegalArgumentException.class);
-        }
-
-        private static Stream<LegacyTotp> invalidDevices() {
-            return Stream.of(
-                    null,
-                    new LegacyTotp(null, "Device", 6, 30, "HmacSHA1", null),
-                    new LegacyTotp(" ", "Device", 6, 30, "HmacSHA1", null),
-                    new LegacyTotp("secret", "Device", 6, 30, "HmacSHA1", "unsupported"),
-                    new LegacyTotp("!invalid!", "Device", 6, 30, "HmacSHA1", "BASE32"),
-                    new LegacyTotp("ONSWG4TF=OQ", "Device", 6, 30, "HmacSHA1", "BASE32"),
-                    new LegacyTotp("\uFF2FNSWG4TFOQ", "Device", 6, 30, "HmacSHA1", "BASE32"),
-                    new LegacyTotp("AB", "Device", 6, 30, "HmacSHA1", "BASE32"),
-                    new LegacyTotp("========", "Device", 6, 30, "HmacSHA1", "BASE32"));
         }
     }
 }

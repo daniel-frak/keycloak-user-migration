@@ -108,7 +108,12 @@ class RestUserServiceTest {
     }
 
     private void httpGetRequestThrowsExceptionWithCauseButNoMessage() {
-        httpGetRequestThrowsException(new HttpRequestException(new HttpGet(URI + "/someone%40example.com"), new EOFException()));
+        httpGetRequestThrowsException(
+                new HttpRequestException(
+                        new HttpGet(URI + "/someone%40example.com"),
+                        new EOFException()
+                )
+        );
     }
 
     private void httpGetRequestThrowsExceptionWithNoCause() {
@@ -116,7 +121,12 @@ class RestUserServiceTest {
     }
 
     private void httpGetRequestTimesOut() {
-        httpGetRequestThrowsException(new HttpRequestException(new HttpGet(URI), new SocketTimeoutException("Read timed out")));
+        httpGetRequestThrowsException(
+                new HttpRequestException(
+                        new HttpGet(URI),
+                        new SocketTimeoutException("Read timed out")
+                )
+        );
     }
 
     private void componentModelHasName() {
@@ -240,7 +250,7 @@ class RestUserServiceTest {
         }
 
         @Test
-        void shouldReturnEmptyGivenIOExceptionOccurs() {
+        void shouldReturnEmptyGivenIoExceptionOccurs() {
             var restUserService = new RestUserService(model, httpClient, objectMapper);
 
             httpGetRequestReturnsMalformedJson();
@@ -322,8 +332,9 @@ class RestUserServiceTest {
                 restUserService.findByEmail("someone@example.com");
             }
 
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): SocketTimeoutException: Read timed out - treating user as not found");
+            assertThat(logs.messages()).containsExactly(
+                    "Legacy user lookup failed for provider 'someProvider' ("
+                    + URI + "): SocketTimeoutException: Read timed out - treating user as not found");
         }
 
         @Test
@@ -337,8 +348,9 @@ class RestUserServiceTest {
                 restUserService.findByEmail("someone@example.com");
             }
 
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
+            assertThat(logs.messages()).containsExactly(
+                    "Legacy user lookup failed for provider 'someProvider' ("
+                    + URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
         }
 
         @Test
@@ -352,8 +364,9 @@ class RestUserServiceTest {
                 restUserService.findByEmail("someone@example.com");
             }
 
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): EOFException - treating user as not found");
+            assertThat(logs.messages()).containsExactly(
+                    "Legacy user lookup failed for provider 'someProvider' ("
+                    + URI + "): EOFException - treating user as not found");
         }
 
         @Test
@@ -367,13 +380,14 @@ class RestUserServiceTest {
                 restUserService.findByEmail("someone@example.com");
             }
 
-            assertThat(logs.messages()).containsExactly("Legacy user lookup failed for provider 'someProvider' (" +
-                    URI + "): RuntimeException - treating user as not found");
+            assertThat(logs.messages()).containsExactly(
+                    "Legacy user lookup failed for provider 'someProvider' ("
+                    + URI + "): RuntimeException - treating user as not found");
         }
     }
 
     @Nested
-    class findByUsername {
+    class FindByUsername {
 
         @Test
         void shouldReturnEmptyGivenRuntimeExceptionOccurs() {
@@ -388,7 +402,7 @@ class RestUserServiceTest {
         }
 
         @Test
-        void shouldReturnEmptyGivenIOExceptionOccurs() {
+        void shouldReturnEmptyGivenIoExceptionOccurs() {
             var restUserService = new RestUserService(model, httpClient, objectMapper);
 
             httpGetRequestReturnsMalformedJson();
@@ -469,7 +483,7 @@ class RestUserServiceTest {
                 "someUsername, differentUsername",
                 "null, someUsername",
                 "someUsername, null"
-        }, nullValues = {"null"})
+        }, nullValues = "null")
         void shouldReturnAnEmptyOptionalGivenUsernameDoesNotMatch(
                 String requestedUsername, String returnedUsername) throws JsonProcessingException {
             var expectedUser = createALegacyUser(returnedUsername, "email@example.com");
@@ -548,10 +562,9 @@ class RestUserServiceTest {
         }
 
         @Test
-        void shouldReturnFalseGivenIOExceptionOccurs() throws JsonProcessingException {
+        void shouldReturnFalseGivenIoExceptionOccurs() throws JsonProcessingException {
             var mockObjectMapper = throwingObjectMapper();
             var restUserService = new RestUserService(model, httpClient, mockObjectMapper);
-
 
             var isPasswordValid = restUserService.isPasswordValid(
                     "someUsername", "somePassword");
@@ -572,18 +585,24 @@ class RestUserServiceTest {
         void shouldLogProviderAndCauseWithoutUserBeforeRethrowing() {
             componentModelHasName();
             var restUserService = new RestUserService(model, httpClient, objectMapper);
-            httpPostRequestThrows(new HttpRequestException(new HttpPost(URI), new SocketTimeoutException("Read timed out")));
+            httpPostRequestThrows(
+                    new HttpRequestException(
+                            new HttpPost(URI),
+                            new SocketTimeoutException("Read timed out")
+                    )
+            );
 
             var logs = new LogCapture(RestUserService.class);
             Throwable thrown;
             try (logs) {
-                thrown = catchThrowable(() -> restUserService.isPasswordValid("someone@example.com", "somePassword"));
+                thrown = catchThrowable(() -> restUserService.isPasswordValid(
+                        "someone@example.com", "somePassword"));
             }
 
             assertThat(thrown).isInstanceOf(HttpRequestException.class);
-            assertThat(logs.messages()).containsExactly("Legacy password validation failed for provider " +
-                    "'someProvider' (" + URI + "): SocketTimeoutException: Read timed out - " +
-                    "aborting password validation");
+            assertThat(logs.messages()).containsExactly("Legacy password validation failed for provider "
+                    + "'someProvider' (" + URI + "): SocketTimeoutException: Read timed out - "
+                    + "aborting password validation");
         }
 
         @Test

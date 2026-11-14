@@ -5,7 +5,7 @@ FROM $MAVEN_IMAGE as builder
 COPY pom.xml /tmp/
 COPY src /tmp/src
 WORKDIR /tmp/
-RUN mvn clean package
+RUN mvn clean package -DskipTests -Dcheckstyle.skip
 
 FROM $KEYCLOAK_IMAGE
 USER root

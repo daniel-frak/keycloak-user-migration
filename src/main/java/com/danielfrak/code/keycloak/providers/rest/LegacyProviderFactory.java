@@ -15,8 +15,7 @@ import org.keycloak.storage.UserStorageProviderFactory;
 
 import java.util.List;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.PROVIDER_NAME;
-
+@SuppressWarnings("ClassDataAbstractionCoupling")
 public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyProvider> {
 
     @Override
@@ -64,6 +63,6 @@ public class LegacyProviderFactory implements UserStorageProviderFactory<LegacyP
 
     @Override
     public String getId() {
-        return PROVIDER_NAME;
+        return ConfigurationProperties.PROVIDER_NAME;
     }
 }

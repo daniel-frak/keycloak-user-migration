@@ -75,6 +75,14 @@ class UserModelFactoryTest {
                 .thenReturn(Stream.empty());
     }
 
+    private static MockedStatic<MessageDigest> sha256IsUnavailable(Throwable throwable) {
+        MockedStatic<MessageDigest> messageDigest = mockStatic(MessageDigest.class);
+        messageDigest.when(() -> MessageDigest.getInstance("SHA-256"))
+                .thenThrow(throwable);
+
+        return messageDigest;
+    }
+
     @BeforeEach
     void setUp() {
         config = new MultivaluedHashMap<>();
@@ -202,7 +210,8 @@ class UserModelFactoryTest {
         return configWithNullIgnoredLists;
     }
 
-    private void organizationWillBeSuccessfullyCreated(LegacyOrganization legacyOrganization, OrganizationModel orgMock) {
+    private void organizationWillBeSuccessfullyCreated(
+            LegacyOrganization legacyOrganization, OrganizationModel orgMock) {
         when(organizationProvider.create(legacyOrganization.orgName(), legacyOrganization.orgAlias()))
                 .thenReturn(orgMock);
     }
@@ -226,6 +235,26 @@ class UserModelFactoryTest {
         when(desiredRole.getId())
                 .thenReturn(roleId);
         return desiredRole;
+    }
+
+    private void userModelWillBeCreatedSuccessfullyWithLowercasedUsername(LegacyUser legacyUser) {
+        when(userProvider.addUser(realm, null, legacyUser.username(), true,
+                legacyUser.shouldAddDefaultRequiredActions()))
+                .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
+    }
+
+    private UserModel userModelWithRoleMappings(RoleModel... roleModels) {
+        UserModel userModel = mock(UserModel.class);
+        when(userModel.getRoleMappingsStream())
+                .thenAnswer(invocation -> Stream.of(roleModels));
+        return userModel;
+    }
+
+    private GroupModel groupWithIdAndName(String groupId, String groupName) {
+        GroupModel desiredGroup = asGroupModel(groupName);
+        when(desiredGroup.getId())
+                .thenReturn(groupId);
+        return desiredGroup;
     }
 
     @Nested
@@ -323,7 +352,7 @@ class UserModelFactoryTest {
 
         @ParameterizedTest
         @NullAndEmptySource
-        @ValueSource(strings = {"null"})
+        @ValueSource(strings = "null")
         void shouldPreserveCredentialsWithOptionalLabels(String label) {
             var device = new LegacyTotp(DEVICE.secret(), label, 6, 30, "HmacSHA1", null);
             var existing = store(device);
@@ -499,13 +528,6 @@ class UserModelFactoryTest {
             assertThatThrownBy(() -> userModelFactory.synchronizeTotps(legacyUser, user))
                     .isInstanceOf(IllegalStateException.class);
         }
-    }
-
-    private static MockedStatic<MessageDigest> sha256IsUnavailable(Throwable throwable) {
-        MockedStatic<MessageDigest> messageDigest = mockStatic(MessageDigest.class);
-        messageDigest.when(() -> MessageDigest.getInstance("SHA-256")).thenThrow(throwable);
-
-        return messageDigest;
     }
 
     @Nested
@@ -744,7 +766,6 @@ class UserModelFactoryTest {
 
             assertThat(result.getRoleMappingsStream().toList()).isEmpty();
         }
-
 
         @Test
         void shouldMigrateMappedAndUnmappedClientRoles() {
@@ -1196,12 +1217,6 @@ class UserModelFactoryTest {
         }
     }
 
-    private void userModelWillBeCreatedSuccessfullyWithLowercasedUsername(LegacyUser legacyUser) {
-        when(userProvider.addUser(realm, null, legacyUser.username(), true,
-                legacyUser.shouldAddDefaultRequiredActions()))
-                .thenReturn(new TestUserModel(legacyUser.username().toLowerCase()));
-    }
-
     @Nested
     class SynchronizeRoles {
 
@@ -1381,13 +1396,6 @@ class UserModelFactoryTest {
         }
     }
 
-    private UserModel userModelWithRoleMappings(RoleModel... roleModels) {
-        UserModel userModel = mock(UserModel.class);
-        when(userModel.getRoleMappingsStream())
-                .thenAnswer(invocation -> Stream.of(roleModels));
-        return userModel;
-    }
-
     @Nested
     class SynchronizeGroups {
 
@@ -1559,13 +1567,6 @@ class UserModelFactoryTest {
 
             verify(userModel, never()).leaveGroup(untrackedGroup);
         }
-    }
-
-    private GroupModel groupWithIdAndName(String groupId, String groupName) {
-        GroupModel desiredGroup = asGroupModel(groupName);
-        when(desiredGroup.getId())
-                .thenReturn(groupId);
-        return desiredGroup;
     }
 
     @Nested

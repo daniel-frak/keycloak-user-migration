@@ -28,6 +28,14 @@ jobs:
           distribution: ${{ env.JAVA_DISTRIBUTION }}
           cache: maven
 
+      - name: Restore/save Checkstyle cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ./checkstyle-cachefile
+          key: checkstyle-${{ runner.os }}-${{ hashFiles('**/pom.xml', '**/checkstyle*.xml', '**/checkstyle*.properties') }}
+          restore-keys: |
+            checkstyle-${{ runner.os }}-
+
       # Runs `mvn verify` with the arguments below. Pushes and pull requests from this repository
       # are analyzed here. Pull requests from forks are built without the token and analyzed by the
       # Sonar workflow.

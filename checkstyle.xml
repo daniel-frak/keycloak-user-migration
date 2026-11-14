@@ -1,0 +1,284 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<module name="Checker">
+    <property name="cacheFile" value="checkstyle-cachefile"/>
+
+    <!-- Filters -->
+
+    <module name="SuppressionSingleFilter">
+        <!-- Only static imports from java.* are allowed because everyone is familiar with those classes -->
+        <property name="checks" value="AvoidStaticImport"/>
+        <property name="message" value=" - java\."/>
+    </module>
+    <module name="SuppressionFilter">
+        <property name="file" value="${checkstyle.suppressions.file}"/>
+    </module>
+    <module name="SuppressWarningsFilter" />
+
+    <!-- File-level checks -->
+
+    <module name="FileLength"/>
+    <module name="FileTabCharacter"/>
+    <module name="LineLength">
+        <property name="max" value="120"/>
+
+        <!-- Ignore for imports and long links:-->
+        <property name="ignorePattern" value="^(package|import)\b.*|.*https?://.*"/>
+    </module>
+    <module name="NewlineAtEndOfFile"/>
+
+    <module name="TreeWalker">
+
+        <module name="SuppressWarningsHolder"/>
+
+        <!-- Naming -->
+
+        <module name="AbbreviationAsWordInName">
+            <!-- All abbreviations should be PascalCased -->
+            <property name="allowedAbbreviationLength" value="1"/>
+        </module>
+        <module name="AbstractClassName">
+            <!-- Abstract classes should not contain the word "Abstract" -->
+            <property name="format" value="^(?!.*Abstract).*$"/>
+            <property name="ignoreModifier" value="true"/>
+        </module>
+        <module name="CatchParameterName"/>
+        <module name="ClassTypeParameterName"/>
+        <module name="ConstantName"/>
+        <module name="IllegalIdentifierName"/>
+        <module name="InterfaceTypeParameterName"/>
+        <module name="LambdaParameterName"/>
+        <module name="LocalFinalVariableName"/>
+        <module name="LocalVariableName"/>
+        <module name="MemberName"/>
+        <module name="MethodName"/>
+        <module name="MethodTypeParameterName"/>
+        <module name="PackageName"/>
+        <module name="ParameterName"/>
+        <module name="PatternVariableName"/>
+        <module name="RecordComponentName"/>
+        <module name="RecordTypeParameterName"/>
+        <module name="StaticVariableName"/>
+        <module name="TypeName"/>
+
+        <!-- Annotations -->
+
+        <module name="AnnotationLocation"/>
+        <module name="AnnotationUseStyle"/>
+
+        <!-- Imports and packages -->
+
+        <module name="AvoidStaticImport"/>
+        <module name="PackageDeclaration"/>
+        <module name="RedundantImport"/>
+
+        <!-- Whitespace and formatting -->
+
+        <module name="CommentsIndentation"/>
+        <module name="EmptyForInitializerPad"/>
+        <module name="EmptyForIteratorPad"/>
+        <module name="EmptyLineSeparator">
+            <property name="allowMultipleEmptyLines" value="false"/>
+            <property name="allowMultipleEmptyLinesInsideClassMembers" value="false"/>
+            <property name="allowNoEmptyLineBetweenFields" value="true"/>
+        </module>
+        <module name="GenericWhitespace"/>
+        <module name="Indentation">
+            <!-- Experimentally enabled, as it needs lots of suppressions against IntelliJ defaults. -->
+            <!-- May decide to remove this check if it proves too cumbersome. -->
+            <!-- If you got here because it's giving you grief, please let the maintainers know! -->
+            <property name="basicOffset" value="4"/>
+            <property name="lineWrappingIndentation" value="8"/>
+            <property name="arrayInitIndent" value="4"/>
+            <property name="caseIndent" value="4"/>
+            <property name="throwsIndent" value="8"/>
+            <property name="braceAdjustment" value="0"/>
+            <property name="forceStrictCondition" value="false"/>
+        </module>
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="Indentation"/>
+            <property name="query" value="//METHOD_DEF/IDENT"/>
+        </module>
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="Indentation"/>
+            <property name="query" value="//OBJBLOCK[parent::LITERAL_NEW]/descendant-or-self::*"/>
+        </module>
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="Indentation"/>
+            <property name="query" value="//LAMBDA/SLIST/descendant-or-self::*"/>
+        </module>
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="Indentation"/>
+            <property name="query" value="//LITERAL_NEW/ELIST/descendant-or-self::*"/>
+        </module>
+        <module name="MethodParamPad"/>
+        <module name="NoWhitespaceAfter"/>
+        <module name="NoWhitespaceBefore"/>
+        <module name="NoWhitespaceBeforeCaseDefaultColon"/>
+        <module name="OperatorWrap"/>
+        <module name="ParenPad"/>
+        <module name="SeparatorWrap">
+            <property name="id" value="SeparatorWrapArrayDeclarator"/>
+            <property name="tokens" value="ARRAY_DECLARATOR"/>
+            <property name="option" value="EOL"/>
+        </module>
+        <module name="SeparatorWrap">
+            <property name="id" value="SeparatorWrapComma"/>
+            <property name="tokens" value="COMMA"/>
+            <property name="option" value="EOL"/>
+        </module>
+        <module name="SeparatorWrap">
+            <property name="id" value="SeparatorWrapDot"/>
+            <property name="tokens" value="DOT"/>
+            <property name="option" value="nl"/>
+        </module>
+        <module name="SeparatorWrap">
+            <property name="id" value="SeparatorWrapEllipsis"/>
+            <property name="tokens" value="ELLIPSIS"/>
+            <property name="option" value="EOL"/>
+        </module>
+        <module name="SeparatorWrap">
+            <property name="id" value="SeparatorWrapMethodRef"/>
+            <property name="tokens" value="METHOD_REF"/>
+            <property name="option" value="nl"/>
+        </module>
+        <module name="SingleSpaceSeparator"/>
+        <module name="TypecastParenPad"/>
+        <module name="WhitespaceAfter"/>
+        <module name="WhitespaceAround"/>
+
+        <!-- Syntax style and literals -->
+
+        <module name="ArrayTypeStyle"/>
+        <module name="AvoidEscapedUnicodeCharacters"/>
+        <module name="HexLiteralCase"/>
+        <module name="NoArrayTrailingComma"/>
+        <module name="NoEnumTrailingComma"/>
+        <module name="UpperEll"/>
+
+        <!-- Blocks and braces -->
+
+        <module name="AvoidNestedBlocks"/>
+        <module name="EmptyBlock"/>
+        <module name="EmptyCatchBlock"/>
+        <module name="LeftCurly"/>
+        <module name="NeedBraces"/>
+
+        <!-- Size and complexity -->
+
+        <module name="AnonInnerLength"/>
+        <module name="BooleanExpressionComplexity"/>
+        <module name="ClassDataAbstractionCoupling"/>
+        <module name="SuppressionXpathSingleFilter">
+            <property name="checks" value="ClassDataAbstractionCoupling"/>
+            <property name="files" value=".*BeanConfig\.java$"/>
+        </module>
+        <module name="ClassFanOutComplexity">
+            <!-- Higher max due to FileCopyJpaRepository, which might just need a refactor -->
+            <property name="max" value="24"/>
+        </module>
+        <module name="CyclomaticComplexity"/>
+        <module name="ExecutableStatementCount"/>
+        <module name="JavaNCSS">
+            <property name="classMaximum" value="500"/>
+            <property name="fileMaximum" value="500"/>
+            <property name="recordMaximum" value="100"/>
+            <property name="methodMaximum" value="40"/>
+        </module>
+        <module name="LambdaBodyLength"/>
+        <module name="MethodLength">
+            <property name="max" value="50"/>
+        </module>
+        <module name="NPathComplexity">
+            <property name="max" value="50"/>
+        </module>
+        <module name="NestedForDepth"/>
+        <module name="NestedIfDepth"/>
+        <module name="NestedTryDepth"/>
+        <module name="ParameterNumber">
+            <property name="tokens" value="METHOD_DEF"/>
+        </module>
+        <module name="ReturnCount">
+            <property name="max" value="4"/>
+            <property name="maxForVoid" value="4"/>
+        </module>
+        <module name="ThrowsCount"/>
+
+        <!-- Class design and file structure -->
+
+        <module name="DeclarationOrder"/>
+        <module name="FinalClass"/>
+        <module name="HideUtilityClassConstructor">
+            <!-- This won't find classes with non-private Lombok-generated constructors -->
+            <!-- but that should be rare -->
+            <property name="ignoreAnnotatedBy"
+                      value="SpringBootApplication, NoArgsConstructor, RequiredArgsConstructor"/>
+        </module>
+        <module name="InnerTypeLast"/>
+        <module name="InterfaceIsType"/>
+        <module name="ModifierOrder"/>
+        <module name="MutableException"/>
+        <module name="NoClone"/>
+        <module name="NoCodeInFile"/>
+        <module name="NoFinalizer"/>
+        <module name="OneTopLevelClass"/>
+        <module name="OuterTypeFilename"/>
+        <module name="RedundantModifier"/>
+        <module name="VisibilityModifier">
+            <property name="protectedAllowed" value="true"/>
+            <property name="packageAllowed" value="true"/>
+        </module>
+
+        <!-- Code style and bug-prone constructs -->
+
+        <module name="AvoidDoubleBraceInitialization"/>
+        <module name="CovariantEquals"/>
+        <module name="DefaultComesLast"/>
+        <module name="EmptyStatement"/>
+        <module name="EqualsAvoidNull"/>
+        <module name="EqualsHashCode"/>
+        <module name="FallThrough"/>
+        <module name="InnerAssignment"/>
+        <module name="MagicNumber"/>
+        <module name="ModifiedControlVariable"/>
+        <module name="MultipleStringLiterals">
+            <property name="allowedDuplicates" value="2"/>
+            <property name="ignoreStringsRegexp" value="%"/>
+        </module>
+        <module name="MultipleVariableDeclarations"/>
+        <module name="OneStatementPerLine"/>
+        <module name="PatternVariableAssignment"/>
+        <module name="RequireThis"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="StringLiteralEquality"/>
+        <module name="UnusedLocalVariable"/>
+
+        <!-- Illegal constructs -->
+
+        <module name="IllegalCatch">
+            <property name="illegalClassNames"
+                      value="Error, Exception, Throwable, java.lang.Error, java.lang.Exception, java.lang.Throwable"/>
+        </module>
+        <module name="IllegalThrows"/>
+        <module name="IllegalToken"/>
+        <module name="IllegalType"/>
+        <module name="TodoComment">
+            <property name="format" value="(?i)\b(?:TODO|FIXME)\b"/>
+        </module>
+
+        <!-- Redundant code and modern Java idioms -->
+
+        <module name="AvoidNoArgumentSuperConstructorCall"/>
+        <module name="UnnecessaryNullCheckWithInstanceOf"/>
+        <module name="UnnecessaryParentheses"/>
+        <module name="UnnecessarySemicolonAfterOuterTypeDeclaration"/>
+        <module name="UnnecessarySemicolonAfterTypeMemberDeclaration"/>
+        <module name="UnnecessarySemicolonInEnumeration"/>
+        <module name="UnnecessarySemicolonInTryWithResources"/>
+        <module name="WhenShouldBeUsed"/>
+    </module>
+</module>

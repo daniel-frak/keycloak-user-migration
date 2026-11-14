@@ -38,7 +38,7 @@ class MigrationConfigurationTest {
 
     @ParameterizedTest
     @NullAndEmptySource
-    @ValueSource(strings = {" "})
+    @ValueSource(strings = " ")
     void shouldReturnNoTimeoutsGivenBlank(String value) {
         config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, value);
         config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, value);

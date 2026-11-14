@@ -230,7 +230,13 @@ public class TestLegacyUser {
                 emptyList(),
                 emptyList(),
 
-                List.of(new LegacyOrganization("org-1", "org-1", List.of(new LegacyOrganizationDomain("org-1.local", true))))
+                List.of(
+                        new LegacyOrganization(
+                                "org-1",
+                                "org-1",
+                                List.of(new LegacyOrganizationDomain("org-1.local", true))
+                        )
+                )
         );
     }
 
