@@ -3,7 +3,7 @@ package com.danielfrak.code.keycloak.providers.rest.rest.http;
 import org.apache.http.client.methods.HttpGet;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class HttpRequestExceptionTest {
 
@@ -13,7 +13,7 @@ class HttpRequestExceptionTest {
 
         var result = new HttpRequestException(null, cause);
 
-        assertEquals(cause, result.getCause());
+        assertThat(result.getCause()).isEqualTo(cause);
     }
 
     @Test
@@ -21,6 +21,7 @@ class HttpRequestExceptionTest {
         var request = new HttpGet("someUri");
         var result = new HttpRequestException(request, null);
 
-        assertEquals("An error occurred while making a HTTP request: GET someUri HTTP/1.1", result.getMessage());
+        assertThat(result.getMessage())
+                .isEqualTo("An error occurred while making a HTTP request: GET someUri HTTP/1.1");
     }
 }

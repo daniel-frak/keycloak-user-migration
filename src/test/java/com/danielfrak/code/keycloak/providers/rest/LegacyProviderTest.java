@@ -3,28 +3,25 @@ package com.danielfrak.code.keycloak.providers.rest;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.remote.usermodel.UserModelFactory;
+import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
-import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.authentication.AuthenticationFlowError;
 import org.keycloak.authentication.AuthenticationFlowException;
+import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
-import org.keycloak.credential.CredentialInput;
-import org.keycloak.credential.CredentialInputValidator;
-import org.keycloak.credential.CredentialProvider;
-import org.keycloak.credential.CredentialProviderFactory;
-import org.keycloak.credential.CredentialModel;
+import org.keycloak.credential.*;
 import org.keycloak.credential.UserCredentialManager;
 import org.keycloak.models.*;
 import org.keycloak.models.credential.PasswordCredentialModel;
 import org.keycloak.policy.PasswordPolicyManagerProvider;
 import org.keycloak.policy.PolicyError;
 import org.keycloak.tracing.TracingProvider;
-import io.opentelemetry.api.trace.Span;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -32,18 +29,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.SEVER_FEDERATION_LINK;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ON_LOGIN;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 import static com.danielfrak.code.keycloak.providers.rest.remote.TestLegacyUser.withId;
-import static java.util.Collections.emptySet;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -85,737 +76,838 @@ class LegacyProviderTest {
                 new CredentialValidationService(session, legacyUserService, migrationConfiguration);
         legacyProvider = new LegacyProvider(userMigrationService, credentialValidationService, migrationConfiguration);
 
+        sessionIsConfigured();
+        noUsersExistInLegacySystem();
+    }
+
+    private void sessionIsConfigured() {
         lenient().when(session.getProvider(PasswordPolicyManagerProvider.class))
                 .thenReturn(passwordPolicyManagerProvider);
         lenient().when(session.users())
                 .thenReturn(userProvider);
-        lenient().when(legacyUserService.findByUsername(anyString()))
-                .thenReturn(Optional.empty());
     }
 
-    @Test
-    void shouldGetUserByUsername() {
-        final String username = "user";
-        final LegacyUser user = withId();
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
+    @Nested
+    class GetByUserId {
 
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
+        @Test
+        void getUserByIdShouldThrowException() {
+            var realm = mock(RealmModel.class);
+            assertThatThrownBy(() -> legacyProvider.getUserById(realm, "someId"))
+                    .isInstanceOf(UnsupportedOperationException.class);
+        }
     }
 
-    @Test
-    void shouldReturnNullIfUserNotFoundByUsername() {
-        final String username = "user";
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.empty());
+    @Nested
+    class GetUserByUsername {
 
-        var result = legacyProvider.getUserByUsername(realmModel, username);
+        @Test
+        void shouldGetUserByUsername() {
+            final String username = "user";
+            final LegacyUser user = withId();
+            userExistsInLegacySystemWithUserName(user, username);
+            userWillBeSuccessfullyCreated(user);
 
-        assertNull(result);
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+        }
+
+        @Test
+        void shouldReturnNullGivenUserNotFoundByUsername() {
+            noUsersExistInLegacySystem();
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, "user");
+
+            assertThat(result).isNull();
+        }
     }
 
-    @Test
-    void shouldGetUserByEmail() {
-        final String email = "email";
-        final LegacyUser user = withId();
-        when(legacyUserService.findByEmail(email))
-                .thenReturn(Optional.of(user));
-        when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
+    @Nested
+    class GetUserByEmail {
 
-        var result = legacyProvider.getUserByEmail(realmModel, email);
+        @Test
+        void shouldGetUserByEmail() {
+            final String email = "email";
+            final LegacyUser user = withId();
+            userExistsInLegacySystemWithEmail(user, email);
+            userWillBeSuccessfullyCreated(user);
 
-        assertEquals(userModel, result);
+            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
+
+            assertThat(result).isEqualTo(userModel);
+        }
+
+        @Test
+        void shouldReturnExistingUserAndUpdateAttributesGivenUserIdExistsButHasDifferentUsername() {
+            final String email = "email";
+            final LegacyUser legacyUser = withId();
+            userExistsInLegacySystemWithEmail(legacyUser, email);
+            noUserExistsInKeycloak();
+            UserModel existingKeycloakUser = userWithDifferentUsername();
+            legacyUserExistsInKeycloakWithId(existingKeycloakUser, legacyUser.id());
+
+            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
+
+            assertThat(result).isNotNull();
+            verify(userModelFactory).updateUserAttributes(legacyUser, existingKeycloakUser);
+            verify(userModelFactory, never()).create(any(), any());
+        }
+
+        @Test
+        void shouldReturnNullGivenUserNotFoundByEmail() {
+            final String username = "user";
+            noUsersExistInLegacySystem();
+
+            UserModel result = legacyProvider.getUserByEmail(realmModel, username);
+
+            assertThat(result).isNull();
+        }
     }
 
-    @Test
-    void shouldUpdateExistingUserDataWhenFoundByUsername() {
-        final String username = "user";
-        final LegacyUser legacyUser = withId();
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(legacyUser));
-        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
-        verify(userModelFactory, never()).create(any(), any());
-    }
-
-    @Test
-    void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithSameUsername() {
-        final String username = "user";
-        final LegacyUser legacyUser = withId();
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(legacyUser));
-        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
-                .thenReturn(null);
-        when(userProvider.getUserById(realmModel, legacyUser.id()))
-                .thenReturn(userModel);
-        when(userModel.getUsername())
-                .thenReturn(legacyUser.username());
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
-        verify(userModelFactory, never()).create(any(), any());
-    }
-
-    @Test
-    void shouldUpdateExistingUserDataWhenFoundByLegacyIdWithUsernameDifferingOnlyInCase() {
-        final String username = "user";
-        final LegacyUser legacyUser = withId();
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(legacyUser));
-        when(userProvider.getUserByUsername(realmModel, legacyUser.username()))
-                .thenReturn(null);
-        when(userProvider.getUserById(realmModel, legacyUser.id()))
-                .thenReturn(userModel);
-        when(userModel.getUsername())
-                .thenReturn(legacyUser.username().toLowerCase());
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
-        verify(userModelFactory, never()).create(any(), any());
-    }
-
-    @Test
-    void shouldCreateUserWhenLegacyIdIsBlankAndNoLocalUserExists() {
-        final String username = "user";
-        final LegacyUser user = new LegacyUser(
-                " ",
-                username,
-                "user@email.com",
-                "John",
-                "Smith",
-                true,
-                true,
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
-                .thenReturn(null);
-        when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userProvider, never()).getUserById(any(), any());
-    }
-
-    @Test
-    void shouldCreateUserWhenLegacyIdIsNullAndNoLocalUserExists() {
-        final String username = "user";
-        final LegacyUser user = new LegacyUser(
-                null,
-                username,
-                "user@email.com",
-                "John",
-                "Smith",
-                true,
-                true,
-                null,
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of(),
-                List.of()
-        );
-        when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
-                .thenReturn(null);
-        when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertEquals(userModel, result);
-        verify(userProvider, never()).getUserById(any(), any());
-    }
-
-    @Test
-    void shouldReturnExistingUserAndUpdateAttributesWhenUserIdExistsButHasDifferentUsername() {
-        final String email = "email";
-        final LegacyUser user = withId();
-        when(legacyUserService.findByEmail(email))
-                .thenReturn(Optional.of(user));
-        when(userProvider.getUserByUsername(realmModel, user.username()))
-                .thenReturn(null);
-        var existingUser = mock(UserModel.class);
-        when(existingUser.getUsername())
-                .thenReturn("different");
-        when(userProvider.getUserById(realmModel, user.id()))
+    private void legacyUserExistsInKeycloakWithId(UserModel existingUser, String id) {
+        lenient().when(userProvider.getUserById(realmModel, id))
                 .thenReturn(existingUser);
-
-        var result = legacyProvider.getUserByEmail(realmModel, email);
-
-        assertNotNull(result);
-        verify(userModelFactory).updateUserAttributes(user, existingUser);
-        verify(userModelFactory, never()).create(any(), any());
     }
 
-    @Test
-    void shouldSkipLegacyLookupWhenExistingLookupInProgress() {
-        final String username = "user";
+    private UserModel userWithDifferentUsername() {
+        var existingUser = mock(UserModel.class);
+        lenient().when(existingUser.getUsername())
+                .thenReturn("different");
+        return existingUser;
+    }
+
+    private void noUserExistsInKeycloak() {
+        lenient().when(userProvider.getUserByUsername(any(), any()))
+                .thenReturn(null);
+    }
+
+    private void userWillBeSuccessfullyCreated(LegacyUser user) {
+        lenient().when(userModelFactory.create(user, realmModel))
+                .thenReturn(userModel);
+    }
+
+    private void userExistsInLegacySystemWithEmail(LegacyUser user, String email) {
+        lenient().when(legacyUserService.findByEmail(email))
+                .thenReturn(Optional.of(user));
+    }
+
+    @Nested
+    class GetUserByUserName {
+
+        @Test
+        void shouldUpdateExistingUserDataGivenFoundByUsername() {
+            final String username = "user";
+            final LegacyUser legacyUser = withId();
+            userExistsInLegacySystemWithUserName(legacyUser, username);
+            legacyUserExistsInKeycloakWithUserName(legacyUser.username());
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+            verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
+            verify(userModelFactory, never()).create(any(), any());
+        }
+
+        @Test
+        void shouldUpdateExistingUserDataGivenFoundByLegacyIdWithSameUsername() {
+            final String username = "user";
+            final LegacyUser legacyUser = withId();
+            userExistsInLegacySystemWithUserName(legacyUser, username);
+            noUserExistsInKeycloak();
+            legacyUserExistsInKeycloakWithId(userModel, legacyUser.id());
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+            verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
+            verify(userModelFactory, never()).create(any(), any());
+        }
+
+        @Test
+        void shouldUpdateExistingUserDataGivenFoundByLegacyIdWithUsernameDifferingOnlyInCase() {
+            final String username = "user";
+            final LegacyUser legacyUser = withId();
+            userExistsInLegacySystemWithUserName(legacyUser, username);
+            noUserExistsInKeycloak();
+            legacyUserExistsInKeycloakWithId(userModel, legacyUser.id());
+            mockUserModelHasUserName(legacyUser.username().toLowerCase());
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+            verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
+            verify(userModelFactory, never()).create(any(), any());
+        }
+
+        @Test
+        void shouldCreateUserGivenLegacyIdIsBlankAndNoLocalUserExists() {
+            final String username = "user";
+            final LegacyUser user = new LegacyUser(
+                    " ",
+                    username,
+                    "user@email.com",
+                    "John",
+                    "Smith",
+                    true,
+                    true,
+                    null,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of()
+            );
+            userExistsInLegacySystemWithUserName(user, username);
+            noUserExistsInKeycloak();
+            userWillBeSuccessfullyCreated(user);
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+            verify(userProvider, never()).getUserById(any(), any());
+        }
+
+        @Test
+        void shouldCreateUserGivenLegacyIdIsNullAndNoLocalUserExists() {
+            final String username = "user";
+            final LegacyUser user = new LegacyUser(
+                    null,
+                    username,
+                    "user@email.com",
+                    "John",
+                    "Smith",
+                    true,
+                    true,
+                    null,
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    List.of()
+            );
+            userExistsInLegacySystemWithUserName(user, username);
+            noUserExistsInKeycloak();
+            userWillBeSuccessfullyCreated(user);
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isEqualTo(userModel);
+            verify(userProvider, never()).getUserById(any(), any());
+        }
+
+        @Test
+        void shouldSkipLegacyLookupGivenExistingLookupInProgress() {
+            final String username = "user";
+            everyBooleanSessionAttributeIsTrue();
+
+            UserModel result = legacyProvider.getUserByUsername(realmModel, username);
+
+            assertThat(result).isNull();
+            verifyNoInteractions(legacyUserService);
+        }
+    }
+
+    private void everyBooleanSessionAttributeIsTrue() {
         when(session.getAttribute(anyString(), eq(Boolean.class)))
                 .thenReturn(Boolean.TRUE);
-
-        var result = legacyProvider.getUserByUsername(realmModel, username);
-
-        assertNull(result);
-        verifyNoInteractions(legacyUserService);
     }
 
-    @Test
-    void shouldReturnNullIfUserNotFoundByEmail() {
-        final String username = "user";
-        when(legacyUserService.findByEmail(username))
-                .thenReturn(Optional.empty());
-
-        var result = legacyProvider.getUserByEmail(realmModel, username);
-
-        assertNull(result);
+    private void legacyUserExistsInKeycloakWithUserName(String username) {
+        when(userProvider.getUserByUsername(realmModel, username))
+                .thenReturn(userModel);
     }
 
-    @Test
-    void isValidShouldReturnFalseOnWrongCredentialType() {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(CredentialModel.KERBEROS);
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertFalse(result);
-    }
-
-    @Test
-    void isValidShouldReturnFalseOnWrongCredentialTypeEvenWhenUserIsNull() {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(CredentialModel.KERBEROS);
-
-        var result = legacyProvider.isValid(realmModel, null, input);
-
-        assertFalse(result);
-    }
-
-    @Test
-    void isValidShouldThrowGivenNullInput() {
-        assertThrows(NullPointerException.class, () -> legacyProvider.isValid(realmModel, userModel, null));
-    }
-
-    @Test
-    void isValidShouldReturnFalseWhenInvalidCredentialValue() {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final String username = "user";
-        final String password = "password";
-
-        when(userModel.getUsername())
-                .thenReturn(username);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        when(legacyUserService.isPasswordValid(username, password))
-                .thenReturn(false);
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertFalse(result);
-    }
-
-    @Test
-    void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidated() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final String username = "user";
-        final String password = "password";
-
-        when(userModel.getUsername())
-                .thenReturn(username);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        when(legacyUserService.isPasswordValid(username, password))
-                .thenReturn(true);
-
-        when(userModel.credentialManager())
-                .thenReturn(userCredentialManager);
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userCredentialManager).updateCredential(input);
-    }
-
-    @Test
-    void isValidShouldRefreshUserAttributesWhenLegacyUserExists() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername())
-                .thenReturn(legacyUser.username());
-        when(userModel.credentialManager())
-                .thenReturn(userCredentialManager);
-        when(input.getChallengeResponse())
-                .thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
-                .thenReturn(true);
-        when(legacyUserService.findByUsername(legacyUser.username()))
+    private void userExistsInLegacySystemWithUserName(LegacyUser legacyUser, String username) {
+        lenient().when(legacyUserService.findByUsername(username))
                 .thenReturn(Optional.of(legacyUser));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
     }
 
-    @Test
-    void isValidShouldContinueAuthenticationWhenRefreshThrowsException() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
+    @Nested
+    class IsValid {
 
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
+        @Test
+        void shouldReturnFalseOnWrongCredentialType() {
+            CredentialInput input = inputOfType(CredentialModel.KERBEROS);
 
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername())
-                .thenReturn(legacyUser.username());
-        when(userModel.credentialManager())
-                .thenReturn(userCredentialManager);
-        when(input.getChallengeResponse())
-                .thenReturn("password");
-        when(legacyUserService.findByUsername(legacyUser.username()))
-                .thenReturn(Optional.of(legacyUser));
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
-                .thenReturn(true);
-        doThrow(new RuntimeException("boom"))
-                .when(userModelFactory).updateUserAttributes(any(), any());
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
 
-        var result = legacyProvider.isValid(realmModel, userModel, input);
+            assertThat(result).isFalse();
+        }
 
-        assertTrue(result);
-        verify(userCredentialManager).updateCredential(input);
+        @Test
+        void shouldReturnFalseOnWrongCredentialTypeEvenGivenUserIsNull() {
+            CredentialInput input = inputOfType(CredentialModel.KERBEROS);
+
+            boolean result = legacyProvider.isValid(realmModel, null, input);
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void shouldThrowGivenNullInput() {
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, null))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        @Test
+        void shouldReturnFalseGivenInvalidCredentialValue() {
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+            modelIsConfigured(config);
+
+            final String username = "user";
+            final String password = "password";
+
+            mockUserModelHasUserName(username);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsInvalid(username, password);
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void shouldRefreshUserAttributesGivenLegacyUserExists() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory).updateUserAttributes(legacyUser, userModel);
+        }
+
+        @Test
+        void shouldContinueAuthenticationGivenRefreshThrowsException() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+            passwordIsValid(legacyUser, password);
+            userModelFactoryThrowsWhenUpdatingAttributes();
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userCredentialManager).updateCredential(input);
+        }
+
+        @Test
+        void shouldNotRefreshUserAttributesGivenRefreshDisabled() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory, never()).updateUserAttributes(any(), any());
+            verify(legacyUserService, never()).findByUsername(anyString());
+        }
+
+        @Test
+        void shouldRefreshUserGroupsGivenEnabled() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+            config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory).synchronizeGroups(legacyUser, realmModel, userModel);
+        }
+
+        @Test
+        void shouldRefreshUserRolesGivenEnabled() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+            config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory).synchronizeRoles(legacyUser, realmModel, userModel);
+        }
+
+        @Test
+        void shouldRefreshUserGroupsOnlyAddGivenEnabled() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+            config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory).synchronizeGroupsAddOnly(legacyUser, realmModel, userModel);
+            verify(userModelFactory, never()).synchronizeGroups(legacyUser, realmModel, userModel);
+        }
+
+        @Test
+        void shouldRefreshUserRolesOnlyAddGivenEnabled() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
+            config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
+            modelIsConfigured(config);
+
+            String password = "password";
+            final LegacyUser legacyUser = withId();
+            mockUserModelHasUserName(legacyUser.username());
+            mockUserHasCredentialManager(userCredentialManager);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(legacyUser, password);
+            userExistsInLegacySystemWithUserName(legacyUser, legacyUser.username());
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModelFactory).synchronizeRolesAddOnly(legacyUser, realmModel, userModel);
+            verify(userModelFactory, never()).synchronizeRoles(legacyUser, realmModel, userModel);
+        }
+
+        @Test
+        void shouldReturnTrueAndUpdateCredentialsGivenUserValidatedWithUserId() {
+            var subjectCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+            modelIsConfigured(config);
+
+            final String userId = "1234567890";
+            final String password = "password";
+
+            mockUserModelHasId(userId);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(userId, password);
+            mockUserHasCredentialManager(subjectCredentialManager);
+
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(subjectCredentialManager).updateCredential(input);
+        }
+
+        @Test
+        void shouldReturnTrueAndNotUpdateCredentialsAndRequirePasswordChangeGivenUserValidatedButPasswordBreaksPolicy() {
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+            modelIsConfigured(config);
+
+            final String userId = "1234567890";
+            final String password = "password";
+
+            mockUserModelHasId(userId);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(userId, password);
+            passwordBreaksPolicy(password);
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userModel, never()).credentialManager();
+            verify(userModel).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+        }
+
+        @Test
+        void shouldNotAddRequirePasswordActionGivenOneAlreadyExists() {
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+            modelIsConfigured(config);
+
+            final String userId = "1234567890";
+            final String password = "password";
+
+            mockUserModelHasId(userId);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(userId, password);
+            passwordBreaksPolicy(password);
+            mockUserModelRequiresUpdatingPassword();
+
+            legacyProvider.isValid(realmModel, userModel, input);
+
+            verify(userModel, never()).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
+        }
     }
 
-    @Test
-    void shouldNotRefreshUserAttributesWhenRefreshDisabled() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername())
-                .thenReturn(legacyUser.username());
-        when(userModel.credentialManager())
-                .thenReturn(userCredentialManager);
-        when(input.getChallengeResponse())
-                .thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password"))
-                .thenReturn(true);
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory, never()).updateUserAttributes(any(), any());
-        verify(legacyUserService, never()).findByUsername(anyString());
-    }
-
-    @Test
-    void isValidShouldRefreshUserGroupsWhenEnabled() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
-        config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername()).thenReturn(legacyUser.username());
-        when(userModel.credentialManager()).thenReturn(userCredentialManager);
-        when(input.getChallengeResponse()).thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
-        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory).synchronizeGroups(legacyUser, realmModel, userModel);
-    }
-
-    @Test
-    void isValidShouldRefreshUserRolesWhenEnabled() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
-        config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername()).thenReturn(legacyUser.username());
-        when(userModel.credentialManager()).thenReturn(userCredentialManager);
-        when(input.getChallengeResponse()).thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
-        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory).synchronizeRoles(legacyUser, realmModel, userModel);
-    }
-
-    @Test
-    void isValidShouldRefreshUserGroupsOnlyAddWhenEnabled() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
-        config.put(UPDATE_USER_GROUPS_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername()).thenReturn(legacyUser.username());
-        when(userModel.credentialManager()).thenReturn(userCredentialManager);
-        when(input.getChallengeResponse()).thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
-        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory).synchronizeGroupsAddOnly(legacyUser, realmModel, userModel);
-        verify(userModelFactory, never()).synchronizeGroups(legacyUser, realmModel, userModel);
-    }
-
-    @Test
-    void isValidShouldRefreshUserRolesOnlyAddWhenEnabled() {
-        var userCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType()).thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
-        config.put(UPDATE_USER_ON_LOGIN, List.of("false"));
-        config.put(UPDATE_USER_ROLES_ON_LOGIN, List.of("SYNC_EVERY_LOGIN_ONLY_ADD"));
-        when(model.getConfig()).thenReturn(config);
-
-        final LegacyUser legacyUser = withId();
-        when(userModel.getUsername()).thenReturn(legacyUser.username());
-        when(userModel.credentialManager()).thenReturn(userCredentialManager);
-        when(input.getChallengeResponse()).thenReturn("password");
-        when(legacyUserService.isPasswordValid(legacyUser.username(), "password")).thenReturn(true);
-        when(legacyUserService.findByUsername(legacyUser.username())).thenReturn(Optional.of(legacyUser));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModelFactory).synchronizeRolesAddOnly(legacyUser, realmModel, userModel);
-        verify(userModelFactory, never()).synchronizeRoles(legacyUser, realmModel, userModel);
-    }
-
-    @Test
-    void isValidShouldReturnTrueAndUpdateCredentialsWhenUserValidatedWithUserId() {
-        var subjectCredentialManager = mock(SubjectCredentialManager.class);
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final String userId = "1234567890";
-        final String password = "password";
-
-        when(userModel.getId())
-                .thenReturn(userId);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        when(legacyUserService.isPasswordValid(userId, password))
-                .thenReturn(true);
-
-
-        when(userModel.credentialManager())
-                .thenReturn(subjectCredentialManager);
-
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(subjectCredentialManager).updateCredential(input);
-    }
-
-    @Test
-    void isValidShouldReturnTrueAndNotUpdateCredentialsAndRequirePasswordChangeWhenUserValidatedButPasswordBreaksPolicy() {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final String userId = "1234567890";
-        final String password = "password";
-
-        when(userModel.getId())
-                .thenReturn(userId);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        when(legacyUserService.isPasswordValid(userId, password))
-                .thenReturn(true);
-        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
-                .thenReturn(new PolicyError("someError"));
-
-        var result = legacyProvider.isValid(realmModel, userModel, input);
-
-        assertTrue(result);
-        verify(userModel, never()).credentialManager();
-        verify(userModel).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
-    }
-
-    @Test
-    void isValidShouldNotAddRequirePasswordActionWhenOneAlreadyExists() {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(PasswordCredentialModel.TYPE);
-
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-
-        final String userId = "1234567890";
-        final String password = "password";
-
-        when(userModel.getId())
-                .thenReturn(userId);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        when(legacyUserService.isPasswordValid(userId, password))
-                .thenReturn(true);
-        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
-                .thenReturn(new PolicyError("someError"));
+    private void mockUserModelRequiresUpdatingPassword() {
         when(userModel.getRequiredActionsStream())
                 .thenReturn(Stream.of(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
-
-        legacyProvider.isValid(realmModel, userModel, input);
-
-        verify(userModel, never()).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
     }
 
-    @Test
-    void shouldSupportPasswordCredentialType() {
-        assertTrue(legacyProvider.supportsCredentialType(PasswordCredentialModel.TYPE));
+    private void passwordBreaksPolicy(String password) {
+        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
+                .thenReturn(new PolicyError("someError"));
     }
 
-    @Test
-    void isConfiguredForShouldReturnTrueForSupportedCredentialType() {
-        assertTrue(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
-                PasswordCredentialModel.TYPE));
+    private void mockUserModelHasId(String userId) {
+        lenient().when(userModel.getId())
+                .thenReturn(userId);
     }
 
-    @Test
-    void isConfiguredForShouldReturnFalseForUnsupportedCredentialType() {
-        assertFalse(legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
-                "someUnsupportedType"));
+    private void userModelFactoryThrowsWhenUpdatingAttributes() {
+        doThrow(new RuntimeException("boom"))
+                .when(userModelFactory).updateUserAttributes(any(), any());
     }
 
-    @Test
-    void getUserByIdShouldThrowException() {
-        var realm = mock(RealmModel.class);
-        assertThrows(UnsupportedOperationException.class, () -> legacyProvider.getUserById(realm, "someId"));
+    private void passwordIsValid(LegacyUser legacyUser, String password) {
+        String username = legacyUser.username();
+        passwordIsValid(username, password);
     }
 
-    @Test
-    void updateCredentialShouldSeverFederationLinkWhenEnabled() {
-        var input = mock(CredentialInput.class);
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(SEVER_FEDERATION_LINK, List.of("true"));
+    private void passwordIsValid(String username, String password) {
+        lenient().when(legacyUserService.isPasswordValid(username, password))
+                .thenReturn(true);
+    }
+
+    private void mockUserHasCredentialManager(SubjectCredentialManager userCredentialManager) {
+        lenient().when(userModel.credentialManager())
+                .thenReturn(userCredentialManager);
+    }
+
+    private CredentialInput inputWithPassword(String password) {
+        CredentialInput input = inputOfType(PasswordCredentialModel.TYPE);
+        when(input.getChallengeResponse())
+                .thenReturn(password);
+        return input;
+    }
+
+    private void passwordIsInvalid(String username, String password) {
+        when(legacyUserService.isPasswordValid(username, password))
+                .thenReturn(false);
+    }
+
+    private void mockUserModelHasUserName(String username) {
+        lenient().when(userModel.getUsername())
+                .thenReturn(username);
+    }
+
+    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
         when(model.getConfig()).thenReturn(config);
+    }
+
+    private CredentialInput inputOfType(String kerberos) {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(kerberos);
+        return input;
+    }
+
+
+    @Nested
+    class IsPasswordValid {
+
+        @Test
+        void shouldReturnTrueAndUpdateCredentialsGivenUserValidated() {
+            var userCredentialManager = mock(SubjectCredentialManager.class);
+
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("false"));
+            config.put(UPDATE_USER_ON_LOGIN, List.of("true"));
+            modelIsConfigured(config);
+
+            final String username = "user";
+            final String password = "password";
+
+            mockUserModelHasUserName(username);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(username, password);
+            mockUserHasCredentialManager(userCredentialManager);
+
+            boolean result = legacyProvider.isValid(realmModel, userModel, input);
+
+            assertThat(result).isTrue();
+            verify(userCredentialManager).updateCredential(input);
+        }
+    }
+
+    @Nested
+    class SupportsCredentialType {
+
+        @Test
+        void shouldSupportPasswordCredentialType() {
+            boolean result = legacyProvider.supportsCredentialType(PasswordCredentialModel.TYPE);
+
+            assertThat(result).isTrue();
+        }
+    }
+
+    @Nested
+    class IsConfiguredFor {
+
+        @Test
+        void isConfiguredForShouldReturnTrueForSupportedCredentialType() {
+            boolean result = legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
+                    PasswordCredentialModel.TYPE);
+
+            assertThat(result).isTrue();
+        }
+
+        @Test
+        void isConfiguredForShouldReturnFalseForUnsupportedCredentialType() {
+            boolean result = legacyProvider.isConfiguredFor(mock(RealmModel.class), mock(UserModel.class),
+                    "someUnsupportedType");
+
+            assertThat(result).isFalse();
+        }
+    }
+
+    @Nested
+    class UpdateCredential {
+
+        @Test
+        void updateCredentialShouldSeverFederationLinkGivenEnabled() {
+            var input = mock(CredentialInput.class);
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(SEVER_FEDERATION_LINK, List.of("true"));
+            modelIsConfigured(config);
+            mockUserModelHasFederationLink();
+
+            boolean result = legacyProvider.updateCredential(realmModel, userModel, input);
+
+            assertThat(result).isFalse();
+            verify(userModel).setFederationLink(null);
+        }
+
+        @Test
+        void updateCredentialShouldNotSeverFederationLinkGivenDisabled() {
+            var input = mock(CredentialInput.class);
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(SEVER_FEDERATION_LINK, List.of("false"));
+            modelIsConfigured(config);
+
+            boolean result = legacyProvider.updateCredential(realmModel, userModel, input);
+
+            assertThat(result).isFalse();
+            verify(userModel, never()).setFederationLink(null);
+        }
+
+        @Test
+        void updateCredentialShouldNotAttemptSeverGivenUserIsNull() {
+            var input = mock(CredentialInput.class);
+
+            boolean result = legacyProvider.updateCredential(realmModel, null, input);
+
+            assertThat(result).isFalse();
+        }
+
+        @Test
+        void updateCredentialShouldAcceptNullInputAndStillSeverGivenEnabledByDefault() {
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            modelIsConfigured(config);
+            mockUserModelHasFederationLink();
+
+            boolean result = legacyProvider.updateCredential(realmModel, userModel, null);
+
+            assertThat(result).isFalse();
+
+            verify(userModel).setFederationLink(null);
+        }
+
+        @Test
+        void updateCredentialShouldNotClearBlankFederationLink() {
+            var input = mock(CredentialInput.class);
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(SEVER_FEDERATION_LINK, List.of("true"));
+            modelIsConfigured(config);
+            mockUserModelHasFederationLink("  ");
+
+            boolean result = legacyProvider.updateCredential(realmModel, userModel, input);
+
+            assertThat(result).isFalse();
+
+            verify(userModel, never()).setFederationLink(null);
+        }
+
+        @Test
+        void updateCredentialShouldNotClearNullFederationLink() {
+            var input = mock(CredentialInput.class);
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(SEVER_FEDERATION_LINK, List.of("true"));
+            modelIsConfigured(config);
+            mockUserModelHasFederationLink(null);
+
+            boolean result = legacyProvider.updateCredential(realmModel, userModel, input);
+
+            assertThat(result).isFalse();
+
+            verify(userModel, never()).setFederationLink(null);
+        }
+    }
+
+    private void mockUserModelHasFederationLink() {
+        String federationLink = "someId";
+        mockUserModelHasFederationLink(federationLink);
+    }
+
+    private void mockUserModelHasFederationLink(String federationLink) {
         when(userModel.getFederationLink())
-                .thenReturn("someId");
-
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel).setFederationLink(null);
+                .thenReturn(federationLink);
     }
 
-    @Test
-    void updateCredentialShouldNotSeverFederationLinkWhenDisabled() {
-        var input = mock(CredentialInput.class);
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(SEVER_FEDERATION_LINK, List.of("false"));
-        when(model.getConfig()).thenReturn(config);
+    @Nested
+    class UpdateCredentialType {
 
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel, never()).setFederationLink(null);
+        @Test
+        void disableCredentialTypeShouldDoNothing() {
+            legacyProvider.disableCredentialType(realmModel, userModel, "someType");
+            Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel);
+        }
     }
 
-    @Test
-    void updateCredentialShouldNotAttemptSeverWhenUserIsNull() {
-        var input = mock(CredentialInput.class);
+    @Nested
+    class Close {
 
-        assertFalse(legacyProvider.updateCredential(realmModel, null, input));
+        @Test
+        void closeShouldDoNothing() {
+            legacyProvider.close();
+            Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
+        }
     }
 
-    @Test
-    void updateCredentialShouldAcceptNullInputAndStillSeverWhenEnabledByDefault() {
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        when(model.getConfig()).thenReturn(config);
-        when(userModel.getFederationLink()).thenReturn("some-id");
+    @Nested
+    class GetDisableableCredentialTypesStream {
 
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, null));
+        @Test
+        void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
+            Stream<String> result = legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel);
 
-        verify(userModel).setFederationLink(null);
+            assertThat(result.toList()).isEmpty();
+        }
     }
 
-    @Test
-    void updateCredentialShouldNotClearBlankFederationLink() {
-        var input = mock(CredentialInput.class);
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(SEVER_FEDERATION_LINK, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-        when(userModel.getFederationLink())
-                .thenReturn("  ");
+    @Nested
+    class AddUser {
 
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
-
-        verify(userModel, never()).setFederationLink(null);
+        @Test
+        void addUserShouldReturnNull() {
+            UserModel result = legacyProvider.addUser(realmModel, "someUser");
+            assertThat(result).isNull();
+        }
     }
 
-    @Test
-    void updateCredentialShouldNotClearNullFederationLink() {
-        var input = mock(CredentialInput.class);
-        MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.put(SEVER_FEDERATION_LINK, List.of("true"));
-        when(model.getConfig()).thenReturn(config);
-        when(userModel.getFederationLink()).thenReturn(null);
+    @Nested
+    class RemoveUser {
 
-        assertFalse(legacyProvider.updateCredential(realmModel, userModel, input));
+        @Test
+        void removeUserShouldReturnTrue() {
+            var result = legacyProvider.removeUser(realmModel, userModel);
+            assertThat(result).isTrue();
+        }
 
-        verify(userModel, never()).setFederationLink(null);
-    }
-
-    @Test
-    void disableCredentialTypeShouldDoNothing() {
-        legacyProvider.disableCredentialType(realmModel, userModel, "someType");
-        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel);
-    }
-
-    @Test
-    void closeShouldDoNothing() {
-        legacyProvider.close();
-        Mockito.verifyNoInteractions(session, legacyUserService, userModelFactory, realmModel, userModel);
-    }
-
-    @Test
-    void getDisableableCredentialTypesShouldAlwaysReturnEmptySet() {
-        assertEquals(emptySet(),
-                legacyProvider.getDisableableCredentialTypesStream(realmModel, userModel).collect(Collectors.toSet()));
-    }
-
-    @Test
-    void addUserShouldReturnNull() {
-        UserModel result = legacyProvider.addUser(realmModel, "someUser");
-        assertNull(result);
-    }
-
-    @Test
-    void removeUserShouldReturnTrue() {
-        var result = legacyProvider.removeUser(realmModel, userModel);
-        assertTrue(result);
-    }
-
-    @Test
-    void removeUserShouldReturnTrueForNullUser() {
-        var result = legacyProvider.removeUser(realmModel, null);
-        assertTrue(result);
+        @Test
+        void removeUserShouldReturnTrueForNullUser() {
+            var result = legacyProvider.removeUser(realmModel, null);
+            assertThat(result).isTrue();
+        }
     }
 
     @Nested
     class IsValidWithTotpRefresh {
 
+        private final MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+        private final UserCredentialModel password = UserCredentialModel.password("password");
+
         @Mock
         private KeycloakTransactionManager transaction;
+
         @Mock
         private SubjectCredentialManager credentials;
 
-        private final MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        private final UserCredentialModel password = UserCredentialModel.password("password");
         private LegacyUser legacyUser;
 
         @BeforeEach
         void setUp() {
             config.putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "true");
             config.putSingle(SEVER_FEDERATION_LINK, "false");
-            when(model.getConfig()).thenReturn(config);
+            modelIsConfigured(config);
             legacyUser = response("id", true);
 
-            lenient().when(userModel.getUsername()).thenReturn("username");
-            lenient().when(userModel.getId()).thenReturn("id");
-            lenient().when(userModel.credentialManager()).thenReturn(credentials);
-            lenient().when(session.getTransactionManager()).thenReturn(transaction);
-            lenient().when(legacyUserService.isPasswordValid("username", "password")).thenReturn(true);
-            lenient().when(legacyUserService.findByUsername("username")).thenReturn(Optional.of(legacyUser));
+            mockUserModelHasUserName("username");
+            mockUserModelHasId("id");
+            mockUserHasCredentialManager(credentials);
+            sessionTransactionManagerIsAvailable();
+            passwordIsValid("username", "password");
+            userExistsInLegacySystemWithUserName(legacyUser, "username");
+        }
+
+        private void sessionTransactionManagerIsAvailable() {
+            lenient().when(session.getTransactionManager())
+                    .thenReturn(transaction);
         }
 
         private LegacyUser response(String id, boolean enabled) {
@@ -829,7 +921,7 @@ class LegacyProviderTest {
             component.setId(providerId);
             component.setConfig(config);
             when(userModel.isFederated()).thenReturn(true);
-            when(userModel.getFederationLink()).thenReturn(providerId);
+            mockUserModelHasFederationLink(providerId);
             when(realmModel.getComponent(providerId)).thenReturn(component);
             when(session.getAttribute(providerId)).thenReturn(legacyProvider);
             var sessionFactory = mock(KeycloakSessionFactory.class);
@@ -854,23 +946,14 @@ class LegacyProviderTest {
             return new UserCredentialManager(session, realmModel, userModel);
         }
 
-        private abstract class LocalPasswordProvider
-                implements CredentialProvider<PasswordCredentialModel>, CredentialInputValidator {
-            @Override
-            public abstract boolean supportsCredentialType(String type);
-        }
-
-        private abstract class LocalPasswordFactory implements CredentialProviderFactory<LocalPasswordProvider> {
-        }
-
         @Test
         void shouldSynchronizeAfterPasswordValidationOnEveryPasswordLogin() {
-            var firstLogin = legacyProvider.isValid(realmModel, userModel, password);
-            var secondLogin = legacyProvider.isValid(realmModel, userModel, password);
+            boolean firstLogin = legacyProvider.isValid(realmModel, userModel, password);
+            boolean secondLogin = legacyProvider.isValid(realmModel, userModel, password);
 
-            assertTrue(firstLogin);
-            assertTrue(secondLogin);
-            var order = inOrder(legacyUserService, credentials, userModelFactory);
+            assertThat(firstLogin).isTrue();
+            assertThat(secondLogin).isTrue();
+            InOrder order = inOrder(legacyUserService, credentials, userModelFactory);
             for (int login = 0; login < 2; login++) {
                 order.verify(legacyUserService).isPasswordValid("username", "password");
                 order.verify(credentials).updateCredential(password);
@@ -883,56 +966,60 @@ class LegacyProviderTest {
 
         @Test
         void shouldRefreshThroughCredentialManagerOnRepeatedLogins() {
-            var localPassword = mock(LocalPasswordProvider.class);
-            var manager = keycloakCredentialManager(localPassword);
+            LocalPasswordProvider localPassword = mock(LocalPasswordProvider.class);
+            UserCredentialManager manager = keycloakCredentialManager(localPassword);
 
-            var firstLogin = manager.isValid(List.of(password));
-            var secondLogin = manager.isValid(List.of(password));
+            boolean firstLogin = manager.isValid(List.of(password));
+            boolean secondLogin = manager.isValid(List.of(password));
 
-            assertTrue(firstLogin);
-            assertTrue(secondLogin);
+            assertThat(firstLogin).isTrue();
+            assertThat(secondLogin).isTrue();
             verify(userModelFactory, times(2)).synchronizeTotps(legacyUser, userModel);
             verify(localPassword, never()).isValid(any(), any(), any());
         }
 
         @Test
-        void shouldNotFallBackToLocalPasswordIfLegacyPasswordIsRejected() {
+        void shouldNotFallBackToLocalPasswordGivenLegacyPasswordIsRejected() {
             var localPassword = mock(LocalPasswordProvider.class);
             var manager = keycloakCredentialManager(localPassword);
-            when(legacyUserService.isPasswordValid("username", "password")).thenReturn(false);
+            passwordIsInvalid("username", "password");
             List<CredentialInput> inputs = List.of(password);
 
-            var exception = assertThrows(AuthenticationFlowException.class, () -> manager.isValid(inputs));
-
-            assertEquals(AuthenticationFlowError.INVALID_CREDENTIALS, exception.getError());
+            assertThatThrownBy(() -> manager.isValid(inputs))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INVALID_CREDENTIALS);
             verify(localPassword, never()).isValid(any(), any(), any());
             verify(userModelFactory, never()).synchronizeTotps(any(), any());
         }
 
         @Test
-        void shouldNotFallBackToLocalPasswordIfTotpRefreshFails() {
+        void shouldNotFallBackToLocalPasswordGivenTotpRefreshFails() {
             var localPassword = mock(LocalPasswordProvider.class);
             var manager = keycloakCredentialManager(localPassword);
-            when(legacyUserService.findByUsername("username")).thenReturn(Optional.empty());
+            noUsersExistInLegacySystem();
             List<CredentialInput> inputs = List.of(password);
 
-            var exception = assertThrows(AuthenticationFlowException.class, () -> manager.isValid(inputs));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> manager.isValid(inputs))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verify(localPassword, never()).isValid(any(), any(), any());
         }
 
         @Test
-        void shouldPreserveLocalPasswordFallbackWhenRefreshIsDisabled() {
+        void shouldPreserveLocalPasswordFallbackGivenRefreshIsDisabled() {
             var localPassword = mock(LocalPasswordProvider.class);
             var manager = keycloakCredentialManager(localPassword);
             config.putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "false");
-            when(legacyUserService.isPasswordValid("username", "password")).thenReturn(false);
+            passwordIsInvalid("username", "password");
 
-            var result = manager.isValid(List.of(password));
+            boolean result = manager.isValid(List.of(password));
 
-            assertTrue(result);
+            assertThat(result).isTrue();
             verify(localPassword).isValid(realmModel, userModel, password);
             verify(userModelFactory, never()).synchronizeTotps(any(), any());
         }
@@ -943,9 +1030,9 @@ class LegacyProviderTest {
             config.putSingle(UPDATE_USER_GROUPS_ON_LOGIN, "SYNC_EVERY_LOGIN");
             config.putSingle(UPDATE_USER_ROLES_ON_LOGIN, "SYNC_EVERY_LOGIN");
 
-            var result = legacyProvider.isValid(realmModel, userModel, password);
+            boolean result = legacyProvider.isValid(realmModel, userModel, password);
 
-            assertTrue(result);
+            assertThat(result).isTrue();
             verify(legacyUserService).findByUsername("username");
             var order = inOrder(userModelFactory);
             order.verify(userModelFactory).synchronizeTotps(legacyUser, userModel);
@@ -955,73 +1042,87 @@ class LegacyProviderTest {
         }
 
         @Test
-        void shouldNotSynchronizeWhenOptionIsAbsent() {
+        void shouldNotSynchronizeGivenOptionIsAbsent() {
             config.remove(UPDATE_USER_TOTPS_ON_LOGIN);
 
-            var result = legacyProvider.isValid(realmModel, userModel, password);
+            boolean result = legacyProvider.isValid(realmModel, userModel, password);
 
-            assertTrue(result);
+            assertThat(result).isTrue();
             verify(legacyUserService, never()).findByUsername(anyString());
             verifyNoInteractions(userModelFactory);
         }
 
         @Test
-        void shouldAbortWithoutFetchingTotpsWhenPasswordIsInvalid() {
-            when(legacyUserService.isPasswordValid("username", "password")).thenReturn(false);
+        void shouldAbortWithoutFetchingTotpsGivenPasswordIsInvalid() {
+            passwordIsInvalid("username", "password");
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INVALID_CREDENTIALS, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INVALID_CREDENTIALS);
             verify(legacyUserService, never()).findByUsername(anyString());
             verifyNoInteractions(credentials, userModelFactory);
         }
 
         @Test
-        void shouldAbortAndRollBackWhenLegacyUserIsUnavailable() {
-            when(legacyUserService.findByUsername("username")).thenReturn(Optional.empty());
+        void shouldAbortAndRollBackGivenLegacyUserIsUnavailable() {
+            noUserExistsInKeycloak();
+            noUsersExistInLegacySystem();
+            noUsersExistInLegacySystem();
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verifyNoInteractions(userModelFactory);
         }
 
         @Test
-        void shouldAbortAndRollBackWhenLegacyRequestFails() {
-            when(legacyUserService.findByUsername("username")).thenThrow(new IllegalStateException("unavailable"));
+        void shouldAbortAndRollBackGivenLegacyRequestFails() {
+            legacyUserServiceThrowsWhenRetrievingByUserName();
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
         }
 
+        private void legacyUserServiceThrowsWhenRetrievingByUserName() {
+            when(legacyUserService.findByUsername(any())).thenThrow(new IllegalStateException("unavailable"));
+        }
+
         @Test
-        void shouldAbortAndRollBackWhenTotpSynchronizationFails() {
-            doThrow(new IllegalArgumentException("Invalid TOTP configuration"))
+        void shouldAbortAndRollBackGivenTotpSynchronizationFails() {
+            totpSynchronizationThrows();
+
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
+            verify(transaction).setRollbackOnly();
+        }
+
+        private void totpSynchronizationThrows() {
+            doThrow(new IllegalArgumentException("Exception"))
                     .when(userModelFactory).synchronizeTotps(legacyUser, userModel);
-
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
-            verify(transaction).setRollbackOnly();
         }
 
         @Test
-        void shouldNotSwallowTotpFailuresWhenProfileRefreshIsEnabled() {
+        void shouldNotSwallowTotpFailuresGivenProfileRefreshIsEnabled() {
             config.putSingle(UPDATE_USER_ON_LOGIN, "true");
-            doThrow(new IllegalStateException("Storage failed"))
-                    .when(userModelFactory).synchronizeTotps(legacyUser, userModel);
+            totpSynchronizationThrows();
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verify(userModelFactory, never()).updateUserAttributes(any(), any());
         }
@@ -1029,12 +1130,11 @@ class LegacyProviderTest {
         @Test
         void shouldKeepExistingBestEffortProfileRefreshBehavior() {
             config.putSingle(UPDATE_USER_ON_LOGIN, "true");
-            doThrow(new IllegalStateException("Profile failed"))
-                    .when(userModelFactory).updateUserAttributes(legacyUser, userModel);
+            userModelFactoryThrowsWhenUpdatingAttributes();
 
-            var result = legacyProvider.isValid(realmModel, userModel, password);
+            boolean result = legacyProvider.isValid(realmModel, userModel, password);
 
-            assertTrue(result);
+            assertThat(result).isTrue();
             verify(userModelFactory).synchronizeTotps(legacyUser, userModel);
             verify(transaction, never()).setRollbackOnly();
         }
@@ -1043,10 +1143,11 @@ class LegacyProviderTest {
         void shouldRejectFederationSevering() {
             config.putSingle(SEVER_FEDERATION_LINK, "true");
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verify(legacyUserService, never()).findByUsername(anyString());
             verifyNoInteractions(userModelFactory);
@@ -1054,13 +1155,13 @@ class LegacyProviderTest {
 
         @Test
         void shouldRejectMismatchedLegacyUserId() {
-            when(legacyUserService.findByUsername("username"))
-                    .thenReturn(Optional.of(response("different-id", true)));
+            userExistsInLegacySystemWithUserName(response("different-id", true), "username");
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verifyNoInteractions(userModelFactory);
         }
@@ -1068,25 +1169,42 @@ class LegacyProviderTest {
         @ParameterizedTest
         @NullAndEmptySource
         void shouldSupportLegacyResponsesWithoutAnId(String id) {
-            var response = response(id, true);
-            when(legacyUserService.findByUsername("username")).thenReturn(Optional.of(response));
+            LegacyUser response = response(id, true);
+            userExistsInLegacySystemWithUserName(response, "username");
 
-            var result = legacyProvider.isValid(realmModel, userModel, password);
+            boolean result = legacyProvider.isValid(realmModel, userModel, password);
 
-            assertTrue(result);
+            assertThat(result).isTrue();
             verify(userModelFactory).synchronizeTotps(response, userModel);
         }
 
         @Test
         void shouldRejectDisabledLegacyUser() {
-            when(legacyUserService.findByUsername("username")).thenReturn(Optional.of(response("id", false)));
+            userExistsInLegacySystemWithUserName(response("id", false), "username");
 
-            var exception = assertThrows(AuthenticationFlowException.class,
-                    () -> legacyProvider.isValid(realmModel, userModel, password));
-
-            assertEquals(AuthenticationFlowError.INTERNAL_ERROR, exception.getError());
+            assertThatThrownBy(() -> legacyProvider.isValid(realmModel, userModel, password))
+                    .isInstanceOf(AuthenticationFlowException.class)
+                    .extracting(AuthenticationFlowException.class::cast)
+                    .extracting(AuthenticationFlowException::getError)
+                    .isEqualTo(AuthenticationFlowError.INTERNAL_ERROR);
             verify(transaction).setRollbackOnly();
             verifyNoInteractions(userModelFactory);
         }
+
+        private abstract static class LocalPasswordProvider
+                implements CredentialProvider<PasswordCredentialModel>, CredentialInputValidator {
+            @Override
+            public abstract boolean supportsCredentialType(String type);
+        }
+
+        private abstract static class LocalPasswordFactory implements CredentialProviderFactory<LocalPasswordProvider> {
+        }
+    }
+
+    private void noUsersExistInLegacySystem() {
+        lenient().when(legacyUserService.findByUsername(any()))
+                .thenReturn(Optional.empty());
+        lenient().when(legacyUserService.findByEmail(any()))
+                .thenReturn(Optional.empty());
     }
 }

@@ -12,8 +12,8 @@ import java.util.OptionalInt;
 
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_CONNECT_TIMEOUT_PROPERTY;
 import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_READ_TIMEOUT_PROPERTY;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MigrationConfigurationTest {
 
@@ -29,20 +29,24 @@ class MigrationConfigurationTest {
     }
 
     @Test
-    void shouldReturnNoTimeoutsWhenNotConfigured() {
-        assertEquals(OptionalInt.empty(), migrationConfiguration.getHttpConnectTimeoutMillis());
-        assertEquals(OptionalInt.empty(), migrationConfiguration.getHttpReadTimeoutMillis());
+    void shouldReturnNoTimeoutsGivenNotConfigured() {
+        assertThat(migrationConfiguration.getHttpConnectTimeoutMillis())
+                .isEqualTo(OptionalInt.empty());
+        assertThat(migrationConfiguration.getHttpReadTimeoutMillis())
+                .isEqualTo(OptionalInt.empty());
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" "})
-    void shouldReturnNoTimeoutsWhenBlank(String value) {
+    void shouldReturnNoTimeoutsGivenBlank(String value) {
         config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, value);
         config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, value);
 
-        assertEquals(OptionalInt.empty(), migrationConfiguration.getHttpConnectTimeoutMillis());
-        assertEquals(OptionalInt.empty(), migrationConfiguration.getHttpReadTimeoutMillis());
+        assertThat(migrationConfiguration.getHttpConnectTimeoutMillis())
+                .isEqualTo(OptionalInt.empty());
+        assertThat(migrationConfiguration.getHttpReadTimeoutMillis())
+                .isEqualTo(OptionalInt.empty());
     }
 
     @Test
@@ -50,8 +54,10 @@ class MigrationConfigurationTest {
         config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, "3000");
         config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, " 5000 ");
 
-        assertEquals(OptionalInt.of(3000), migrationConfiguration.getHttpConnectTimeoutMillis());
-        assertEquals(OptionalInt.of(5000), migrationConfiguration.getHttpReadTimeoutMillis());
+        assertThat(migrationConfiguration.getHttpConnectTimeoutMillis())
+                .isEqualTo(OptionalInt.of(3000));
+        assertThat(migrationConfiguration.getHttpReadTimeoutMillis())
+                .isEqualTo(OptionalInt.of(5000));
     }
 
     @ParameterizedTest
@@ -60,23 +66,23 @@ class MigrationConfigurationTest {
         config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, value);
         config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, value);
 
-        assertThrows(IllegalArgumentException.class, () -> migrationConfiguration.getHttpConnectTimeoutMillis());
-        assertThrows(IllegalArgumentException.class, () -> migrationConfiguration.getHttpReadTimeoutMillis());
+        assertThatThrownBy(() -> migrationConfiguration.getHttpConnectTimeoutMillis())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> migrationConfiguration.getHttpReadTimeoutMillis())
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
-    void shouldNameFieldLabelWhenRejectingTimeout() {
+    void shouldNameFieldLabelGivenTimeoutRejected() {
         config.putSingle(HTTP_CONNECT_TIMEOUT_PROPERTY, "5s");
         config.putSingle(HTTP_READ_TIMEOUT_PROPERTY, "5s");
 
-        var connectException = assertThrows(IllegalArgumentException.class,
-                () -> migrationConfiguration.getHttpConnectTimeoutMillis());
-        var readException = assertThrows(IllegalArgumentException.class,
-                () -> migrationConfiguration.getHttpReadTimeoutMillis());
+        assertThatThrownBy(() -> migrationConfiguration.getHttpConnectTimeoutMillis())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("'Rest client connect timeout (ms)' must be a positive number of milliseconds");
 
-        assertEquals("'Rest client connect timeout (ms)' must be a positive number of milliseconds",
-                connectException.getMessage());
-        assertEquals("'Rest client read timeout (ms)' must be a positive number of milliseconds",
-                readException.getMessage());
+        assertThatThrownBy(() -> migrationConfiguration.getHttpReadTimeoutMillis())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("'Rest client read timeout (ms)' must be a positive number of milliseconds");
     }
 }

@@ -2,22 +2,21 @@ package com.danielfrak.code.keycloak.providers.rest.rest.http;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class HttpResponseTest {
 
     @Test
     void shouldCreateWithCode() {
         var response = new HttpResponse(200);
-        assertEquals(200, response.getCode());
-        assertNull(response.getBody());
+        assertThat(response.getCode()).isEqualTo(200);
+        assertThat(response.getBody()).isNull();
     }
 
     @Test
     void shouldCreateWithCodeAndBody() {
         var response = new HttpResponse(200, "someBody");
-        assertEquals(200, response.getCode());
-        assertEquals("someBody", response.getBody());
+        assertThat(response.getCode()).isEqualTo(200);
+        assertThat(response.getBody()).isEqualTo("someBody");
     }
 }

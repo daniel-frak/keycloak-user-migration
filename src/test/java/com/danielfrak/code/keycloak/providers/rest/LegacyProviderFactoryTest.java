@@ -1,6 +1,7 @@
 package com.danielfrak.code.keycloak.providers.rest;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,17 +13,8 @@ import org.keycloak.models.KeycloakSession;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_CONNECT_TIMEOUT_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.HTTP_READ_TIMEOUT_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.PROVIDER_NAME;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.URI_PROPERTY;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN;
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.SEVER_FEDERATION_LINK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
+import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,70 +33,94 @@ class LegacyProviderFactoryTest {
         legacyProviderFactory = new LegacyProviderFactory();
     }
 
-    @Test
-    void getConfigProperties() {
-        assertEquals(ConfigurationProperties.getConfigProperties(), legacyProviderFactory.getConfigProperties());
+    @Nested
+    class GetConfigProperties {
+
+        @Test
+        void getConfigPropertiesShouldReturnProperties() {
+            assertThat(legacyProviderFactory.getConfigProperties())
+                    .isEqualTo(ConfigurationProperties.getConfigProperties());
+        }
     }
 
-    @Test
-    void create() {
-        final MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
-        config.putSingle(URI_PROPERTY, "http://localhost");
+    @Nested
+    class Create {
+
+        @Test
+        void shouldReturnProvider() {
+            final MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.putSingle(URI_PROPERTY, "http://localhost");
+            modelIsConfigured(config);
+
+            var provider = legacyProviderFactory.create(session, model);
+
+            assertThat(provider).isNotNull();
+        }
+    }
+
+    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
         when(model.getConfig())
                 .thenReturn(config);
-        var provider = legacyProviderFactory.create(session, model);
-        assertNotNull(provider);
     }
 
-    @Test
-    void getId() {
-        assertEquals(PROVIDER_NAME, legacyProviderFactory.getId());
+    @Nested
+    class GetId {
+
+        @Test
+        void getIdShouldReturnProviderName() {
+            assertThat(legacyProviderFactory.getId()).isEqualTo(PROVIDER_NAME);
+        }
     }
 
-    @Test
-    void shouldAllowExistingConfiguration() {
-        when(model.getConfig()).thenReturn(new MultivaluedHashMap<>());
+    @Nested
+    class ValidateConfiguration {
 
-        assertDoesNotThrow(() -> legacyProviderFactory.validateConfiguration(session, null, model));
-    }
+        @Test
+        void shouldAllowExistingConfiguration() {
+            modelIsConfigured(new MultivaluedHashMap<>());
 
-    @Test
-    void shouldRequireRetainingFederationLinkForTotpRefresh() {
-        var config = new MultivaluedHashMap<String, String>();
-        config.putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "true");
-        when(model.getConfig()).thenReturn(config);
+            assertThatCode(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .doesNotThrowAnyException();
+        }
 
-        assertThrows(ComponentValidationException.class,
-                () -> legacyProviderFactory.validateConfiguration(session, null, model));
+        @Test
+        void shouldRequireRetainingFederationLinkForTotpRefresh() {
+            var config = new MultivaluedHashMap<String, String>();
+            config.putSingle(UPDATE_USER_TOTPS_ON_LOGIN, "true");
+            modelIsConfigured(config);
 
-        config.putSingle(SEVER_FEDERATION_LINK, "true");
-        assertThrows(ComponentValidationException.class,
-                () -> legacyProviderFactory.validateConfiguration(session, null, model));
+            assertThatThrownBy(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .isInstanceOf(ComponentValidationException.class);
 
-        config.putSingle(SEVER_FEDERATION_LINK, "false");
-        assertDoesNotThrow(() -> legacyProviderFactory.validateConfiguration(session, null, model));
-    }
+            config.putSingle(SEVER_FEDERATION_LINK, "true");
+            assertThatThrownBy(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .isInstanceOf(ComponentValidationException.class);
 
-    @ParameterizedTest
-    @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
-    void shouldRejectInvalidHttpTimeouts(String property) {
-        var config = new MultivaluedHashMap<String, String>();
-        config.putSingle(property, "abc");
-        when(model.getConfig()).thenReturn(config);
+            config.putSingle(SEVER_FEDERATION_LINK, "false");
+            assertThatCode(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .doesNotThrowAnyException();
+        }
 
-        var exception = assertThrows(ComponentValidationException.class,
-                () -> legacyProviderFactory.validateConfiguration(session, null, model));
+        @ParameterizedTest
+        @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
+        void shouldRejectInvalidHttpTimeouts(String property) {
+            var config = new MultivaluedHashMap<String, String>();
+            config.putSingle(property, "abc");
+            modelIsConfigured(config);
 
-        assertInstanceOf(IllegalArgumentException.class, exception.getCause());
-    }
+            assertThatThrownBy(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .hasCauseInstanceOf(IllegalArgumentException.class);
+        }
 
-    @ParameterizedTest
-    @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
-    void shouldAcceptValidHttpTimeouts(String property) {
-        var config = new MultivaluedHashMap<String, String>();
-        config.putSingle(property, "3000");
-        when(model.getConfig()).thenReturn(config);
+        @ParameterizedTest
+        @ValueSource(strings = {HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_PROPERTY})
+        void shouldAcceptValidHttpTimeouts(String property) {
+            var config = new MultivaluedHashMap<String, String>();
+            config.putSingle(property, "3000");
+            modelIsConfigured(config);
 
-        assertDoesNotThrow(() -> legacyProviderFactory.validateConfiguration(session, null, model));
+            assertThatCode(() -> legacyProviderFactory.validateConfiguration(session, null, model))
+                    .doesNotThrowAnyException();
+        }
     }
 }

@@ -2,7 +2,7 @@ package com.danielfrak.code.keycloak.providers.rest.exceptions;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class RestUserProviderExceptionTest {
 
@@ -12,7 +12,7 @@ class RestUserProviderExceptionTest {
 
         var result = new RestUserProviderException(cause);
 
-        assertEquals(cause, result.getCause());
+        assertThat(result.getCause()).isEqualTo(cause);
     }
 
     @Test
@@ -22,7 +22,7 @@ class RestUserProviderExceptionTest {
 
         var result = new RestUserProviderException(message, cause);
 
-        assertEquals(message, result.getMessage());
-        assertEquals(cause, result.getCause());
+        assertThat(result.getMessage()).isEqualTo(message);
+        assertThat(result.getCause()).isEqualTo(cause);
     }
 }
