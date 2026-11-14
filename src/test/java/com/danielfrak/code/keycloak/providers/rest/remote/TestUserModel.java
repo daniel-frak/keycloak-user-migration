@@ -218,7 +218,6 @@ public class TestUserModel implements UserModel {
         throw new RuntimeException("Not implemented");
     }
 
-
     @Override
     public Stream<RoleModel> getRealmRoleMappingsStream() {
         return this.roles.stream();

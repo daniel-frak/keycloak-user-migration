@@ -87,6 +87,128 @@ class LegacyProviderTest {
                 .thenReturn(userProvider);
     }
 
+    private void legacyUserExistsInKeycloakWithId(UserModel existingUser, String id) {
+        lenient().when(userProvider.getUserById(realmModel, id))
+                .thenReturn(existingUser);
+    }
+
+    private UserModel userWithDifferentUsername() {
+        var existingUser = mock(UserModel.class);
+        lenient().when(existingUser.getUsername())
+                .thenReturn("different");
+        return existingUser;
+    }
+
+    private void noUserExistsInKeycloak() {
+        lenient().when(userProvider.getUserByUsername(any(), any()))
+                .thenReturn(null);
+    }
+
+    private void userWillBeSuccessfullyCreated(LegacyUser user) {
+        lenient().when(userModelFactory.create(user, realmModel))
+                .thenReturn(userModel);
+    }
+
+    private void userExistsInLegacySystemWithEmail(LegacyUser user, String email) {
+        lenient().when(legacyUserService.findByEmail(email))
+                .thenReturn(Optional.of(user));
+    }
+
+    private void everyBooleanSessionAttributeIsTrue() {
+        when(session.getAttribute(anyString(), eq(Boolean.class)))
+                .thenReturn(Boolean.TRUE);
+    }
+
+    private void legacyUserExistsInKeycloakWithUserName(String username) {
+        when(userProvider.getUserByUsername(realmModel, username))
+                .thenReturn(userModel);
+    }
+
+    private void userExistsInLegacySystemWithUserName(LegacyUser legacyUser, String username) {
+        lenient().when(legacyUserService.findByUsername(username))
+                .thenReturn(Optional.of(legacyUser));
+    }
+
+    private void mockUserModelRequiresUpdatingPassword() {
+        when(userModel.getRequiredActionsStream())
+                .thenReturn(Stream.of(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
+    }
+
+    private void passwordBreaksPolicy(String password) {
+        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
+                .thenReturn(new PolicyError("someError"));
+    }
+
+    private void mockUserModelHasId(String userId) {
+        lenient().when(userModel.getId())
+                .thenReturn(userId);
+    }
+
+    private void userModelFactoryThrowsWhenUpdatingAttributes() {
+        doThrow(new RuntimeException("boom"))
+                .when(userModelFactory).updateUserAttributes(any(), any());
+    }
+
+    private void passwordIsValid(LegacyUser legacyUser, String password) {
+        String username = legacyUser.username();
+        passwordIsValid(username, password);
+    }
+
+    private void passwordIsValid(String username, String password) {
+        lenient().when(legacyUserService.isPasswordValid(username, password))
+                .thenReturn(true);
+    }
+
+    private void mockUserHasCredentialManager(SubjectCredentialManager userCredentialManager) {
+        lenient().when(userModel.credentialManager())
+                .thenReturn(userCredentialManager);
+    }
+
+    private CredentialInput inputWithPassword(String password) {
+        CredentialInput input = inputOfType(PasswordCredentialModel.TYPE);
+        when(input.getChallengeResponse())
+                .thenReturn(password);
+        return input;
+    }
+
+    private void passwordIsInvalid(String username, String password) {
+        when(legacyUserService.isPasswordValid(username, password))
+                .thenReturn(false);
+    }
+
+    private void mockUserModelHasUserName(String username) {
+        lenient().when(userModel.getUsername())
+                .thenReturn(username);
+    }
+
+    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
+        when(model.getConfig()).thenReturn(config);
+    }
+
+    private CredentialInput inputOfType(String kerberos) {
+        var input = mock(CredentialInput.class);
+        when(input.getType())
+                .thenReturn(kerberos);
+        return input;
+    }
+
+    private void mockUserModelHasFederationLink() {
+        String federationLink = "someId";
+        mockUserModelHasFederationLink(federationLink);
+    }
+
+    private void mockUserModelHasFederationLink(String federationLink) {
+        when(userModel.getFederationLink())
+                .thenReturn(federationLink);
+    }
+
+    private void noUsersExistInLegacySystem() {
+        lenient().when(legacyUserService.findByUsername(any()))
+                .thenReturn(Optional.empty());
+        lenient().when(legacyUserService.findByEmail(any()))
+                .thenReturn(Optional.empty());
+    }
+
     @Nested
     class GetByUserId {
 
@@ -163,33 +285,6 @@ class LegacyProviderTest {
 
             assertThat(result).isNull();
         }
-    }
-
-    private void legacyUserExistsInKeycloakWithId(UserModel existingUser, String id) {
-        lenient().when(userProvider.getUserById(realmModel, id))
-                .thenReturn(existingUser);
-    }
-
-    private UserModel userWithDifferentUsername() {
-        var existingUser = mock(UserModel.class);
-        lenient().when(existingUser.getUsername())
-                .thenReturn("different");
-        return existingUser;
-    }
-
-    private void noUserExistsInKeycloak() {
-        lenient().when(userProvider.getUserByUsername(any(), any()))
-                .thenReturn(null);
-    }
-
-    private void userWillBeSuccessfullyCreated(LegacyUser user) {
-        lenient().when(userModelFactory.create(user, realmModel))
-                .thenReturn(userModel);
-    }
-
-    private void userExistsInLegacySystemWithEmail(LegacyUser user, String email) {
-        lenient().when(legacyUserService.findByEmail(email))
-                .thenReturn(Optional.of(user));
     }
 
     @Nested
@@ -307,21 +402,6 @@ class LegacyProviderTest {
             assertThat(result).isNull();
             verifyNoInteractions(legacyUserService);
         }
-    }
-
-    private void everyBooleanSessionAttributeIsTrue() {
-        when(session.getAttribute(anyString(), eq(Boolean.class)))
-                .thenReturn(Boolean.TRUE);
-    }
-
-    private void legacyUserExistsInKeycloakWithUserName(String username) {
-        when(userProvider.getUserByUsername(realmModel, username))
-                .thenReturn(userModel);
-    }
-
-    private void userExistsInLegacySystemWithUserName(LegacyUser legacyUser, String username) {
-        lenient().when(legacyUserService.findByUsername(username))
-                .thenReturn(Optional.of(legacyUser));
     }
 
     @Nested
@@ -555,7 +635,6 @@ class LegacyProviderTest {
             passwordIsValid(userId, password);
             mockUserHasCredentialManager(subjectCredentialManager);
 
-
             boolean result = legacyProvider.isValid(realmModel, userModel, input);
 
             assertThat(result).isTrue();
@@ -563,7 +642,7 @@ class LegacyProviderTest {
         }
 
         @Test
-        void shouldReturnTrueAndNotUpdateCredentialsAndRequirePasswordChangeGivenUserValidatedButPasswordBreaksPolicy() {
+        void shouldReturnTrueGivenUserValidatedButPasswordBreaksPolicy() {
             MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
             config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
             modelIsConfigured(config);
@@ -579,7 +658,43 @@ class LegacyProviderTest {
             boolean result = legacyProvider.isValid(realmModel, userModel, input);
 
             assertThat(result).isTrue();
+        }
+
+        @Test
+        void shouldNotUpdateCredentialsGivenUserValidatedButPasswordBreaksPolicy() {
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+            modelIsConfigured(config);
+
+            final String userId = "1234567890";
+            final String password = "password";
+
+            mockUserModelHasId(userId);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(userId, password);
+            passwordBreaksPolicy(password);
+
+            legacyProvider.isValid(realmModel, userModel, input);
+
             verify(userModel, never()).credentialManager();
+        }
+
+        @Test
+        void shouldRequirePasswordChangeGivenUserValidatedButPasswordBreaksPolicy() {
+            MultivaluedHashMap<String, String> config = new MultivaluedHashMap<>();
+            config.put(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION, List.of("true"));
+            modelIsConfigured(config);
+
+            final String userId = "1234567890";
+            final String password = "password";
+
+            mockUserModelHasId(userId);
+            CredentialInput input = inputWithPassword(password);
+            passwordIsValid(userId, password);
+            passwordBreaksPolicy(password);
+
+            legacyProvider.isValid(realmModel, userModel, input);
+
             verify(userModel).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
 
@@ -603,70 +718,6 @@ class LegacyProviderTest {
             verify(userModel, never()).addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }
     }
-
-    private void mockUserModelRequiresUpdatingPassword() {
-        when(userModel.getRequiredActionsStream())
-                .thenReturn(Stream.of(UserModel.RequiredAction.UPDATE_PASSWORD.name()));
-    }
-
-    private void passwordBreaksPolicy(String password) {
-        when(passwordPolicyManagerProvider.validate(realmModel, userModel, password))
-                .thenReturn(new PolicyError("someError"));
-    }
-
-    private void mockUserModelHasId(String userId) {
-        lenient().when(userModel.getId())
-                .thenReturn(userId);
-    }
-
-    private void userModelFactoryThrowsWhenUpdatingAttributes() {
-        doThrow(new RuntimeException("boom"))
-                .when(userModelFactory).updateUserAttributes(any(), any());
-    }
-
-    private void passwordIsValid(LegacyUser legacyUser, String password) {
-        String username = legacyUser.username();
-        passwordIsValid(username, password);
-    }
-
-    private void passwordIsValid(String username, String password) {
-        lenient().when(legacyUserService.isPasswordValid(username, password))
-                .thenReturn(true);
-    }
-
-    private void mockUserHasCredentialManager(SubjectCredentialManager userCredentialManager) {
-        lenient().when(userModel.credentialManager())
-                .thenReturn(userCredentialManager);
-    }
-
-    private CredentialInput inputWithPassword(String password) {
-        CredentialInput input = inputOfType(PasswordCredentialModel.TYPE);
-        when(input.getChallengeResponse())
-                .thenReturn(password);
-        return input;
-    }
-
-    private void passwordIsInvalid(String username, String password) {
-        when(legacyUserService.isPasswordValid(username, password))
-                .thenReturn(false);
-    }
-
-    private void mockUserModelHasUserName(String username) {
-        lenient().when(userModel.getUsername())
-                .thenReturn(username);
-    }
-
-    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
-        when(model.getConfig()).thenReturn(config);
-    }
-
-    private CredentialInput inputOfType(String kerberos) {
-        var input = mock(CredentialInput.class);
-        when(input.getType())
-                .thenReturn(kerberos);
-        return input;
-    }
-
 
     @Nested
     class IsPasswordValid {
@@ -807,16 +858,6 @@ class LegacyProviderTest {
 
             verify(userModel, never()).setFederationLink(null);
         }
-    }
-
-    private void mockUserModelHasFederationLink() {
-        String federationLink = "someId";
-        mockUserModelHasFederationLink(federationLink);
-    }
-
-    private void mockUserModelHasFederationLink(String federationLink) {
-        when(userModel.getFederationLink())
-                .thenReturn(federationLink);
     }
 
     @Nested
@@ -1199,12 +1240,5 @@ class LegacyProviderTest {
 
         private abstract static class LocalPasswordFactory implements CredentialProviderFactory<LocalPasswordProvider> {
         }
-    }
-
-    private void noUsersExistInLegacySystem() {
-        lenient().when(legacyUserService.findByUsername(any()))
-                .thenReturn(Optional.empty());
-        lenient().when(legacyUserService.findByEmail(any()))
-                .thenReturn(Optional.empty());
     }
 }

@@ -9,13 +9,10 @@ import org.keycloak.models.*;
 import org.keycloak.models.credential.OTPCredentialModel;
 import org.keycloak.organization.OrganizationProvider;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-import java.util.HexFormat;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class UserModelFactory {
@@ -184,7 +181,7 @@ public class UserModelFactory {
     }
 
     public void synchronizeTotps(LegacyUser legacyUser, UserModel userModel) {
-        var desired = totpValidationService.validateTotps(legacyUser.totps()).stream().collect(Collectors.toSet());
+        var desired = new HashSet<>(totpValidationService.validateTotps(legacyUser.totps()));
         var credentials = userModel.credentialManager();
         var current = credentials.getStoredCredentialsByTypeStream(OTPCredentialModel.TYPE)
                 .map(OTPCredentialModel::createFromCredentialModel)
@@ -216,8 +213,14 @@ public class UserModelFactory {
             var label = credential.getUserLabel();
             var labelKey = label == null ? "null" : ("value"
                     + Base64.getEncoder().encodeToString(label.getBytes(StandardCharsets.UTF_8)));
-            return labelKey + "|" + data.getDigits() + "|"
-                    + data.getPeriod() + "|" + data.getAlgorithm() + "|" + HexFormat.of().formatHex(digest);
+            return String.join(
+                    "|",
+                    labelKey,
+                    String.valueOf(data.getDigits()),
+                    String.valueOf(data.getPeriod()),
+                    data.getAlgorithm(),
+                    HexFormat.of().formatHex(digest)
+            );
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 is unavailable.", ex);
         }
@@ -278,7 +281,7 @@ public class UserModelFactory {
                 legacyOrganization.orgName(), legacyOrganization.orgAlias()
         );
         List<LegacyOrganizationDomain> domains = legacyOrganization.domains();
-        if(domains == null || domains.isEmpty()) {
+        if (domains == null || domains.isEmpty()) {
             return organizationModel;
         }
         Set<OrganizationDomainModel> domainModelSet = domains

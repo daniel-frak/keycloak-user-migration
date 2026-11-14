@@ -120,9 +120,9 @@ public class UserMigrationService {
     }
 
     public void refreshUserFromLegacy(RealmModel realm, UserModel userModel) {
-        if (!config.shouldUpdateUserOnLogin() &&
-                !config.getGroupSyncMode().shouldSyncOnLogin() &&
-                !config.getRoleSyncMode().shouldSyncOnLogin()) {
+        if (!config.shouldUpdateUserOnLogin()
+                && !config.getGroupSyncMode().shouldSyncOnLogin()
+                && !config.getRoleSyncMode().shouldSyncOnLogin()) {
             LOG.debug("Skipping legacy refresh because all refresh-on-login options are disabled.");
             return;
         }

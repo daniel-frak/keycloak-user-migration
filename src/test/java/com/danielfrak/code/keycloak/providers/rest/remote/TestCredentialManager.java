@@ -56,7 +56,8 @@ public class TestCredentialManager implements SubjectCredentialManager {
 
     @Override
     public Stream<CredentialModel> getStoredCredentialsByTypeStream(String type) {
-        return this.storedCredentials.stream().filter(credentialModel -> Objects.equals(credentialModel.getType(), type));
+        return this.storedCredentials.stream()
+                .filter(credentialModel -> Objects.equals(credentialModel.getType(), type));
     }
 
     @Override

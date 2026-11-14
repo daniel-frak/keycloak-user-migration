@@ -4,8 +4,6 @@ import org.keycloak.component.ComponentModel;
 
 import java.util.OptionalInt;
 
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
-
 public class MigrationConfiguration {
 
     private final ComponentModel model;
@@ -19,24 +17,25 @@ public class MigrationConfiguration {
     }
 
     public boolean shouldUseUserIdForCredentialVerification() {
-        return Boolean.parseBoolean(model.getConfig().getFirst(USE_USER_ID_FOR_CREDENTIAL_VERIFICATION));
+        return Boolean.parseBoolean(
+                model.getConfig().getFirst(ConfigurationProperties.USE_USER_ID_FOR_CREDENTIAL_VERIFICATION));
     }
 
     public boolean shouldUpdateUserOnLogin() {
-        return Boolean.parseBoolean(model.getConfig().getFirst(UPDATE_USER_ON_LOGIN));
+        return Boolean.parseBoolean(model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ON_LOGIN));
     }
 
     public boolean shouldUpdateUserTotpsOnLogin() {
-        return Boolean.parseBoolean(model.getConfig().getFirst(UPDATE_USER_TOTPS_ON_LOGIN));
+        return Boolean.parseBoolean(model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_TOTPS_ON_LOGIN));
     }
 
     public UserSyncMode getGroupSyncMode() {
-        var configValue = model.getConfig().getFirst(UPDATE_USER_GROUPS_ON_LOGIN);
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_GROUPS_ON_LOGIN);
         return UserSyncMode.fromConfig(configValue, UserSyncMode.SYNC_FIRST_LOGIN);
     }
 
     public UserSyncMode getRoleSyncMode() {
-        var configValue = model.getConfig().getFirst(UPDATE_USER_ROLES_ON_LOGIN);
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.UPDATE_USER_ROLES_ON_LOGIN);
         return UserSyncMode.fromConfig(configValue, UserSyncMode.SYNC_FIRST_LOGIN);
     }
 
@@ -45,7 +44,10 @@ public class MigrationConfiguration {
      * @throws IllegalArgumentException if the configured value is not a positive integer
      */
     public OptionalInt getHttpConnectTimeoutMillis() {
-        return getTimeoutMillis(HTTP_CONNECT_TIMEOUT_PROPERTY, HTTP_CONNECT_TIMEOUT_LABEL);
+        return getTimeoutMillis(
+                ConfigurationProperties.HTTP_CONNECT_TIMEOUT_PROPERTY,
+                ConfigurationProperties.HTTP_CONNECT_TIMEOUT_LABEL
+        );
     }
 
     /**
@@ -53,7 +55,10 @@ public class MigrationConfiguration {
      * @throws IllegalArgumentException if the configured value is not a positive integer
      */
     public OptionalInt getHttpReadTimeoutMillis() {
-        return getTimeoutMillis(HTTP_READ_TIMEOUT_PROPERTY, HTTP_READ_TIMEOUT_LABEL);
+        return getTimeoutMillis(
+                ConfigurationProperties.HTTP_READ_TIMEOUT_PROPERTY,
+                ConfigurationProperties.HTTP_READ_TIMEOUT_LABEL
+        );
     }
 
     private OptionalInt getTimeoutMillis(String property, String label) {
@@ -73,7 +78,7 @@ public class MigrationConfiguration {
     }
 
     public boolean shouldSeverFederationLink() {
-        var configValue = model.getConfig().getFirst(SEVER_FEDERATION_LINK);
+        var configValue = model.getConfig().getFirst(ConfigurationProperties.SEVER_FEDERATION_LINK);
         return configValue == null || Boolean.parseBoolean(configValue);
     }
 }

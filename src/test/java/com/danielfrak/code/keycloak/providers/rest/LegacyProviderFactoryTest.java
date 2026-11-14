@@ -33,6 +33,11 @@ class LegacyProviderFactoryTest {
         legacyProviderFactory = new LegacyProviderFactory();
     }
 
+    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
+        when(model.getConfig())
+                .thenReturn(config);
+    }
+
     @Nested
     class GetConfigProperties {
 
@@ -56,11 +61,6 @@ class LegacyProviderFactoryTest {
 
             assertThat(provider).isNotNull();
         }
-    }
-
-    private void modelIsConfigured(MultivaluedHashMap<String, String> config) {
-        when(model.getConfig())
-                .thenReturn(config);
     }
 
     @Nested

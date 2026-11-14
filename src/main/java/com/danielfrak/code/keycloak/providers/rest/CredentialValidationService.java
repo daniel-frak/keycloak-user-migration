@@ -65,8 +65,8 @@ public class CredentialValidationService {
 
     private void addUpdatePasswordAction(UserModel userModel, String userIdentifier) {
         if (updatePasswordActionMissing(userModel)) {
-            LOG.infof("Could not use legacy password for user %s due to password policy." +
-                            " Adding UPDATE_PASSWORD action.",
+            LOG.infof("Could not use legacy password for user %s due to password policy."
+                            + " Adding UPDATE_PASSWORD action.",
                     userIdentifier);
             userModel.addRequiredAction(UserModel.RequiredAction.UPDATE_PASSWORD);
         }

@@ -1,20 +1,19 @@
 package com.danielfrak.code.keycloak.providers.rest.rest;
 
+import com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties;
 import com.danielfrak.code.keycloak.providers.rest.MigrationConfiguration;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUser;
 import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.jboss.logging.Logger;
 import org.keycloak.common.util.Encode;
 import org.keycloak.component.ComponentModel;
-import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Optional;
-
-import static com.danielfrak.code.keycloak.providers.rest.ConfigurationProperties.*;
 
 public class RestUserService implements LegacyUserService {
 
@@ -28,7 +27,7 @@ public class RestUserService implements LegacyUserService {
     public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.providerName = model.getName();
-        this.uri = model.getConfig().getFirst(URI_PROPERTY);
+        this.uri = model.getConfig().getFirst(ConfigurationProperties.URI_PROPERTY);
         this.objectMapper = objectMapper;
 
         configureBasicAuth(model, httpClient);
@@ -37,19 +36,22 @@ public class RestUserService implements LegacyUserService {
     }
 
     private void configureBasicAuth(ComponentModel model, HttpClient httpClient) {
-        var basicAuthConfig = model.getConfig().getFirst(API_HTTP_BASIC_ENABLED_PROPERTY);
+        var basicAuthConfig = model.getConfig().getFirst(ConfigurationProperties.API_HTTP_BASIC_ENABLED_PROPERTY);
         var basicAuthEnabled = Boolean.parseBoolean(basicAuthConfig);
         if (basicAuthEnabled) {
-            String basicAuthUser = model.getConfig().getFirst(API_HTTP_BASIC_USERNAME_PROPERTY);
-            String basicAuthPassword = model.getConfig().getFirst(API_HTTP_BASIC_PASSWORD_PROPERTY);
+            String basicAuthUser = model.getConfig().getFirst(
+                    ConfigurationProperties.API_HTTP_BASIC_USERNAME_PROPERTY);
+            String basicAuthPassword = model.getConfig().getFirst(
+                    ConfigurationProperties.API_HTTP_BASIC_PASSWORD_PROPERTY);
             httpClient.enableBasicAuth(basicAuthUser, basicAuthPassword);
         }
     }
 
     private void configureBearerTokenAuth(ComponentModel model, HttpClient httpClient) {
-        var tokenAuthEnabled = Boolean.parseBoolean(model.getConfig().getFirst(API_TOKEN_ENABLED_PROPERTY));
+        var tokenAuthEnabled = Boolean.parseBoolean(
+                model.getConfig().getFirst(ConfigurationProperties.API_TOKEN_ENABLED_PROPERTY));
         if (tokenAuthEnabled) {
-            String token = model.getConfig().getFirst(API_TOKEN_PROPERTY);
+            String token = model.getConfig().getFirst(ConfigurationProperties.API_TOKEN_PROPERTY);
             httpClient.enableBearerTokenAuth(token);
         }
     }
@@ -67,7 +69,7 @@ public class RestUserService implements LegacyUserService {
     }
 
     private boolean equalsCaseInsensitive(String a, String b) {
-        if(a == null || b == null) {
+        if (a == null || b == null) {
             return false;
         }
 
@@ -92,7 +94,7 @@ public class RestUserService implements LegacyUserService {
             }
             var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
             return Optional.ofNullable(legacyUser);
-        } catch (RuntimeException|IOException e) {
+        } catch (RuntimeException | IOException e) {
             LOG.error(lookupFailureMessage(e));
             LOG.debugf("Failed lookup was for user %s", usernameOrEmail);
             return Optional.empty();
