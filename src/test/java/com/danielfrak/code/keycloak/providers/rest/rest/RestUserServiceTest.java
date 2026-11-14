@@ -19,7 +19,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.keycloak.common.util.Encode;
 import org.keycloak.common.util.MultivaluedHashMap;
 import org.keycloak.component.ComponentModel;
 import org.mockito.Mock;
@@ -28,6 +27,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -103,7 +103,7 @@ class RestUserServiceTest {
     }
 
     private void httpGetRequestThrowsException(RuntimeException exception) {
-        when(httpClient.get(anyString()))
+        when(httpClient.get(any()))
                 .thenThrow(exception);
     }
 
@@ -134,11 +134,14 @@ class RestUserServiceTest {
     }
 
     private void httpGetRequestReturns(String path, HttpResponse response) {
-        when(httpClient.get(path)).thenReturn(response);
+        URI uri = java.net.URI.create(path);
+        when(httpClient.get(uri))
+                .thenReturn(response);
     }
 
     private void httpGetRequestReturnsMalformedJson() {
-        httpGetRequestReturns(any(), new HttpResponse(200, "malformedJson"));
+        when(httpClient.get(any()))
+                .thenReturn(new HttpResponse(200, "malformedJson"));
     }
 
     private void httpGetRequestThrows(RuntimeException cause) {
@@ -155,7 +158,7 @@ class RestUserServiceTest {
     }
 
     private void httpPostRequestThrows(HttpRequestException exception) {
-        when(httpClient.post(anyString(), anyString()))
+        when(httpClient.post(any(), anyString()))
                 .thenThrow(exception);
     }
 
@@ -167,8 +170,10 @@ class RestUserServiceTest {
         return mockObjectMapper;
     }
 
-    private void httpPostRequestReturnsResponse(String path, String body, HttpResponse response) {
-        when(httpClient.post(path, body)).thenReturn(response);
+    private void httpPostRequestReturns(String path, HttpResponse response) {
+        URI uri = java.net.URI.create(path);
+        when(httpClient.post(eq(uri), any()))
+                .thenReturn(response);
     }
 
     @Nested
@@ -264,7 +269,7 @@ class RestUserServiceTest {
         void shouldReturnAUserGivenUserIsFoundAndEmailMatches() throws IOException {
             var expectedUser = createALegacyUser("someUsername", "email@example.com");
             var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
-            var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode(expectedUser.email()));
+            var path = String.format(URI_PATH_FORMAT, URI, expectedUser.email());
             var restUserService = new RestUserService(model, httpClient, objectMapper);
 
             httpGetRequestReturns(path, response);
@@ -278,7 +283,7 @@ class RestUserServiceTest {
         void shouldReturnAUserGivenUserIsFoundAndEmailMatchesCaseInsensitive() throws IOException {
             var expectedUser = createALegacyUser("someUsername", "email@example.com");
             var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
-            var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode("EMAIL@EXAMPLE.COM"));
+            var path = String.format(URI_PATH_FORMAT, URI, "EMAIL@EXAMPLE.COM");
             var restUserService = new RestUserService(model, httpClient, objectMapper);
 
             httpGetRequestReturns(path, response);
@@ -291,7 +296,7 @@ class RestUserServiceTest {
         @Test
         void shouldReturnAnEmptyOptionalGivenUserIsNotFound() {
             var expectedUser = createALegacyUser("someUsername", "email@example.com");
-            var path = String.format(URI_PATH_FORMAT, URI, Encode.urlEncode(expectedUser.email()));
+            var path = String.format(URI_PATH_FORMAT, URI, expectedUser.email());
             var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             httpGetRequestReturns(path, response);
@@ -304,7 +309,6 @@ class RestUserServiceTest {
         @ParameterizedTest
         @CsvSource(value = {
                 "someEmail, differentEmail",
-                "null, someEmail",
                 "someEmail, null"
         }, nullValues = "null")
         void shouldReturnAnEmptyOptionalGivenEmailDoesNotMatch(
@@ -320,6 +324,16 @@ class RestUserServiceTest {
 
             assertThat(result).isEmpty();
         }
+        
+        @Test
+        void shouldReturnAnEmptyOptionalGivenRequestedEmailIsNull() {
+            var restUserService = new RestUserService(model, httpClient, objectMapper);
+
+            var result = restUserService.findByEmail(null);
+
+            assertThat(result).isEmpty();
+            verifyNoInteractions(httpClient);
+        }
 
         @Test
         void shouldLogProviderAndCauseWithoutUserGivenRequestFails() {
@@ -334,7 +348,7 @@ class RestUserServiceTest {
 
             assertThat(logs.messages()).containsExactly(
                     "Legacy user lookup failed for provider 'someProvider' ("
-                    + URI + "): SocketTimeoutException: Read timed out - treating user as not found");
+                            + URI + "): SocketTimeoutException: Read timed out - treating user as not found");
         }
 
         @Test
@@ -350,7 +364,7 @@ class RestUserServiceTest {
 
             assertThat(logs.messages()).containsExactly(
                     "Legacy user lookup failed for provider 'someProvider' ("
-                    + URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
+                            + URI + "): IllegalStateException: Connection pool shut down - treating user as not found");
         }
 
         @Test
@@ -366,7 +380,7 @@ class RestUserServiceTest {
 
             assertThat(logs.messages()).containsExactly(
                     "Legacy user lookup failed for provider 'someProvider' ("
-                    + URI + "): EOFException - treating user as not found");
+                            + URI + "): EOFException - treating user as not found");
         }
 
         @Test
@@ -382,7 +396,7 @@ class RestUserServiceTest {
 
             assertThat(logs.messages()).containsExactly(
                     "Legacy user lookup failed for provider 'someProvider' ("
-                    + URI + "): RuntimeException - treating user as not found");
+                            + URI + "): RuntimeException - treating user as not found");
         }
     }
 
@@ -441,7 +455,7 @@ class RestUserServiceTest {
         @Test
         void shouldReturnAUserGivenUserIsFoundAndUsernameContainsSpace() throws IOException {
             var expectedUser = createALegacyUser("some Username", "email@example.com");
-            var path = String.format(URI_PATH_FORMAT, URI, "SOME+USERNAME");
+            var path = String.format(URI_PATH_FORMAT, URI, "SOME%20USERNAME");
             var response = new HttpResponse(HttpStatus.SC_OK, objectMapper.writeValueAsString(expectedUser));
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             httpGetRequestReturns(path, response);
@@ -481,7 +495,6 @@ class RestUserServiceTest {
         @ParameterizedTest
         @CsvSource(value = {
                 "someUsername, differentUsername",
-                "null, someUsername",
                 "someUsername, null"
         }, nullValues = "null")
         void shouldReturnAnEmptyOptionalGivenUsernameDoesNotMatch(
@@ -497,20 +510,29 @@ class RestUserServiceTest {
 
             assertThat(result).isEmpty();
         }
+
+        @Test
+        void shouldReturnAnEmptyOptionalGivenRequestedUsernameIsNull() {
+            var restUserService = new RestUserService(model, httpClient, objectMapper);
+
+            var result = restUserService.findByUsername(null);
+
+            assertThat(result).isEmpty();
+            verifyNoInteractions(httpClient);
+        }
     }
 
     @Nested
     class IsPasswordValid {
 
         @Test
-        void shouldReturnTrueGivenPasswordsMatches() throws IOException {
+        void shouldReturnTrueGivenPasswordsMatches() {
             var username = "someUsername";
             var password = "anyPassword";
             var path = String.format(URI_PATH_FORMAT, URI, username);
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             var response = new HttpResponse(HttpStatus.SC_OK);
-            var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
-            httpPostRequestReturnsResponse(path, expectedBody, response);
+            httpPostRequestReturns(path, response);
 
             var isPasswordValid = restUserService.isPasswordValid(username, password);
 
@@ -518,14 +540,13 @@ class RestUserServiceTest {
         }
 
         @Test
-        void shouldReturnTrueGivenPasswordsMatchesAndUsernameContainsSpace() throws IOException {
+        void shouldReturnTrueGivenPasswordsMatchesAndUsernameContainsSpace() {
             var username = "some Username";
             var password = "anyPassword";
             var path = String.format(URI_PATH_FORMAT, URI, "some+Username");
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             var response = new HttpResponse(HttpStatus.SC_OK);
-            var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
-            httpPostRequestReturnsResponse(path, expectedBody, response);
+            httpPostRequestReturns(path, response);
 
             var isPasswordValid = restUserService.isPasswordValid(username, password);
 
@@ -533,14 +554,13 @@ class RestUserServiceTest {
         }
 
         @Test
-        void shouldNotThrowNullPointerExceptionGivenPasswordIsNull() throws IOException {
+        void shouldNotThrowNullPointerExceptionGivenPasswordIsNull() {
             String username = null;
             var password = "anyPassword";
             var path = String.format(URI_PATH_FORMAT, URI, username);
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             var response = new HttpResponse(HttpStatus.SC_OK);
-            var expectedBody = objectMapper.writeValueAsString(new UserPasswordDto(password));
-            httpPostRequestReturnsResponse(path, expectedBody, response);
+            httpPostRequestReturns(path, response);
 
             var isPasswordValid = restUserService.isPasswordValid(username, password);
 
@@ -554,7 +574,7 @@ class RestUserServiceTest {
             var path = String.format(URI_PATH_FORMAT, URI, username);
             var restUserService = new RestUserService(model, httpClient, objectMapper);
             var response = new HttpResponse(HttpStatus.SC_NOT_FOUND);
-            httpPostRequestReturnsResponse(eq(path), anyString(), response);
+            httpPostRequestReturns(path, response);
 
             var isPasswordValid = restUserService.isPasswordValid(username, password);
 

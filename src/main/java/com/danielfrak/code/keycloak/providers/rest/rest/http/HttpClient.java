@@ -17,6 +17,7 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -64,7 +65,7 @@ public class HttpClient {
         httpClientBuilder.setDefaultRequestConfig(requestConfigBuilder.build());
     }
 
-    public HttpResponse get(String uri) {
+    public HttpResponse get(URI uri) {
         var request = new HttpGet(uri);
         return execute(request);
     }
@@ -104,7 +105,7 @@ public class HttpClient {
                 .orElse(StandardCharsets.UTF_8);
     }
 
-    public HttpResponse post(String uri, String bodyAsJson) {
+    public HttpResponse post(URI uri, String bodyAsJson) {
         var request = new HttpPost(uri);
         var requestEntity = new StringEntity(bodyAsJson, ContentType.APPLICATION_JSON);
         request.setEntity(requestEntity);

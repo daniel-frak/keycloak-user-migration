@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import java.net.URI;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
@@ -39,14 +40,14 @@ class HttpClientTest {
 
     private HttpClient httpClient;
     private MockWebServer mockWebServer;
-    private String uri;
+    private URI uri;
 
     @BeforeEach
     void setUp() throws IOException {
         mockWebServer = new MockWebServer();
         mockWebServer.start();
         httpClient = new HttpClient(HttpClientBuilder.create().setRedirectStrategy(new LaxRedirectStrategy()));
-        uri = String.format("http://%s:%s/", mockWebServer.getHostName(), mockWebServer.getPort());
+        uri = URI.create(String.format("http://%s:%s/", mockWebServer.getHostName(), mockWebServer.getPort()));
     }
 
     @AfterEach
@@ -115,7 +116,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
         }
 
         @ParameterizedTest
@@ -143,7 +144,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             assertThat(recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION)).isNull();
         }
 
@@ -163,7 +164,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             String authorizationHeader = recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION);
             assertThat(authorizationHeader)
                     .isNotNull()
@@ -190,7 +191,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             assertThat(recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION)).isNull();
         }
 
@@ -208,7 +209,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             String authorization = recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION);
             assertThat(authorization)
                     .isNotNull()
@@ -230,7 +231,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             assertThat(recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION)).isNull();
         }
 
@@ -277,7 +278,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             assertThat(recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION)).isNull();
         }
     }
@@ -319,7 +320,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
         }
 
         @Test
@@ -365,7 +366,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
         }
 
         @Test
@@ -381,7 +382,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
         }
 
         @Test
@@ -403,7 +404,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             assertThat(authorizationHeader)
                     .isNotNull()
                     .startsWith("Basic")
@@ -426,7 +427,7 @@ class HttpClientTest {
             assertThat(recordedRequest.getPath()).isEqualTo("/");
             assertThat(recordedRequest.getRequestUrl())
                     .extracting(Object::toString)
-                    .isEqualTo(uri);
+                    .isEqualTo(uri.toString());
             String authorization = recordedRequest.getHeaders().get(HttpHeaders.AUTHORIZATION);
             assertThat(authorization)
                     .isNotNull()
