@@ -7,27 +7,29 @@ import com.danielfrak.code.keycloak.providers.rest.remote.LegacyUserService;
 import com.danielfrak.code.keycloak.providers.rest.rest.http.HttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.http.HttpStatus;
+import org.apache.http.client.utils.URIBuilder;
 import org.jboss.logging.Logger;
 import org.keycloak.common.util.Encode;
 import org.keycloak.component.ComponentModel;
 
 import java.io.IOException;
-import java.util.Locale;
-import java.util.Optional;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.*;
 
 public class RestUserService implements LegacyUserService {
 
     private static final Logger LOG = Logger.getLogger(RestUserService.class);
 
     private final String providerName;
-    private final String uri;
+    private final String uriString;
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
     public RestUserService(ComponentModel model, HttpClient httpClient, ObjectMapper objectMapper) {
         this.httpClient = httpClient;
         this.providerName = model.getName();
-        this.uri = model.getConfig().getFirst(ConfigurationProperties.URI_PROPERTY);
+        this.uriString = model.getConfig().getFirst(ConfigurationProperties.URI_PROPERTY);
         this.objectMapper = objectMapper;
 
         configureBasicAuth(model, httpClient);
@@ -83,22 +85,41 @@ public class RestUserService implements LegacyUserService {
     }
 
     private Optional<LegacyUser> findLegacyUser(String usernameOrEmail) {
-        if (usernameOrEmail != null) {
-            usernameOrEmail = Encode.urlEncode(usernameOrEmail);
-        }
-        var getUsernameUri = String.format("%s/%s", this.uri, usernameOrEmail);
+        return Optional.ofNullable(usernameOrEmail)
+                .flatMap(this::fetchLegacyUser);
+    }
+
+    private Optional<LegacyUser> fetchLegacyUser(String usernameOrEmail) {
+        Optional<LegacyUser> legacyUser = Optional.empty();
+
         try {
-            var response = this.httpClient.get(getUsernameUri);
-            if (response.getCode() != HttpStatus.SC_OK) {
-                return Optional.empty();
+            var response = this.httpClient.get(uriWithPathSegment(usernameOrEmail));
+
+            if (response.getCode() == HttpStatus.SC_OK) {
+                legacyUser = Optional.ofNullable(
+                        objectMapper.readValue(response.getBody(), LegacyUser.class));
             }
-            var legacyUser = objectMapper.readValue(response.getBody(), LegacyUser.class);
-            return Optional.ofNullable(legacyUser);
-        } catch (RuntimeException | IOException e) {
+        } catch (RuntimeException | IOException | URISyntaxException e) {
             LOG.error(lookupFailureMessage(e));
             LOG.debugf("Failed lookup was for user %s", usernameOrEmail);
-            return Optional.empty();
         }
+
+        return legacyUser;
+    }
+
+    private URI uriWithPathSegment(String pathSegment) throws URISyntaxException {
+        var uriBuilder = new URIBuilder(this.uriString);
+
+        return uriBuilder
+                .setPathSegments(pathSegments(uriBuilder, pathSegment))
+                .build();
+    }
+
+    private static List<String> pathSegments(URIBuilder uriBuilder, String... additionalPathSegments) {
+        List<String> pathSegments = new ArrayList<>(uriBuilder.getPathSegments());
+        pathSegments.addAll(Arrays.asList(additionalPathSegments));
+
+        return pathSegments;
     }
 
     @Override
@@ -106,13 +127,13 @@ public class RestUserService implements LegacyUserService {
         if (username != null) {
             username = Encode.urlEncode(username);
         }
-        var passwordValidationUri = String.format("%s/%s", this.uri, username);
         var dto = new UserPasswordDto(password);
         try {
+            URI passwordValidationUri = uriWithPathSegment(username);
             var json = objectMapper.writeValueAsString(dto);
             var response = httpClient.post(passwordValidationUri, json);
             return response.getCode() == HttpStatus.SC_OK;
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             LOG.error(passwordValidationFailureMessage(e, "treating password as invalid"));
             LOG.debugf("Failed password validation was for user %s", username);
             return false;
@@ -138,6 +159,6 @@ public class RestUserService implements LegacyUserService {
             causeDescription += ": " + cause.getMessage();
         }
         return String.format("Legacy %s failed for provider '%s' (%s): %s - %s",
-                operation, providerName, uri, causeDescription, consequence);
+                operation, providerName, uriString, causeDescription, consequence);
     }
 }

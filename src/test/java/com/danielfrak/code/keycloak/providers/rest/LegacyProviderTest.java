@@ -243,52 +243,6 @@ class LegacyProviderTest {
 
             assertThat(result).isNull();
         }
-    }
-
-    @Nested
-    class GetUserByEmail {
-
-        @Test
-        void shouldGetUserByEmail() {
-            final String email = "email";
-            final LegacyUser user = withId();
-            userExistsInLegacySystemWithEmail(user, email);
-            userWillBeSuccessfullyCreated(user);
-
-            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
-
-            assertThat(result).isEqualTo(userModel);
-        }
-
-        @Test
-        void shouldReturnExistingUserAndUpdateAttributesGivenUserIdExistsButHasDifferentUsername() {
-            final String email = "email";
-            final LegacyUser legacyUser = withId();
-            userExistsInLegacySystemWithEmail(legacyUser, email);
-            noUserExistsInKeycloak();
-            UserModel existingKeycloakUser = userWithDifferentUsername();
-            legacyUserExistsInKeycloakWithId(existingKeycloakUser, legacyUser.id());
-
-            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
-
-            assertThat(result).isNotNull();
-            verify(userModelFactory).updateUserAttributes(legacyUser, existingKeycloakUser);
-            verify(userModelFactory, never()).create(any(), any());
-        }
-
-        @Test
-        void shouldReturnNullGivenUserNotFoundByEmail() {
-            final String username = "user";
-            noUsersExistInLegacySystem();
-
-            UserModel result = legacyProvider.getUserByEmail(realmModel, username);
-
-            assertThat(result).isNull();
-        }
-    }
-
-    @Nested
-    class GetUserByUserName {
 
         @Test
         void shouldUpdateExistingUserDataGivenFoundByUsername() {
@@ -401,6 +355,48 @@ class LegacyProviderTest {
 
             assertThat(result).isNull();
             verifyNoInteractions(legacyUserService);
+        }
+    }
+
+    @Nested
+    class GetUserByEmail {
+
+        @Test
+        void shouldGetUserByEmail() {
+            final String email = "email";
+            final LegacyUser user = withId();
+            userExistsInLegacySystemWithEmail(user, email);
+            userWillBeSuccessfullyCreated(user);
+
+            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
+
+            assertThat(result).isEqualTo(userModel);
+        }
+
+        @Test
+        void shouldReturnExistingUserAndUpdateAttributesGivenUserIdExistsButHasDifferentUsername() {
+            final String email = "email";
+            final LegacyUser legacyUser = withId();
+            userExistsInLegacySystemWithEmail(legacyUser, email);
+            noUserExistsInKeycloak();
+            UserModel existingKeycloakUser = userWithDifferentUsername();
+            legacyUserExistsInKeycloakWithId(existingKeycloakUser, legacyUser.id());
+
+            UserModel result = legacyProvider.getUserByEmail(realmModel, email);
+
+            assertThat(result).isNotNull();
+            verify(userModelFactory).updateUserAttributes(legacyUser, existingKeycloakUser);
+            verify(userModelFactory, never()).create(any(), any());
+        }
+
+        @Test
+        void shouldReturnNullGivenUserNotFoundByEmail() {
+            final String username = "user";
+            noUsersExistInLegacySystem();
+
+            UserModel result = legacyProvider.getUserByEmail(realmModel, username);
+
+            assertThat(result).isNull();
         }
     }
 
